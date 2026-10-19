@@ -10,6 +10,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 import java.io.IOException
@@ -26,6 +27,9 @@ interface LivennIAApi {
 
     @GET("conta")
     suspend fun conta(): ContaResponse
+
+    @POST("carteira/resgatar-diario")
+    suspend fun resgatarMochiDiario(): ResgateMochiResponse
 
     @DELETE("conta")
     suspend fun apagarConta(): Response<Unit>
@@ -53,6 +57,51 @@ interface LivennIAApi {
 
     @POST("jogos/{id}/turno")
     suspend fun turno(@Path("id") id: String, @Body corpo: TurnoRequest): JogoResponse
+
+    @POST("jogos/{id}/config-modelo")
+    suspend fun configurarModelo(@Path("id") id: String, @Body corpo: ConfigModeloRequest): JogoResponse
+
+    @POST("jogos/{id}/regenerar")
+    suspend fun regenerar(@Path("id") id: String): JogoResponse
+
+    @POST("jogos/{id}/versao")
+    suspend fun trocarVersao(@Path("id") id: String, @Body corpo: TrocarVersaoRequest): JogoResponse
+
+    @PATCH("jogos/{id}/mensagem")
+    suspend fun editarMensagem(@Path("id") id: String, @Body corpo: EditarMensagemRequest): JogoResponse
+
+    @POST("jogos/{id}/auto-resposta")
+    suspend fun autoResposta(@Path("id") id: String): AutoRespostaResponse
+
+    @GET("jogos/{id}/memoria")
+    suspend fun obterMemoria(@Path("id") id: String): MemoriaResponse
+
+    @PATCH("jogos/{id}/memoria")
+    suspend fun atualizarMemoria(@Path("id") id: String, @Body corpo: MemoriaRequest): MemoriaResponse
+
+    @GET("jogos/{id}/diarios")
+    suspend fun listarDiarios(@Path("id") id: String): List<DiarioDto>
+
+    @POST("jogos/{id}/diarios/gerar")
+    suspend fun gerarDiario(@Path("id") id: String): DiarioDto
+
+    @GET("jogos/{id}/cartas")
+    suspend fun listarCartas(@Path("id") id: String): List<CartaDto>
+
+    @POST("jogos/{id}/cartas/gerar")
+    suspend fun gerarCarta(@Path("id") id: String): CartaDto
+
+    @GET("jogos/{id}/savepoints")
+    suspend fun listarSavepoints(@Path("id") id: String): List<SavepointDto>
+
+    @POST("jogos/{id}/savepoints")
+    suspend fun criarSavepoint(@Path("id") id: String, @Body corpo: SavepointRequest): SavepointDto
+
+    @POST("jogos/{id}/savepoints/{saveId}/carregar")
+    suspend fun carregarSavepoint(@Path("id") id: String, @Path("saveId") saveId: String): JogoResponse
+
+    @DELETE("jogos/{id}/savepoints/{saveId}")
+    suspend fun apagarSavepoint(@Path("id") id: String, @Path("saveId") saveId: String): Response<Unit>
 
     @DELETE("jogos/{id}")
     suspend fun apagarJogo(@Path("id") id: String): Response<Unit>
@@ -137,6 +186,7 @@ fun Throwable.paraErroApp(): ErroApp {
             val detalhe = lerDetalhe(response()?.errorBody()?.string())
             when (code()) {
                 401 -> ErroApp("Sua sessão não é mais válida. Entre novamente.", sessaoInvalida = true)
+                402 -> ErroApp(detalhe ?: "Mochis insuficientes para este modelo.")
                 403 -> ErroApp(detalhe ?: "Acesso negado.")
                 404 -> ErroApp(detalhe ?: "Não encontrado.")
                 409 -> ErroApp(detalhe ?: "Não foi possível fazer isso agora.")

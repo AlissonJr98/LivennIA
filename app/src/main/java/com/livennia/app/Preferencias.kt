@@ -91,4 +91,11 @@ class Preferencias(context: Context) {
         set(valor) {
             p.edit().putString("modo_leitura", valor).apply()
         }
+
+    // Filtro local de palavras sensíveis (portado do SensitiveWordChecker do Emochi).
+    var filtroPalavrasSensiveis: Boolean
+        get() = p.getBoolean("filtro_palavras_sensiveis", true)
+        set(valor) {
+            p.edit().putBoolean("filtro_palavras_sensiveis", valor).apply()
+        }
 }

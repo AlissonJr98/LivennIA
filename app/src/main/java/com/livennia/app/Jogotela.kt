@@ -36,20 +36,26 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,7 +77,15 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import java.util.Locale
 
-private enum class DialogoAberto { Feedback, Denuncia }
+private enum class DialogoAberto {
+    Feedback,
+    Denuncia,
+    Memoria,
+    Diarios,
+    Cartas,
+    Savepoints,
+    ModeloTemperatura
+}
 
 @Composable
 fun JogoTela(vm: AppViewModel) {
@@ -131,6 +145,7 @@ fun JogoTela(vm: AppViewModel) {
 
     var acaoLivre by remember(jogo.turno) { mutableStateOf("") }
     var dialogo by remember { mutableStateOf<DialogoAberto?>(null) }
+    var indiceEdicao by remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(chat.size, vm.ocupado, vm.acaoPendente) {
         // Itens extras no fim da lista: a fala já escolhida (enquanto a IA escreve a
@@ -245,6 +260,13 @@ fun JogoTela(vm: AppViewModel) {
                 }
             }
 
+            // ---- Barra de recursos Emochi: Mochi, Memória, Diário, Cartas, Saves, Modelo/Temp ----
+            BarraFerramentasEmochi(
+                vm = vm,
+                jogo = jogo,
+                onAbrirDialogo = { dialogo = it }
+            )
+
             // ---- Vida e itens: um cartão solto, arredondado (a linguagem da referência) ----
             Surface(
                 color = SuperficieAlta,
@@ -270,8 +292,6 @@ fun JogoTela(vm: AppViewModel) {
                 state = listaChat,
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 contentPadding = PaddingValues(vertical = 14.dp),
-                // Cada rodada da conversa (a sua fala + a resposta do narrador) é um
-                // bloco: pouco espaço por dentro, bastante espaço entre um bloco e outro.
                 verticalArrangement = Arrangement.spacedBy(30.dp)
             ) {
                 items(chat.size) { indice ->
@@ -292,15 +312,20 @@ fun JogoTela(vm: AppViewModel) {
                             eventos = if (ehUltimo && !terminou) emptyList() else msg.eventos,
                             clicavel = ehUltimo && !terminou,
                             aoTocar = { visiveis = narrativaAtual.length },
-                            aoCopiar = { areaDeCopia.setText(AnnotatedString(narrativaAtual)) },
+                            aoCopiar = { areaDeCopia.setText(AnnotatedString(msg.narrativa)) },
                             tamanhoLetra = vm.tamanhoLetraNarrador,
-                            hora = msg.emNarrador
+                            hora = msg.emNarrador,
+                            versoes = msg.versoes,
+                            versaoAtiva = msg.versaoAtiva,
+                            ehUltimo = ehUltimo && !vm.ocupado,
+                            aoTrocarVersao = { nova -> vm.trocarVersaoMensagem(indice, nova) },
+                            aoRegenerar = { vm.regenerarUltimaResposta() },
+                            aoEditar = { indiceEdicao = indice }
                         )
                     }
                 }
 
                 if (vm.ocupado) {
-                    // A escolha aparece no chat na hora do toque, enquanto a IA escreve.
                     vm.acaoPendente?.let { pendente ->
                         item {
                             BalaoJogador(
@@ -327,21 +352,33 @@ fun JogoTela(vm: AppViewModel) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        // Barra de status rolável: "raios" (jogadas de hoje), vida e o
-                        // cérebro de IA que está narrando esta aventura.
                         Row(
                             modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // "Raios" = a energia do dia: cada jogada gasta um.
                             ChipTag("⚡ ${jogo.jogadasRestantesHoje}", destaque = true)
                             ChipTag(
                                 "❤ ${jogo.personagem.vida}/${jogo.personagem.vidaMax}",
                                 destaque = jogo.personagem.vida <= 30
                             )
                             ChipTag("📖 ${jogo.genero}")
-                            jogo.modelo?.let { modelo ->
-                                ChipTag("${modelo.emoji.ifBlank { "🧠" }} ${modelo.nome}")
+                            Surface(
+                                color = SuperficieAlta,
+                                shape = Cantos.pilula,
+                                border = BorderStroke(1.dp, Ouro.copy(alpha = 0.40f)),
+                                modifier = Modifier.clickable(enabled = !vm.ocupado && !vm.gerandoAutoResposta) {
+                                    vm.gerarSugestoesAutoResposta { primeira ->
+                                        if (acaoLivre.isBlank()) acaoLivre = primeira
+                                    }
+                                }
+                            ) {
+                                Text(
+                                    if (vm.gerandoAutoResposta) "⏳ Inspirando..." else "✨ Auto-resposta",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Ouro,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                )
                             }
                         }
                         Text(
@@ -353,6 +390,13 @@ fun JogoTela(vm: AppViewModel) {
                                 .padding(6.dp)
                         )
                     }
+
+                    // Gaveta de Auto-Respostas geradas estilo Emochi
+                    FaixaSugestoesAutoResposta(
+                        sugestoes = vm.sugestoesAutoResposta,
+                        ocupado = vm.ocupado,
+                        aoEscolher = { sugestao -> acaoLivre = sugestao }
+                    )
 
                     if (jogo.fimDeJogo) {
                         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
@@ -471,23 +515,14 @@ fun JogoTela(vm: AppViewModel) {
         }
     }
 
-    when (dialogo) {
-        DialogoAberto.Feedback -> DialogoFeedback(
-            onEnviar = { nota, comentario ->
-                dialogo = null
-                vm.enviarFeedback(nota, comentario)
-            },
-            onFechar = { dialogo = null }
-        )
-        DialogoAberto.Denuncia -> DialogoDenuncia(
-            onEnviar = { motivo, detalhe ->
-                dialogo = null
-                vm.denunciar(motivo, detalhe)
-            },
-            onFechar = { dialogo = null }
-        )
-        null -> Unit
-    }
+    GerenciadorDialogosJogo(
+        vm = vm,
+        jogo = jogo,
+        dialogo = dialogo,
+        indiceEdicao = indiceEdicao,
+        onFecharDialogo = { dialogo = null },
+        onFecharEdicao = { indiceEdicao = null }
+    )
 
     SnackbarHost(hostState = snackbarHostState)
     Confetti(explosao = jogo.turno == 1)
@@ -541,7 +576,7 @@ private fun BalaoJogador(
     }
 }
 
-// ---- Fala do narrador: texto corrido com ícones à esquerda ----
+// ---- Fala do narrador: texto corrido com ícones à esquerda e controles Emochi no rodapé ----
 @Composable
 private fun BlocoNarrador(
     texto: String,
@@ -550,7 +585,13 @@ private fun BlocoNarrador(
     aoTocar: () -> Unit,
     aoCopiar: () -> Unit,
     tamanhoLetra: Float,
-    hora: Long? = null
+    hora: Long? = null,
+    versoes: List<String> = emptyList(),
+    versaoAtiva: Int = 0,
+    ehUltimo: Boolean = false,
+    aoTrocarVersao: (Int) -> Unit = {},
+    aoRegenerar: () -> Unit = {},
+    aoEditar: () -> Unit = {}
 ) {
     Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.Top) {
         Column(
@@ -586,26 +627,29 @@ private fun BlocoNarrador(
                         lineHeight = (tamanhoLetra * 1.45f).sp
                     )
                 )
-            if (eventos.isNotEmpty()) {
-                Spacer(Modifier.height(6.dp))
-                for (ev in eventos) {
-                    val cor = when {
-                        ev.tipo == "vida" && ev.texto.contains("perdeu") -> MaterialTheme.colorScheme.error
-                        ev.tipo == "vida" -> Color(0xFF7BC47F)
-                        ev.tipo == "item_ganho" -> Ouro
-                        else -> TextoSuave
+                if (eventos.isNotEmpty()) {
+                    Spacer(Modifier.height(6.dp))
+                    for (ev in eventos) {
+                        val cor = when {
+                            ev.tipo == "vida" && ev.texto.contains("perdeu") -> MaterialTheme.colorScheme.error
+                            ev.tipo == "vida" -> Color(0xFF7BC47F)
+                            ev.tipo == "item_ganho" -> Ouro
+                            else -> TextoSuave
+                        }
+                        Text("• ${ev.texto}", color = cor, style = MaterialTheme.typography.labelSmall)
                     }
-                    Text("• ${ev.texto}", color = cor, style = MaterialTheme.typography.labelSmall)
                 }
-            }
-                if (hora != null) {
-                    Spacer(Modifier.height(7.dp))
-                    Text(
-                        text = horaDaMensagem(hora),
-                        color = TextoSuave.copy(alpha = 0.75f),
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                }
+                Spacer(Modifier.height(8.dp))
+                RodapeMensagemEmochi(
+                    rotuloEsquerda = hora?.let { horaDaMensagem(it) } ?: "",
+                    versoes = versoes,
+                    versaoAtiva = versaoAtiva,
+                    ehUltimo = ehUltimo,
+                    aoTrocarVersao = aoTrocarVersao,
+                    aoRegenerar = aoRegenerar,
+                    aoEditar = aoEditar,
+                    aoCopiar = aoCopiar
+                )
             }
         }
     }
@@ -668,6 +712,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
     var acaoLivre by remember(jogo.turno) { mutableStateOf("") }
     var mostrarSugestoes by remember(jogo.turno) { mutableStateOf(false) }
     var dialogo by remember { mutableStateOf<DialogoAberto?>(null) }
+    var indiceEdicao by remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(chat.size, vm.ocupado, vm.acaoPendente) {
         val extras = if (vm.ocupado) (if (vm.acaoPendente != null) 2 else 1) else 0
@@ -753,7 +798,6 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             )
                         }
                     }
-                    // Se for uma partida de RPG sendo lida em modo Livro, permite voltar para a visão RPG.
                     if (!ehHistoriaPura) {
                         Surface(
                             color = SuperficieAlta,
@@ -792,6 +836,13 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                 }
             }
 
+            // ---- Barra de recursos Emochi: Mochi, Memória, Diário, Cartas, Saves, Modelo/Temp ----
+            BarraFerramentasEmochi(
+                vm = vm,
+                jogo = jogo,
+                onAbrirDialogo = { dialogo = it }
+            )
+
             // ---- Páginas da história e diálogos (Estilo Emochi + Livro) ----
             LazyColumn(
                 state = listaChat,
@@ -810,7 +861,6 @@ private fun JogoModoHistoria(vm: AppViewModel) {
 
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         if (!ocultaAcao) {
-                            // Mensagem / ação do jogador alinhada à direita, com formatação Emochi
                             Column(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalAlignment = Alignment.End
@@ -881,25 +931,16 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                                     )
                                 )
                                 Spacer(Modifier.height(8.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = msg.emNarrador?.let { horaDaMensagem(it) } ?: "Cap. ${indice + 1}",
-                                        color = TextoSuave.copy(alpha = 0.65f),
-                                        style = MaterialTheme.typography.labelSmall
-                                    )
-                                    Text(
-                                        text = "⧉ Copiar",
-                                        color = TextoSuave.copy(alpha = 0.75f),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        modifier = Modifier
-                                            .clickable { areaDeCopia.setText(AnnotatedString(msg.narrativa)) }
-                                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                }
+                                RodapeMensagemEmochi(
+                                    rotuloEsquerda = msg.emNarrador?.let { horaDaMensagem(it) } ?: "Cap. ${indice + 1}",
+                                    versoes = msg.versoes,
+                                    versaoAtiva = msg.versaoAtiva,
+                                    ehUltimo = ehUltimo && !vm.ocupado,
+                                    aoTrocarVersao = { nova -> vm.trocarVersaoMensagem(indice, nova) },
+                                    aoRegenerar = { vm.regenerarUltimaResposta() },
+                                    aoEditar = { indiceEdicao = indice },
+                                    aoCopiar = { areaDeCopia.setText(AnnotatedString(msg.narrativa)) }
+                                )
                             }
                         }
                     }
@@ -951,7 +992,6 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                         .fillMaxWidth()
                         .padding(top = 10.dp, bottom = 8.dp)
                 ) {
-                    // Linha de utilitários: Energia, Sugestões opcionais, Continuar história e Dica de *ação*
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -962,7 +1002,6 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                     ) {
                         ChipTag("⚡ ${jogo.jogadasRestantesHoje}", destaque = true)
 
-                        // Botão para inserir asteriscos rapidamente (*ação*) como no Emochi
                         Surface(
                             color = SuperficieAlta,
                             shape = Cantos.pilula,
@@ -979,7 +1018,24 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             )
                         }
 
-                        // Botão para pedir que a IA continue escrevendo a história sozinha
+                        Surface(
+                            color = SuperficieAlta,
+                            shape = Cantos.pilula,
+                            border = BorderStroke(1.dp, Ouro.copy(alpha = 0.40f)),
+                            modifier = Modifier.clickable(enabled = !vm.ocupado && !vm.gerandoAutoResposta) {
+                                vm.gerarSugestoesAutoResposta { primeira ->
+                                    if (acaoLivre.isBlank()) acaoLivre = primeira
+                                }
+                            }
+                        ) {
+                            Text(
+                                if (vm.gerandoAutoResposta) "⏳ Inspirando..." else "✨ Auto-resposta",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Ouro,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                            )
+                        }
+
                         Surface(
                             color = SuperficieAlta,
                             shape = Cantos.pilula,
@@ -997,7 +1053,6 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             )
                         }
 
-                        // Botão opcional para mostrar/ocultar ideias de resposta da IA
                         if (jogo.cena.opcoes.isNotEmpty()) {
                             Surface(
                                 color = if (mostrarSugestoes) Ouro.copy(alpha = 0.22f) else SuperficieAlta,
@@ -1024,7 +1079,13 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                         )
                     }
 
-                    // Gaveta opcional de ideias (só abre se o jogador tocar em "💡 Ideias")
+                    // Gaveta de Auto-Respostas geradas estilo Emochi
+                    FaixaSugestoesAutoResposta(
+                        sugestoes = vm.sugestoesAutoResposta,
+                        ocupado = vm.ocupado,
+                        aoEscolher = { sugestao -> acaoLivre = sugestao }
+                    )
+
                     AnimatedVisibility(visible = mostrarSugestoes && terminou && jogo.cena.opcoes.isNotEmpty()) {
                         Row(
                             modifier = Modifier
@@ -1053,7 +1114,6 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                         }
                     }
 
-                    // Campo de conversa livre (estilo Emochi)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1095,23 +1155,702 @@ private fun JogoModoHistoria(vm: AppViewModel) {
         }
     }
 
-    when (dialogo) {
-        DialogoAberto.Feedback -> DialogoFeedback(
-            onEnviar = { nota, comentario ->
-                dialogo = null
-                vm.enviarFeedback(nota, comentario)
-            },
-            onFechar = { dialogo = null }
-        )
-        DialogoAberto.Denuncia -> DialogoDenuncia(
-            onEnviar = { motivo, detalhe ->
-                dialogo = null
-                vm.denunciar(motivo, detalhe)
-            },
-            onFechar = { dialogo = null }
-        )
-        null -> Unit
-    }
+    GerenciadorDialogosJogo(
+        vm = vm,
+        jogo = jogo,
+        dialogo = dialogo,
+        indiceEdicao = indiceEdicao,
+        onFecharDialogo = { dialogo = null },
+        onFecharEdicao = { indiceEdicao = null }
+    )
 
     SnackbarHost(hostState = snackbarHostState)
 }
+
+@Composable
+private fun BarraFerramentasEmochi(
+    vm: AppViewModel,
+    jogo: JogoResponse,
+    onAbrirDialogo: (DialogoAberto) -> Unit
+) {
+    val saldoMochis = vm.conta?.mochis ?: jogo.mochis ?: 0
+    val podeResgatarHoje = vm.conta?.resgateDiarioDisponivel == true
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Pílula de Mochi (com resgate diário ao tocar se disponível)
+        Surface(
+            color = Ouro.copy(alpha = 0.16f),
+            shape = Cantos.pilula,
+            border = BorderStroke(1.dp, Ouro.copy(alpha = 0.45f)),
+            modifier = Modifier.clickable(enabled = podeResgatarHoje) {
+                vm.resgatarMochiDiario()
+            }
+        ) {
+            Text(
+                text = if (podeResgatarHoje) "🍡 $saldoMochis (+30)" else "🍡 $saldoMochis",
+                style = MaterialTheme.typography.labelSmall,
+                color = Ouro,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+            )
+        }
+
+        // Memória de Longo Prazo
+        Surface(
+            color = if (jogo.memoria.isNotBlank()) Ouro.copy(alpha = 0.16f) else SuperficieAlta,
+            shape = Cantos.pilula,
+            border = BorderStroke(1.dp, Ouro.copy(alpha = 0.30f)),
+            modifier = Modifier.clickable { onAbrirDialogo(DialogoAberto.Memoria) }
+        ) {
+            Text(
+                text = if (jogo.memoria.isNotBlank()) "🧠 Memória •" else "🧠 Memória",
+                style = MaterialTheme.typography.labelSmall,
+                color = if (jogo.memoria.isNotBlank()) Ouro else MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+            )
+        }
+
+        // Diário Secreto do Personagem
+        Surface(
+            color = SuperficieAlta,
+            shape = Cantos.pilula,
+            border = BorderStroke(1.dp, Ouro.copy(alpha = 0.30f)),
+            modifier = Modifier.clickable { onAbrirDialogo(DialogoAberto.Diarios) }
+        ) {
+            Text(
+                text = "📔 Diário (${jogo.diarios.size})",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+            )
+        }
+
+        // Cartas de Memória
+        Surface(
+            color = SuperficieAlta,
+            shape = Cantos.pilula,
+            border = BorderStroke(1.dp, Ouro.copy(alpha = 0.30f)),
+            modifier = Modifier.clickable { onAbrirDialogo(DialogoAberto.Cartas) }
+        ) {
+            Text(
+                text = "💌 Cartas (${jogo.cartas.size})",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+            )
+        }
+
+        // Pontos de Salvamento (Savepoints)
+        Surface(
+            color = SuperficieAlta,
+            shape = Cantos.pilula,
+            border = BorderStroke(1.dp, Ouro.copy(alpha = 0.30f)),
+            modifier = Modifier.clickable { onAbrirDialogo(DialogoAberto.Savepoints) }
+        ) {
+            Text(
+                text = "💾 Saves (${jogo.savepoints.size})",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+            )
+        }
+
+        // Seletor de Sabor de Modelo e Temperatura
+        val emojiModelo = jogo.modelo?.emoji?.ifBlank { "🤖" } ?: "🤖"
+        val nomeModelo = jogo.modelo?.nome ?: "Modelo"
+        val tempFormatada = String.format(Locale.US, "%.1f", jogo.temperatura)
+        Surface(
+            color = SuperficieAlta,
+            shape = Cantos.pilula,
+            border = BorderStroke(1.dp, Ouro.copy(alpha = 0.30f)),
+            modifier = Modifier.clickable { onAbrirDialogo(DialogoAberto.ModeloTemperatura) }
+        ) {
+            Text(
+                text = "$emojiModelo $nomeModelo • $tempFormatada°",
+                style = MaterialTheme.typography.labelSmall,
+                color = Ouro,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun RodapeMensagemEmochi(
+    rotuloEsquerda: String,
+    versoes: List<String>,
+    versaoAtiva: Int,
+    ehUltimo: Boolean,
+    aoTrocarVersao: (Int) -> Unit,
+    aoRegenerar: () -> Unit,
+    aoEditar: () -> Unit,
+    aoCopiar: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (rotuloEsquerda.isNotBlank()) {
+                Text(
+                    text = rotuloEsquerda,
+                    color = TextoSuave.copy(alpha = 0.65f),
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
+            if (versoes.size > 1) {
+                Surface(
+                    color = Ouro.copy(alpha = 0.14f),
+                    shape = Cantos.pilula,
+                    border = BorderStroke(1.dp, Ouro.copy(alpha = 0.35f))
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "‹",
+                            color = if (versaoAtiva > 0) Ouro else TextoSuave.copy(alpha = 0.35f),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .clickable(enabled = versaoAtiva > 0) { aoTrocarVersao(versaoAtiva - 1) }
+                                .padding(horizontal = 4.dp)
+                        )
+                        Text(
+                            text = "${versaoAtiva + 1}/${versoes.size}",
+                            color = Ouro,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                        Text(
+                            text = "›",
+                            color = if (versaoAtiva < versoes.size - 1) Ouro else TextoSuave.copy(alpha = 0.35f),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .clickable(enabled = versaoAtiva < versoes.size - 1) { aoTrocarVersao(versaoAtiva + 1) }
+                                .padding(horizontal = 4.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            if (ehUltimo) {
+                Text(
+                    text = "🔄 Regenerar",
+                    color = Ouro,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier
+                        .clickable { aoRegenerar() }
+                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                )
+            }
+            Text(
+                text = "✎ Editar",
+                color = TextoSuave.copy(alpha = 0.85f),
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier
+                    .clickable { aoEditar() }
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
+            )
+            Text(
+                text = "⧉ Copiar",
+                color = TextoSuave.copy(alpha = 0.75f),
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier
+                    .clickable { aoCopiar() }
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun FaixaSugestoesAutoResposta(
+    sugestoes: List<String>,
+    ocupado: Boolean,
+    aoEscolher: (String) -> Unit
+) {
+    AnimatedVisibility(visible = sugestoes.isNotEmpty()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            sugestoes.forEach { sugestao ->
+                Surface(
+                    color = Ouro.copy(alpha = 0.14f),
+                    shape = RoundedCornerShape(50),
+                    border = BorderStroke(1.dp, Ouro.copy(alpha = 0.45f)),
+                    modifier = Modifier.clickable(enabled = !ocupado) {
+                        aoEscolher(sugestao)
+                    }
+                ) {
+                    Text(
+                        text = "✨ $sugestao",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GerenciadorDialogosJogo(
+    vm: AppViewModel,
+    jogo: JogoResponse,
+    dialogo: DialogoAberto?,
+    indiceEdicao: Int?,
+    onFecharDialogo: () -> Unit,
+    onFecharEdicao: () -> Unit
+) {
+    if (indiceEdicao != null && indiceEdicao in vm.chat.indices) {
+        val msgAlvo = vm.chat[indiceEdicao]
+        var textoAcao by remember(indiceEdicao) { mutableStateOf(msgAlvo.situacao ?: msgAlvo.acao) }
+        var textoNarrativa by remember(indiceEdicao) { mutableStateOf(msgAlvo.narrativa) }
+
+        AlertDialog(
+            onDismissRequest = onFecharEdicao,
+            title = { Text("✎ Corrigir Fala (Fix Reply)") },
+            text = {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    if (indiceEdicao > 0) {
+                        OutlinedTextField(
+                            value = textoAcao,
+                            onValueChange = { textoAcao = it.take(500) },
+                            label = { Text("Sua fala / ação") },
+                            maxLines = 4,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    OutlinedTextField(
+                        value = textoNarrativa,
+                        onValueChange = { textoNarrativa = it.take(4000) },
+                        label = { Text("Resposta do narrador / personagem") },
+                        maxLines = 10,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        vm.editarMensagem(
+                            indice = indiceEdicao,
+                            narrativa = textoNarrativa,
+                            acao = if (indiceEdicao > 0) textoAcao else null
+                        )
+                        onFecharEdicao()
+                    },
+                    enabled = textoNarrativa.isNotBlank()
+                ) {
+                    Text("Salvar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onFecharEdicao) { Text("Cancelar") }
+            }
+        )
+    }
+
+    when (dialogo) {
+        DialogoAberto.Feedback -> DialogoFeedback(
+            onEnviar = { nota, comentario ->
+                onFecharDialogo()
+                vm.enviarFeedback(nota, comentario)
+            },
+            onFechar = onFecharDialogo
+        )
+        DialogoAberto.Denuncia -> DialogoDenuncia(
+            onEnviar = { motivo, detalhe ->
+                onFecharDialogo()
+                vm.denunciar(motivo, detalhe)
+            },
+            onFechar = onFecharDialogo
+        )
+        DialogoAberto.Memoria -> {
+            var textoMemoria by remember(jogo.memoria) { mutableStateOf(jogo.memoria) }
+            AlertDialog(
+                onDismissRequest = onFecharDialogo,
+                title = { Text("🧠 Memória de Longo Prazo") },
+                text = {
+                    Column(
+                        modifier = Modifier.verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            "Estes fatos são sempre lembrados pela IA em todos os turnos desta história.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextoSuave
+                        )
+                        OutlinedTextField(
+                            value = textoMemoria,
+                            onValueChange = { textoMemoria = it.take(1500) },
+                            placeholder = { Text("Ex.: Somos aliados de infância; prometemos encontrar a relíquia...") },
+                            maxLines = 8,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedButton(
+                            onClick = { vm.resumirMemoriaComIA() },
+                            enabled = !vm.ocupado,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(if (vm.ocupado) "⏳ Resumindo..." else "✨ Resumir história até aqui com IA")
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            vm.salvarMemoria(textoMemoria)
+                            onFecharDialogo()
+                        }
+                    ) { Text("Salvar memória") }
+                },
+                dismissButton = {
+                    TextButton(onClick = onFecharDialogo) { Text("Fechar") }
+                }
+            )
+        }
+        DialogoAberto.Diarios -> {
+            AlertDialog(
+                onDismissRequest = onFecharDialogo,
+                title = { Text("📔 Diário Secreto") },
+                text = {
+                    Column(
+                        modifier = Modifier.verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            "Pensamentos íntimos do personagem sobre os acontecimentos recentes.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextoSuave
+                        )
+                        Button(
+                            onClick = { vm.gerarPaginaDiario() },
+                            enabled = !vm.ocupado,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(if (vm.ocupado) "⏳ Escrevendo no diário..." else "✨ Revelar nova página do diário")
+                        }
+                        if (jogo.diarios.isEmpty()) {
+                            Text(
+                                "Nenhuma página revelada ainda.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextoSuave
+                            )
+                        } else {
+                            jogo.diarios.asReversed().forEach { pagina ->
+                                val dataFormatada = pagina.criadoEm?.let { horaDaMensagem(it) } ?: "Cap. ${pagina.turno}"
+                                Surface(
+                                    color = SuperficieAlta,
+                                    shape = Cantos.cartao,
+                                    border = BorderStroke(1.dp, Ouro.copy(alpha = 0.25f)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Text(
+                                            text = "${pagina.titulo} • Cap. ${pagina.turno}",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            color = Ouro
+                                        )
+                                        Text(
+                                            text = "Humor: ${pagina.humor} • $dataFormatada",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = TextoSuave
+                                        )
+                                        Spacer(Modifier.height(6.dp))
+                                        Text(
+                                            text = pagina.conteudo,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = onFecharDialogo) { Text("Fechar") }
+                }
+            )
+        }
+        DialogoAberto.Cartas -> {
+            AlertDialog(
+                onDismissRequest = onFecharDialogo,
+                title = { Text("💌 Cartas de Memória") },
+                text = {
+                    Column(
+                        modifier = Modifier.verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            "Cartas especiais escritas pelo personagem para você guardar de recordação.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextoSuave
+                        )
+                        Button(
+                            onClick = { vm.gerarCartaMemoria() },
+                            enabled = !vm.ocupado,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(if (vm.ocupado) "⏳ Escrevendo carta..." else "💌 Pedir carta de memória")
+                        }
+                        if (jogo.cartas.isEmpty()) {
+                            Text(
+                                "Nenhuma carta recebida ainda.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextoSuave
+                            )
+                        } else {
+                            jogo.cartas.asReversed().forEach { carta ->
+                                val dataCarta = carta.criadaEm?.let { horaDaMensagem(it) } ?: "Cap. ${carta.turno}"
+                                Surface(
+                                    color = SuperficieAlta,
+                                    shape = Cantos.cartao,
+                                    border = BorderStroke(1.dp, Ouro.copy(alpha = 0.30f)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Text(
+                                            text = carta.titulo,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            color = Ouro
+                                        )
+                                        Text(
+                                            text = "De: ${carta.remetente} • $dataCarta",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = TextoSuave
+                                        )
+                                        Spacer(Modifier.height(6.dp))
+                                        Text(
+                                            text = carta.conteudo,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = onFecharDialogo) { Text("Fechar") }
+                }
+            )
+        }
+        DialogoAberto.Savepoints -> {
+            var tituloSave by remember { mutableStateOf("") }
+            AlertDialog(
+                onDismissRequest = onFecharDialogo,
+                title = { Text("💾 Pontos de Salvamento") },
+                text = {
+                    Column(
+                        modifier = Modifier.verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            "Salve o momento atual para explorar outros rumos e voltar quando quiser.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextoSuave
+                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = tituloSave,
+                                onValueChange = { tituloSave = it.take(60) },
+                                placeholder = { Text("Nome do save (opcional)") },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Button(
+                                onClick = {
+                                    vm.criarSavepoint(tituloSave)
+                                    tituloSave = ""
+                                }
+                            ) {
+                                Text("Salvar")
+                            }
+                        }
+                        if (jogo.savepoints.isEmpty()) {
+                            Text(
+                                "Nenhum savepoint criado nesta aventura.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextoSuave
+                            )
+                        } else {
+                            jogo.savepoints.asReversed().forEach { sp ->
+                                val dataSave = sp.criadoEm?.let { horaDaMensagem(it) } ?: sp.local
+                                Surface(
+                                    color = SuperficieAlta,
+                                    shape = Cantos.cartao,
+                                    border = BorderStroke(1.dp, Ouro.copy(alpha = 0.25f)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.padding(10.dp)) {
+                                        Text(
+                                            text = "${sp.nome} (Turno ${sp.turno})",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            color = Ouro
+                                        )
+                                        Text(
+                                            text = dataSave,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = TextoSuave
+                                        )
+                                        if (sp.resumo.isNotBlank()) {
+                                            Spacer(Modifier.height(4.dp))
+                                            Text(
+                                                text = sp.resumo,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                        Spacer(Modifier.height(6.dp))
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            OutlinedButton(
+                                                onClick = {
+                                                    vm.carregarSavepoint(sp.id)
+                                                    onFecharDialogo()
+                                                }
+                                            ) {
+                                                Text("Restaurar")
+                                            }
+                                            TextButton(
+                                                onClick = { vm.apagarSavepoint(sp.id) }
+                                            ) {
+                                                Text("Apagar", color = MaterialTheme.colorScheme.error)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = onFecharDialogo) { Text("Fechar") }
+                }
+            )
+        }
+        DialogoAberto.ModeloTemperatura -> {
+            var cerebroIdSelecionado by remember(jogo.modelo?.id) {
+                mutableStateOf(jogo.modelo?.id ?: vm.cerebros.firstOrNull()?.id ?: "")
+            }
+            var tempSelecionada by remember(jogo.temperatura) {
+                mutableFloatStateOf(jogo.temperatura)
+            }
+            AlertDialog(
+                onDismissRequest = onFecharDialogo,
+                title = { Text("🤖 Sabor de IA & Temperatura") },
+                text = {
+                    Column(
+                        modifier = Modifier.verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = "Temperatura criativa: ${String.format(Locale.US, "%.2f", tempSelecionada)}",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Ouro
+                        )
+                        Slider(
+                            value = tempSelecionada,
+                            onValueChange = { tempSelecionada = it },
+                            valueRange = 0.2f..1.4f
+                        )
+                        Text(
+                            text = "Menor = respostas mais focadas e fiéis; Maior = mais criativas e ousadas.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextoSuave
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        vm.cerebros.forEach { c ->
+                            val selecionado = c.id == cerebroIdSelecionado
+                            Surface(
+                                color = if (selecionado) Ouro.copy(alpha = 0.18f) else SuperficieAlta,
+                                shape = Cantos.cartao,
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (selecionado) Ouro else Ouro.copy(alpha = 0.20f)
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(enabled = c.liberado) {
+                                        cerebroIdSelecionado = c.id
+                                        tempSelecionada = c.temperaturaPadrao
+                                    }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(c.emoji.ifBlank { "🤖" }, fontSize = 20.sp)
+                                    Spacer(Modifier.width(8.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Text(
+                                            text = c.nome,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            color = if (selecionado) Ouro else MaterialTheme.colorScheme.onBackground
+                                        )
+                                        Text(
+                                            text = c.descricao,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = TextoSuave
+                                        )
+                                    }
+                                    Text(
+                                        text = if (c.custoMochi == 0) "Grátis" else "🍡 ${c.custoMochi}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Ouro
+                                    )
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            vm.configurarModeloDoJogo(
+                                modeloId = cerebroIdSelecionado.ifBlank { null },
+                                temperatura = tempSelecionada
+                            )
+                            onFecharDialogo()
+                        }
+                    ) { Text("Aplicar") }
+                },
+                dismissButton = {
+                    TextButton(onClick = onFecharDialogo) { Text("Cancelar") }
+                }
+            )
+        }
+        null -> Unit
+    }
+}
+

@@ -39,5 +39,6 @@ venv/
 *.db-shm
 *.sqlite
 *.sqlite3
-motor_historia_ia/dados/
+motor_historia_ia/dados/*
+!motor_historia_ia/dados/palavras_sensiveis.json
 motor_historia_ia/saves/

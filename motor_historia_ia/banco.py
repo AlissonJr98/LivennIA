@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS jogadores (
     -- 1 = conta premium: libera os "cérebros" de IA mais caros. A cobrança em si
     -- ainda não existe; por ora é uma marcação feita pelo administrador.
     premium     INTEGER NOT NULL DEFAULT 0,
+    mochis      INTEGER NOT NULL DEFAULT 100,
+    ultimo_resgate_mochi TEXT,
     criado_em   TEXT NOT NULL
 );
 
@@ -142,6 +144,12 @@ def _migrar_colunas(c):
     if "premium" not in colunas:
         c.execute("ALTER TABLE jogadores ADD COLUMN premium INTEGER NOT NULL DEFAULT 0")
         logging.info("Banco atualizado: coluna jogadores.premium criada.")
+    if "mochis" not in colunas:
+        c.execute("ALTER TABLE jogadores ADD COLUMN mochis INTEGER NOT NULL DEFAULT 100")
+        logging.info("Banco atualizado: coluna jogadores.mochis criada.")
+    if "ultimo_resgate_mochi" not in colunas:
+        c.execute("ALTER TABLE jogadores ADD COLUMN ultimo_resgate_mochi TEXT")
+        logging.info("Banco atualizado: coluna jogadores.ultimo_resgate_mochi criada.")
 
 
 # ---------------------------------------------------------------
@@ -198,9 +206,55 @@ def registrar_jogador(codigo, apelido, token_hash):
 def jogador_por_token_hash(token_hash):
     with conexao() as c:
         linha = c.execute(
-            "SELECT id, apelido, banido, premium FROM jogadores WHERE token_hash = ?", (token_hash,)
+            "SELECT id, apelido, banido, premium, mochis, ultimo_resgate_mochi "
+            "FROM jogadores WHERE token_hash = ?",
+            (token_hash,),
         ).fetchone()
     return dict(linha) if linha else None
+
+
+def resgatar_mochi_diario(jogador_id, bonus=30):
+    """Concede o bônus diário de Mochis (1x por dia no fuso do servidor). Devolve o novo saldo."""
+    dia_atual = hoje()
+    with transacao() as c:
+        linha = c.execute(
+            "SELECT mochis, ultimo_resgate_mochi FROM jogadores WHERE id = ?", (jogador_id,)
+        ).fetchone()
+        if linha is None:
+            raise ErroNegocio(404, "Jogador não encontrado.")
+        if linha["ultimo_resgate_mochi"] == dia_atual:
+            raise ErroNegocio(409, "Você já resgatou seus Mochis diários hoje. Volte amanhã!")
+        novo_saldo = (linha["mochis"] or 0) + int(bonus)
+        c.execute(
+            "UPDATE jogadores SET mochis = ?, ultimo_resgate_mochi = ? WHERE id = ?",
+            (novo_saldo, dia_atual, jogador_id),
+        )
+        return novo_saldo
+
+
+def debitar_mochis(jogador_id, custo):
+    """Debita `custo` Mochis da carteira do jogador. Levanta ErroNegocio(402) se faltar saldo."""
+    custo = int(custo or 0)
+    if custo <= 0:
+        return
+    with transacao() as c:
+        linha = c.execute("SELECT mochis FROM jogadores WHERE id = ?", (jogador_id,)).fetchone()
+        saldo = (linha["mochis"] or 0) if linha else 0
+        if saldo < custo:
+            raise ErroNegocio(
+                402,
+                f"Saldo insuficiente de Mochis ({saldo} disponíveis, {custo} necessários). "
+                "Resgate seu bônus diário ou escolha um modelo gratuito!",
+            )
+        c.execute("UPDATE jogadores SET mochis = mochis - ? WHERE id = ?", (custo, jogador_id))
+
+
+def adicionar_mochis(jogador_id, quantidade):
+    with transacao() as c:
+        c.execute(
+            "UPDATE jogadores SET mochis = COALESCE(mochis, 0) + ? WHERE id = ?",
+            (int(quantidade), jogador_id),
+        )
 
 
 def definir_premium(jogador_id, premium):

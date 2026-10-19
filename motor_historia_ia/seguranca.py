@@ -64,3 +64,60 @@ class LimitadorDeTaxa:
             if not fila:
                 del self._eventos[chave]
         self._ultima_limpeza = agora
+
+
+# ---------------------------------------------------------------
+# Filtro de palavras sensíveis (portado do SensitiveWordChecker do Emochi)
+# ---------------------------------------------------------------
+import json
+import os
+import re
+
+_PALAVRAS_COMPILADAS = None
+_TRAVA_PALAVRAS = threading.Lock()
+
+
+def _carregar_palavras_sensiveis():
+    global _PALAVRAS_COMPILADAS
+    if _PALAVRAS_COMPILADAS is not None:
+        return _PALAVRAS_COMPILADAS
+    with _TRAVA_PALAVRAS:
+        if _PALAVRAS_COMPILADAS is not None:
+            return _PALAVRAS_COMPILADAS
+        caminho = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "dados", "palavras_sensiveis.json"
+        )
+        termos = set()
+        try:
+            with open(caminho, "r", encoding="utf-8") as arq:
+                dados = json.load(arq)
+                for lang in ("pt", "en"):
+                    for w in dados.get(lang, []):
+                        if isinstance(w, str) and len(w.strip()) >= 3:
+                            termos.add(w.strip().lower())
+        except Exception:
+            termos = {"porn", "pornografia", "nsfw", "estupro", "pedofilia"}
+        # Compila regex que ignora espaços intercalados (ex.: "s e x o") com fronteira de palavra
+        compilados = []
+        for original in sorted(termos, key=len, reverse=True):
+            compacto = "".join(c for c in original if not c.isspace())
+            if len(compacto) < 3:
+                continue
+            partes = [re.escape(c) for c in compacto]
+            padrao = r"(?<![a-zA-ZÀ-ÿ0-9])" + r"\s*".join(partes) + r"(?![a-zA-ZÀ-ÿ0-9])"
+            try:
+                compilados.append((original, re.compile(padrao, re.IGNORECASE)))
+            except re.error:
+                pass
+        _PALAVRAS_COMPILADAS = compilados
+        return _PALAVRAS_COMPILADAS
+
+
+def verificar_palavra_sensivel(texto: str):
+    """Retorna a primeira palavra sensível encontrada no texto (ou None se estiver limpo)."""
+    if not texto or not isinstance(texto, str):
+        return None
+    for original, regex in _carregar_palavras_sensiveis():
+        if regex.search(texto):
+            return original
+    return None

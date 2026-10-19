@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 2,
-  "versaoNome": "1.1.0",
-  "notas": "Modo História e Modo RPG separados, 13 estilos de história com 78 ideias prontas, catálogo expandido com 22 personagens e sistema de atualização direta pelo GitHub.",
+  "versaoCodigo": 3,
+  "versaoNome": "1.2.0",
+  "notas": "Novos recursos: Carteira de Mochis (+30 diários), 9 sabores de IA com controle de Temperatura Criativa, Memória de Longo Prazo editável, Diário Secreto do personagem, Cartas de Memória, Savepoints, Regenerar/Versionar/Editar respostas, Auto-Resposta inteligente e Filtro de Palavras Sensíveis.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

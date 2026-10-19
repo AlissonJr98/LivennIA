@@ -213,6 +213,25 @@ fun ConfiguracoesTela(vm: AppViewModel) {
 
             Spacer(Modifier.height(4.dp))
 
+            // ---- Segurança & Filtro de palavras sensíveis (portado do Emochi) ----
+            TituloSecao("Segurança do chat")
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Filtro de palavras sensíveis", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        "Bloqueia termos impróprios localmente antes do envio (base PT/EN)",
+                        color = TextoSuave,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+                Switch(
+                    checked = vm.filtroPalavrasSensiveis,
+                    onCheckedChange = { vm.definirFiltroPalavrasSensiveis(it) }
+                )
+            }
+
+            Spacer(Modifier.height(4.dp))
+
             // ---- Servidor ----
             TituloSecao("Servidor")
             OutlinedTextField(

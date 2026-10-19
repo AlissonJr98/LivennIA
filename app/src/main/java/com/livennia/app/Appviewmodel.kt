@@ -106,6 +106,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         prefs.modoLeitura = modo.name
     }
 
+    // Filtro local de palavras sensíveis (portado do SensitiveWordChecker do Emochi).
+    var filtroPalavrasSensiveis by mutableStateOf(prefs.filtroPalavrasSensiveis)
+        private set
+
+    fun definirFiltroPalavrasSensiveis(ativo: Boolean) {
+        filtroPalavrasSensiveis = ativo
+        prefs.filtroPalavrasSensiveis = ativo
+    }
+
     var servidor by mutableStateOf(
         prefs.servidor.takeIf { it.isNotBlank() } ?: prefs.servidorPadrao
     )
@@ -381,6 +390,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         danoRecente = (vidaAntes - resposta.personagem.vida).coerceAtLeast(0)
         jogoAtual = resposta
         chat = chat + resposta.historico.orEmpty()
+        resposta.mochis?.let { novoSaldo ->
+            conta = conta?.copy(mochis = novoSaldo)
+        }
+    }
+
+    private fun aplicarJogoCompleto(resposta: JogoResponse) {
+        jogoAtual = resposta
+        chat = resposta.historico.orEmpty()
+        resposta.mochis?.let { novoSaldo ->
+            conta = conta?.copy(mochis = novoSaldo)
+        }
     }
 
     // ---- Atualização do aplicativo via GitHub ----
@@ -687,8 +707,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     modeloId = cerebro
                 )
             )
-            jogoAtual = resposta
-            chat = resposta.historico.orEmpty()
+            aplicarJogoCompleto(resposta)
             retratoVersao = 0
             erroRetrato = null
             prefs.ultimoJogoId = resposta.jogoId
@@ -704,8 +723,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         versaoNavegacao++
         executar("Abrindo sua aventura...") { api ->
             val resposta = api.jogo(id)
-            jogoAtual = resposta
-            chat = resposta.historico.orEmpty()
+            aplicarJogoCompleto(resposta)
             retratoVersao = 0
             erroRetrato = null
             prefs.ultimoJogoId = id
@@ -756,6 +774,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val id = jogoAtual?.jogoId ?: return
         val acao = texto.trim().take(300)
         if (acao.isEmpty()) return
+        if (filtroPalavrasSensiveis) {
+            val bloqueada = FiltroPalavras.verificar(getApplication(), acao)
+            if (bloqueada != null) {
+                erro = "Mensagem bloqueada pelo filtro de palavras sensíveis (você pode ajustar nas Configurações)."
+                return
+            }
+        }
         acaoPendente = acao
         val pedido = java.util.UUID.randomUUID().toString()
         executar("O narrador está pensando...", tentativas = 3) { api ->
@@ -770,6 +795,163 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val pedido = java.util.UUID.randomUUID().toString()
         executar("O narrador está continuando a história...", tentativas = 3) { api ->
             aplicarTurno(api.turno(id, TurnoRequest(acao = "[CONTINUAR_HISTORIA]", pedidoId = pedido)))
+        }
+    }
+
+    // ---- Recursos inspirados no Emochi ----
+    var sugestoesAutoResposta by mutableStateOf<List<String>>(emptyList())
+        private set
+
+    var gerandoAutoResposta by mutableStateOf(false)
+        private set
+
+    fun limparSugestoesAutoResposta() {
+        sugestoesAutoResposta = emptyList()
+    }
+
+    fun resgatarMochiDiario() {
+        executar("Resgatando bônus diário de Mochis...") { api ->
+            val res = api.resgatarMochiDiario()
+            conta = conta?.copy(mochis = res.mochis, resgateDiarioDisponivel = false)
+            runCatching { cerebros = api.cerebros() }
+            aviso = if (res.jaResgatado) {
+                "Você já resgatou seus Mochis de hoje! Saldo: ${res.mochis} 🍡"
+            } else {
+                "+${res.ganho} Mochis resgatados! Saldo atual: ${res.mochis} 🍡"
+            }
+        }
+    }
+
+    fun configurarModeloDoJogo(modeloId: String?, temperatura: Float?) {
+        val id = jogoAtual?.jogoId ?: return
+        executar("Atualizando cérebro de IA e temperatura...") { api ->
+            val resposta = api.configurarModelo(id, ConfigModeloRequest(modeloId = modeloId, temperatura = temperatura))
+            aplicarJogoCompleto(resposta)
+            aviso = "Modelo e temperatura atualizados!"
+        }
+    }
+
+    fun regenerarUltimaResposta() {
+        val id = jogoAtual?.jogoId ?: return
+        executar("Regenerando resposta do narrador...", tentativas = 2) { api ->
+            val resposta = api.regenerar(id)
+            aplicarJogoCompleto(resposta)
+        }
+    }
+
+    fun trocarVersaoMensagem(indice: Int, versaoIdx: Int) {
+        val id = jogoAtual?.jogoId ?: return
+        executar("Alternando versão...") { api ->
+            val resposta = api.trocarVersao(id, TrocarVersaoRequest(indice = indice, versaoIdx = versaoIdx))
+            aplicarJogoCompleto(resposta)
+        }
+    }
+
+    fun editarMensagem(indice: Int, narrativa: String? = null, acao: String? = null) {
+        val id = jogoAtual?.jogoId ?: return
+        if (filtroPalavrasSensiveis) {
+            val textoVerificar = listOfNotNull(narrativa, acao).joinToString(" ")
+            if (FiltroPalavras.verificar(getApplication(), textoVerificar) != null) {
+                erro = "Texto bloqueado pelo filtro de palavras sensíveis."
+                return
+            }
+        }
+        executar("Salvando edição da fala...") { api ->
+            val resposta = api.editarMensagem(
+                id,
+                EditarMensagemRequest(indice = indice, narrativa = narrativa, acao = acao)
+            )
+            aplicarJogoCompleto(resposta)
+            aviso = "Fala atualizada!"
+        }
+    }
+
+    fun gerarSugestoesAutoResposta(aoPrimeiraSugestao: ((String) -> Unit)? = null) {
+        val id = jogoAtual?.jogoId ?: return
+        if (gerandoAutoResposta) return
+        val api = obterApi() ?: return
+        gerandoAutoResposta = true
+        viewModelScope.launch {
+            try {
+                val res = api.autoResposta(id)
+                sugestoesAutoResposta = res.sugestoes
+                if (aoPrimeiraSugestao != null && res.sugestoes.isNotEmpty()) {
+                    aoPrimeiraSugestao(res.sugestoes.first())
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                val problema = e.paraErroApp()
+                if (problema.sessaoInvalida) encerrarSessao() else erro = problema.mensagem
+            } finally {
+                gerandoAutoResposta = false
+            }
+        }
+    }
+
+    fun salvarMemoria(memoriaTexto: String) {
+        val id = jogoAtual?.jogoId ?: return
+        executar("Salvando memória de longo prazo...") { api ->
+            val res = api.atualizarMemoria(id, MemoriaRequest(memoria = memoriaTexto, autoResumir = false))
+            jogoAtual = jogoAtual?.copy(memoria = res.memoria)
+            aviso = "Memória da história atualizada!"
+        }
+    }
+
+    fun resumirMemoriaComIA() {
+        val id = jogoAtual?.jogoId ?: return
+        executar("A IA está resumindo os fatos importantes da aventura...") { api ->
+            val res = api.atualizarMemoria(id, MemoriaRequest(autoResumir = true))
+            jogoAtual = jogoAtual?.copy(memoria = res.memoria)
+            aviso = "Memória resumida automaticamente pela IA!"
+        }
+    }
+
+    fun gerarPaginaDiario() {
+        val id = jogoAtual?.jogoId ?: return
+        executar("O personagem está escrevendo no diário secreto...") { api ->
+            val nova = api.gerarDiario(id)
+            val atuais = jogoAtual?.diarios.orEmpty()
+            jogoAtual = jogoAtual?.copy(diarios = atuais + nova)
+            aviso = "Nova página do diário revelada!"
+        }
+    }
+
+    fun gerarCartaMemoria() {
+        val id = jogoAtual?.jogoId ?: return
+        executar("Escrevendo uma carta de memória especial...") { api ->
+            val nova = api.gerarCarta(id)
+            val atuais = jogoAtual?.cartas.orEmpty()
+            jogoAtual = jogoAtual?.copy(cartas = atuais + nova)
+            aviso = "Você recebeu uma nova Carta de Memória!"
+        }
+    }
+
+    fun criarSavepoint(nome: String?) {
+        val id = jogoAtual?.jogoId ?: return
+        executar("Criando ponto de salvamento...") { api ->
+            val novo = api.criarSavepoint(id, SavepointRequest(nome = nome?.trim()?.takeIf { it.isNotEmpty() }))
+            val atuais = jogoAtual?.savepoints.orEmpty()
+            jogoAtual = jogoAtual?.copy(savepoints = (atuais + novo).takeLast(10))
+            aviso = "Ponto de salvamento '${novo.nome}' criado!"
+        }
+    }
+
+    fun carregarSavepoint(saveId: String) {
+        val id = jogoAtual?.jogoId ?: return
+        executar("Voltando no tempo para o ponto salvo...") { api ->
+            val resposta = api.carregarSavepoint(id, saveId)
+            aplicarJogoCompleto(resposta)
+            aviso = "História restaurada para o turno ${resposta.turno}!"
+        }
+    }
+
+    fun apagarSavepoint(saveId: String) {
+        val id = jogoAtual?.jogoId ?: return
+        executar("Removendo ponto salvo...") { api ->
+            api.apagarSavepoint(id, saveId).garantir()
+            val atuais = jogoAtual?.savepoints.orEmpty().filterNot { it.id == saveId }
+            jogoAtual = jogoAtual?.copy(savepoints = atuais)
         }
     }
 

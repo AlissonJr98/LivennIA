@@ -411,11 +411,45 @@ fun NovaAventuraTela(vm: AppViewModel) {
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // ---- Cérebro da IA (níveis de inteligência) ----
+                // ---- Cérebro da IA (Sabores de modelos inspirados no Emochi) ----
                 if (vm.cerebros.isNotEmpty()) {
-                    TituloSecao("Escolha o cérebro da IA")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TituloSecao("Sabor de modelo da IA")
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Surface(color = SuperficieAlta, shape = Cantos.pilula) {
+                                Text(
+                                    "🍡 ${vm.conta?.mochis ?: 100} Mochis",
+                                    color = Ouro,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                )
+                            }
+                            if (vm.conta?.resgateDiarioDisponivel == true) {
+                                Surface(
+                                    color = Ouro.copy(alpha = 0.22f),
+                                    shape = Cantos.pilula,
+                                    border = BorderStroke(1.dp, Ouro),
+                                    modifier = Modifier.clickable { vm.resgatarMochiDiario() }
+                                ) {
+                                    Text(
+                                        "+30 grátis",
+                                        color = Ouro,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
                     Text(
-                        "Cérebros mais avançados escrevem melhor e lembram de mais detalhes da história.",
+                        "Escolha o sabor narrativo da IA (Vanilla V2 é grátis; sabores especiais usam Mochis por turno).",
                         color = TextoSuave,
                         style = MaterialTheme.typography.labelSmall
                     )
@@ -451,8 +485,7 @@ fun NovaAventuraTela(vm: AppViewModel) {
     }
 }
 
-// Cartão de um "cérebro" de IA: nome de fantasia, descrição e o selo de premium.
-// Os cérebros bloqueados aparecem, mas não podem ser escolhidos (é a chamada do plano).
+// Cartão de um sabor/"cérebro" de IA: nome, categoria, custo em Mochis e descrição.
 @Composable
 private fun CartaoCerebro(cerebro: CerebroDto, selecionado: Boolean, onClick: () -> Unit) {
     Surface(
@@ -468,16 +501,18 @@ private fun CartaoCerebro(cerebro: CerebroDto, selecionado: Boolean, onClick: ()
             )
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
                     Text(cerebro.nome, style = MaterialTheme.typography.titleMedium)
-                    if (cerebro.premium) {
-                        Spacer(Modifier.width(6.dp))
-                        ChipTag(
-                            if (cerebro.liberado) "★ Premium" else "🔒 Premium",
-                            destaque = true
-                        )
-                    }
+                    ChipTag(cerebro.categoria, destaque = false)
+                    ChipTag(
+                        if (cerebro.custoMochi <= 0) "Grátis" else "🍡 ${cerebro.custoMochi}/turno",
+                        destaque = cerebro.custoMochi > 0
+                    )
                 }
+                Spacer(Modifier.height(2.dp))
                 Text(
                     cerebro.descricao,
                     color = TextoSuave,
@@ -485,7 +520,7 @@ private fun CartaoCerebro(cerebro: CerebroDto, selecionado: Boolean, onClick: ()
                 )
                 if (!cerebro.liberado) {
                     Text(
-                        "Disponível no plano premium.",
+                        "Resgate seus Mochis diários (+30 🍡) para usar este sabor.",
                         color = Ouro,
                         style = MaterialTheme.typography.labelSmall
                     )

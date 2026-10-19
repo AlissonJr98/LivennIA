@@ -216,12 +216,38 @@ class NovoJogoIn(Base):
     cenario_id: Optional[str] = Field(default=None, max_length=40)
     # Cérebro de IA escolhido (veja catalogo.CEREBROS). Sem escolha, usa o padrão.
     modelo_id: Optional[str] = Field(default=None, max_length=40)
+    temperatura: Optional[float] = Field(default=None, ge=0.2, le=1.4)
 
 
 class TurnoIn(Base):
     opcao: Optional[int] = Field(default=None, ge=1, le=4)
     acao: Optional[str] = Field(default=None, min_length=1, max_length=config.MAX_TAMANHO_ACAO)
     pedido_id: Optional[str] = Field(default=None, min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
+
+
+class ConfigModeloIn(Base):
+    modelo_id: Optional[str] = Field(default=None, max_length=40)
+    temperatura: Optional[float] = Field(default=None, ge=0.2, le=1.4)
+
+
+class TrocarVersaoIn(Base):
+    indice: int = Field(ge=0)
+    versao_idx: int = Field(ge=0, le=9)
+
+
+class EditarMensagemIn(Base):
+    indice: int = Field(ge=0)
+    narrativa: Optional[str] = Field(default=None, min_length=1, max_length=2000)
+    acao: Optional[str] = Field(default=None, min_length=1, max_length=500)
+
+
+class MemoriaIn(Base):
+    memoria: Optional[str] = Field(default=None, max_length=2000)
+    auto_resumir: bool = False
+
+
+class SavepointIn(Base):
+    nome: Optional[str] = Field(default=None, max_length=60)
 
 
 class FeedbackIn(Base):
@@ -259,10 +285,55 @@ class MensagemOut(BaseModel):
     # mostra isto no lugar do texto da opção; quando é null, mostra a "acao".
     situacao: Optional[str] = None
     narrativa: str   # a resposta do narrador
+    versoes: list[str] = []
+    versao_ativa: int = 0
     eventos: list[EventoOut] = []
     # Horários (epoch em milissegundos): o chat mostra "enviado às 14:32" em cada fala.
     em_jogador: Optional[int] = None
     em_narrador: Optional[int] = None
+
+
+class DiarioOut(BaseModel):
+    id: str
+    titulo: str
+    conteudo: str
+    humor: str = "Reflexivo"
+    turno: int
+    criado_em: Optional[int] = None
+    lido: bool = False
+
+
+class CartaOut(BaseModel):
+    id: str
+    remetente: str
+    titulo: str
+    conteudo: str
+    turno: int
+    criada_em: Optional[int] = None
+    lida: bool = False
+
+
+class SavepointOut(BaseModel):
+    id: str
+    nome: str
+    turno: int
+    local: str
+    resumo: str = ""
+    criado_em: Optional[int] = None
+
+
+class AutoRespostaOut(BaseModel):
+    sugestoes: list[str]
+
+
+class MemoriaOut(BaseModel):
+    memoria: str
+
+
+class ResgateMochiOut(BaseModel):
+    ganho: int
+    mochis: int
+    ja_resgatado: bool = False
 
 
 class CenarioDoJogoOut(BaseModel):
@@ -280,6 +351,8 @@ class CerebroDoJogoOut(BaseModel):
     id: str
     nome: str
     emoji: str = ""
+    custo_mochi: int = 0
+    categoria: str = "Geral"
 
 
 class JogoOut(BaseModel):
@@ -300,6 +373,12 @@ class JogoOut(BaseModel):
     # Preenchidos só quando a história começou por um cenário da vitrine.
     cenario: Optional[CenarioDoJogoOut] = None
     modelo: Optional[CerebroDoJogoOut] = None
+    temperatura: float = 0.85
+    memoria: str = ""
+    diarios: list[DiarioOut] = []
+    cartas: list[CartaOut] = []
+    savepoints: list[SavepointOut] = []
+    mochis: Optional[int] = None
 
 
 class RetratoOut(BaseModel):
@@ -330,7 +409,10 @@ class CerebroOut(BaseModel):
     emoji: str
     descricao: str
     premium: bool = False
-    # False = o jogador não pode escolher este modelo agora (é premium e a conta é free).
+    custo_mochi: int = 0
+    categoria: str = "Geral"
+    temperatura_padrao: float = 0.85
+    # False = o jogador não pode escolher este modelo agora (é premium e sem mochis suficientes).
     liberado: bool = True
 
 
@@ -365,6 +447,8 @@ class ContaOut(BaseModel):
     jogos_ativos: int
     max_jogos: int
     premium: bool = False
+    mochis: int = 100
+    resgate_diario_disponivel: bool = True
 
 
 IdDoJogo = Annotated[str, Path(pattern=r"^[0-9a-f]{32}$")]
@@ -469,7 +553,21 @@ def carregar_estado_do_jogo(jogo):
         raise HTTPException(500, "Não foi possível carregar este jogo.")
 
 
-def montar_saida(jogo_id, estado, encerrado, restantes, completo=False):
+def _resumo_savepoints(estado):
+    return [
+        SavepointOut(
+            id=s["id"],
+            nome=s["nome"],
+            turno=s["turno"],
+            local=s["local"],
+            resumo=s.get("resumo") or "",
+            criado_em=s.get("criado_em"),
+        )
+        for s in (estado.get("savepoints") or [])
+    ]
+
+
+def montar_saida(jogo_id, estado, encerrado, restantes, completo=False, mochis=None):
     mensagens = estado["historico"] if completo else estado["historico"][-1:]
     cenario = estado.get("cenario")
     modelo = estado.get("modelo")
@@ -499,11 +597,21 @@ def montar_saida(jogo_id, estado, encerrado, restantes, completo=False):
         ),
         modelo=(
             CerebroDoJogoOut(
-                id=modelo["id"], nome=modelo["nome"], emoji=modelo.get("emoji") or ""
+                id=modelo["id"],
+                nome=modelo["nome"],
+                emoji=modelo.get("emoji") or "",
+                custo_mochi=int(modelo.get("custo_mochi") or 0),
+                categoria=modelo.get("categoria") or "Geral",
             )
             if modelo
             else None
         ),
+        temperatura=float(estado.get("temperatura") or 0.85),
+        memoria=estado.get("memoria") or "",
+        diarios=[DiarioOut(**d) for d in (estado.get("diarios") or [])],
+        cartas=[CartaOut(**c) for c in (estado.get("cartas") or [])],
+        savepoints=_resumo_savepoints(estado),
+        mochis=mochis,
     )
 
 
@@ -543,8 +651,9 @@ def listar_catalogo(jogador=Depends(jogador_atual)):
 
 @app.get("/cerebros", response_model=list[CerebroOut])
 def listar_cerebros(jogador=Depends(jogador_atual)):
-    """Os "cérebros" de IA, com nomes de fantasia. Os premium vêm com liberado=False."""
+    """Os "cérebros"/sabores de IA (inspirados no Emochi), com custo em Mochis e categoria."""
     eh_premium = bool(jogador.get("premium"))
+    mochis = int(jogador.get("mochis") or 0)
     return [
         CerebroOut(
             id=item["id"],
@@ -552,7 +661,10 @@ def listar_cerebros(jogador=Depends(jogador_atual)):
             emoji=item["emoji"],
             descricao=item["descricao"],
             premium=bool(item["premium"]),
-            liberado=(not item["premium"]) or eh_premium,
+            custo_mochi=int(item.get("custo_mochi") or 0),
+            categoria=item.get("categoria") or "Geral",
+            temperatura_padrao=float(item.get("temperatura_padrao") or 0.85),
+            liberado=(not item["premium"]) or eh_premium or (mochis >= int(item.get("custo_mochi") or 0)),
         )
         for item in catalogo.CEREBROS
     ]
@@ -652,6 +764,7 @@ def enviar_notificacao(dados: NotificacaoIn):
 @app.get("/conta", response_model=ContaOut)
 def ver_conta(jogador=Depends(jogador_atual)):
     restantes = jogadas_restantes(jogador["id"])
+    hoje_str = banco.hoje()
     return ContaOut(
         apelido=jogador["apelido"],
         limite_diario=config.LIMITE_DIARIO_JOGADAS,
@@ -660,7 +773,16 @@ def ver_conta(jogador=Depends(jogador_atual)):
         jogos_ativos=banco.contar_jogos_ativos(jogador["id"]),
         max_jogos=config.MAX_JOGOS_POR_JOGADOR,
         premium=bool(jogador.get("premium")),
+        mochis=int(jogador.get("mochis") or 0),
+        resgate_diario_disponivel=(jogador.get("ultimo_resgate_mochi") != hoje_str),
     )
+
+
+@app.post("/carteira/resgatar-diario", response_model=ResgateMochiOut)
+def resgatar_mochi_diario(jogador=Depends(jogador_atual)):
+    """Resgata o bônus diário de +30 Mochis."""
+    ganho, saldo = banco.resgatar_mochi_diario(jogador["id"], bonus=30)
+    return ResgateMochiOut(ganho=ganho, mochis=saldo, ja_resgatado=(ganho == 0))
 
 
 @app.delete("/conta", status_code=204)
@@ -669,6 +791,20 @@ def apagar_conta(jogador=Depends(jogador_atual)):
     banco.apagar_jogador(jogador["id"])
     logging.info("Conta %s apagada pelo próprio jogador.", jogador["id"])
     return Response(status_code=204)
+
+
+def _cobrar_mochi_do_modelo(jogador, cerebro_dict):
+    """Se o modelo tiver custo em Mochis e o jogador não for VIP, debita os Mochis."""
+    saldo_atual = int(jogador.get("mochis") or 0)
+    if not cerebro_dict:
+        return saldo_atual
+    custo = int(cerebro_dict.get("custo_mochi") or 0)
+    if custo <= 0 or jogador.get("premium"):
+        return saldo_atual
+    try:
+        return banco.debitar_mochis(jogador["id"], custo)
+    except banco.ErroNegocio as erro:
+        raise HTTPException(erro.status, erro.mensagem)
 
 
 @app.post("/jogos", response_model=JogoOut, status_code=201)
@@ -693,9 +829,10 @@ def criar_jogo(dados: NovoJogoIn, jogador=Depends(jogador_atual)):
             cerebro = catalogo.cerebro(dados.modelo_id)
             if cerebro is None:
                 raise HTTPException(422, "Modelo de IA desconhecido.")
-            if cerebro["premium"] and not jogador.get("premium"):
+            custo_m = int(cerebro.get("custo_mochi") or 0)
+            if cerebro["premium"] and not jogador.get("premium") and int(jogador.get("mochis") or 0) < custo_m:
                 raise HTTPException(
-                    403, "Este cérebro é do plano premium. Escolha outro por enquanto."
+                    402, f"Este modelo custa {custo_m} Mochis 🍡 por turno. Resgate seu bônus diário ou escolha um modelo gratuito."
                 )
         genero = item["genero"] if item else (
             dados.genero if dados.genero in motor.GENEROS else "Aventura"
@@ -710,16 +847,24 @@ def criar_jogo(dados: NovoJogoIn, jogador=Depends(jogador_atual)):
         }
         premissa = dados.premissa or (item["sinopse"] if item else None)
         estado = motor.novo_estado(
-            dados.nome_personagem, genero, premissa, ficha, cenario=item, cerebro=cerebro, modo=dados.modo
+            dados.nome_personagem,
+            genero,
+            premissa,
+            ficha,
+            cenario=item,
+            cerebro=cerebro,
+            modo=dados.modo,
+            temperatura=dados.temperatura,
         )
         acao_inicial = item["abertura"] if item else motor.abertura_de(genero)
         resultado = chamar_ia(jogador["id"], estado, acao_inicial)
+        saldo_mochis = _cobrar_mochi_do_modelo(jogador, estado.get("modelo"))
         morreu = motor.registrar_turno(
             estado, acao_inicial, resultado, _agora_ms(), _agora_ms()
         )
         jogo_id = uuid.uuid4().hex
         banco.criar_jogo(jogo_id, jogador["id"], motor.estado_para_texto(estado), morreu)
-    return montar_saida(jogo_id, estado, morreu, restantes - 1)
+    return montar_saida(jogo_id, estado, morreu, restantes - 1, mochis=saldo_mochis)
 
 
 @app.get("/jogos", response_model=list[JogoResumoOut])
@@ -758,7 +903,12 @@ def ver_jogo(jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
         raise HTTPException(404, "Jogo não encontrado.")
     estado = carregar_estado_do_jogo(jogo)
     return montar_saida(
-        jogo_id, estado, jogo["encerrado"], jogadas_restantes(jogador["id"]), completo=True
+        jogo_id,
+        estado,
+        jogo["encerrado"],
+        jogadas_restantes(jogador["id"]),
+        completo=True,
+        mochis=int(jogador.get("mochis") or 0),
     )
 
 
@@ -905,7 +1055,11 @@ def jogar_turno(dados: TurnoIn, jogo_id: IdDoJogo, jogador=Depends(jogador_atual
         # o resultado já aplicado, sem criar outro turno nem consumir outra jogada.
         if dados.pedido_id and estado.get("ultimo_pedido") == dados.pedido_id:
             return montar_saida(
-                jogo_id, estado, bool(jogo["encerrado"]), jogadas_restantes(jogador["id"])
+                jogo_id,
+                estado,
+                bool(jogo["encerrado"]),
+                jogadas_restantes(jogador["id"]),
+                mochis=int(jogador.get("mochis") or 0),
             )
 
         if jogo["encerrado"]:
@@ -922,14 +1076,335 @@ def jogar_turno(dados: TurnoIn, jogo_id: IdDoJogo, jogador=Depends(jogador_atual
                 raise HTTPException(422, "Ação vazia.")
 
         restantes = verificar_limites(jogador["id"])
+        modelo_atual = estado.get("modelo") or {}
+        custo_m = int(modelo_atual.get("custo_mochi") or 0)
+        if custo_m > 0 and not jogador.get("premium") and int(jogador.get("mochis") or 0) < custo_m:
+            raise HTTPException(
+                402, f"Mochis insuficientes ({custo_m} 🍡 necessários para {modelo_atual.get('nome', 'este modelo')}). Troque para Vanilla V2 (grátis) ou resgate Mochis."
+            )
         # "escolha" = o jogador tocou numa das opções (em vez de escrever com as próprias
         # palavras): a IA também devolve a "situacao" (o gesto dele) para o chat.
         enviado_em = _agora_ms()
         resultado = chamar_ia(jogador["id"], estado, acao, escolha=dados.opcao is not None)
+        saldo_mochis = _cobrar_mochi_do_modelo(jogador, modelo_atual)
         morreu = motor.registrar_turno(estado, acao, resultado, enviado_em, _agora_ms())
         estado["ultimo_pedido"] = dados.pedido_id
         banco.atualizar_jogo(jogo_id, jogador["id"], motor.estado_para_texto(estado), morreu)
-    return montar_saida(jogo_id, estado, morreu, restantes - 1)
+    return montar_saida(jogo_id, estado, morreu, restantes - 1, mochis=saldo_mochis)
+
+
+# ---------------------------------------------------------------
+# Rotas inspiradas no Emochi (Regenerar, Versões, Fix Reply,
+# Auto-Resposta, Memória, Diário, Cartas de Memória e Savepoints)
+# ---------------------------------------------------------------
+@app.post("/jogos/{jogo_id}/config-modelo", response_model=JogoOut)
+def configurar_modelo_do_jogo(dados: ConfigModeloIn, jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
+    """Altera o sabor de modelo de IA e/ou a temperatura criativa no meio da história."""
+    with uma_jogada_por_vez(jogador["id"]):
+        jogo = banco.obter_jogo(jogo_id, jogador["id"])
+        if jogo is None:
+            raise HTTPException(404, "Jogo não encontrado.")
+        estado = carregar_estado_do_jogo(jogo)
+        if dados.modelo_id is not None:
+            cerebro = catalogo.cerebro(dados.modelo_id)
+            if cerebro is None:
+                raise HTTPException(422, "Modelo de IA desconhecido.")
+            custo_m = int(cerebro.get("custo_mochi") or 0)
+            if cerebro["premium"] and not jogador.get("premium") and int(jogador.get("mochis") or 0) < custo_m:
+                raise HTTPException(
+                    402, f"Você precisa de pelo menos {custo_m} Mochis 🍡 para ativar {cerebro['nome']}."
+                )
+            estado["modelo"] = motor._cerebro_guardado(cerebro)
+            if dados.temperatura is None:
+                estado["temperatura"] = float(cerebro.get("temperatura_padrao", 0.85))
+        if dados.temperatura is not None:
+            estado["temperatura"] = motor._temperatura_valida(dados.temperatura)
+        banco.atualizar_jogo(
+            jogo_id, jogador["id"], motor.estado_para_texto(estado), bool(jogo["encerrado"])
+        )
+    return montar_saida(
+        jogo_id,
+        estado,
+        bool(jogo["encerrado"]),
+        jogadas_restantes(jogador["id"]),
+        completo=True,
+        mochis=int(jogador.get("mochis") or 0),
+    )
+
+
+@app.post("/jogos/{jogo_id}/regenerar", response_model=JogoOut)
+def regenerar_resposta(jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
+    """Regenera a última fala do narrador e guarda a nova versão (< 1/N >)."""
+    exigir_ritmo(jogador["id"])
+    with uma_jogada_por_vez(jogador["id"]):
+        jogo = banco.obter_jogo(jogo_id, jogador["id"])
+        if jogo is None:
+            raise HTTPException(404, "Jogo não encontrado.")
+        if jogo["encerrado"]:
+            raise HTTPException(409, "Este jogo já foi encerrado.")
+        estado = carregar_estado_do_jogo(jogo)
+        restantes = verificar_limites(jogador["id"])
+        modelo_atual = estado.get("modelo") or {}
+        custo_m = int(modelo_atual.get("custo_mochi") or 0)
+        if custo_m > 0 and not jogador.get("premium") and int(jogador.get("mochis") or 0) < custo_m:
+            raise HTTPException(
+                402, f"Mochis insuficientes ({custo_m} 🍡 necessários)."
+            )
+        inicio = time.perf_counter()
+        try:
+            resultado = motor.regenerar_ultimo_turno(estado, em_narrador=_agora_ms())
+        except ValueError as erro:
+            raise HTTPException(422, str(erro))
+        except motor.ErroIA as erro:
+            banco.registrar_uso(
+                jogador["id"], False, None, erro.tokens_entrada, erro.tokens_saida,
+                time.perf_counter() - inicio, erro.tentativas,
+            )
+            if erro.bloqueada:
+                raise HTTPException(422, "O filtro de segurança bloqueou a nova versão.")
+            raise HTTPException(503, "Não foi possível regenerar a resposta agora.")
+        banco.registrar_uso(
+            jogador["id"], True, resultado.modelo, resultado.tokens_entrada, resultado.tokens_saida,
+            resultado.segundos, resultado.tentativas,
+        )
+        saldo_mochis = _cobrar_mochi_do_modelo(jogador, modelo_atual)
+        banco.atualizar_jogo(
+            jogo_id, jogador["id"], motor.estado_para_texto(estado), bool(jogo["encerrado"])
+        )
+    return montar_saida(
+        jogo_id,
+        estado,
+        bool(jogo["encerrado"]),
+        restantes - 1,
+        completo=True,
+        mochis=saldo_mochis,
+    )
+
+
+@app.post("/jogos/{jogo_id}/versao", response_model=JogoOut)
+def alternar_versao_mensagem(dados: TrocarVersaoIn, jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
+    """Alterna entre as versões geradas de uma mensagem (< 1/N >)."""
+    with uma_jogada_por_vez(jogador["id"]):
+        jogo = banco.obter_jogo(jogo_id, jogador["id"])
+        if jogo is None:
+            raise HTTPException(404, "Jogo não encontrado.")
+        estado = carregar_estado_do_jogo(jogo)
+        try:
+            motor.trocar_versao_mensagem(estado, dados.indice, dados.versao_idx)
+        except ValueError as erro:
+            raise HTTPException(422, str(erro))
+        banco.atualizar_jogo(
+            jogo_id, jogador["id"], motor.estado_para_texto(estado), bool(jogo["encerrado"])
+        )
+    return montar_saida(
+        jogo_id,
+        estado,
+        bool(jogo["encerrado"]),
+        jogadas_restantes(jogador["id"]),
+        completo=True,
+        mochis=int(jogador.get("mochis") or 0),
+    )
+
+
+@app.patch("/jogos/{jogo_id}/mensagem", response_model=JogoOut)
+def editar_mensagem_do_jogo(dados: EditarMensagemIn, jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
+    """Edita/corrige diretamente a fala do narrador (Fix Reply) ou do jogador."""
+    if dados.narrativa is None and dados.acao is None:
+        raise HTTPException(422, "Informe a nova narrativa ou a nova ação.")
+    with uma_jogada_por_vez(jogador["id"]):
+        jogo = banco.obter_jogo(jogo_id, jogador["id"])
+        if jogo is None:
+            raise HTTPException(404, "Jogo não encontrado.")
+        estado = carregar_estado_do_jogo(jogo)
+        try:
+            motor.editar_mensagem(estado, dados.indice, dados.narrativa, dados.acao)
+        except ValueError as erro:
+            raise HTTPException(422, str(erro))
+        banco.atualizar_jogo(
+            jogo_id, jogador["id"], motor.estado_para_texto(estado), bool(jogo["encerrado"])
+        )
+    return montar_saida(
+        jogo_id,
+        estado,
+        bool(jogo["encerrado"]),
+        jogadas_restantes(jogador["id"]),
+        completo=True,
+        mochis=int(jogador.get("mochis") or 0),
+    )
+
+
+@app.post("/jogos/{jogo_id}/auto-resposta", response_model=AutoRespostaOut)
+def sugerir_auto_respostas(jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
+    """Gera 3 sugestões criativas de fala/ação em 1ª pessoa para inspirar o jogador."""
+    exigir_ritmo(jogador["id"])
+    jogo = banco.obter_jogo(jogo_id, jogador["id"])
+    if jogo is None:
+        raise HTTPException(404, "Jogo não encontrado.")
+    estado = carregar_estado_do_jogo(jogo)
+    try:
+        sugestoes = motor.gerar_auto_respostas(estado)
+    except motor.ErroIA as erro:
+        raise HTTPException(503, str(erro))
+    return AutoRespostaOut(sugestoes=sugestoes)
+
+
+@app.get("/jogos/{jogo_id}/memoria", response_model=MemoriaOut)
+def ver_memoria_do_jogo(jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
+    jogo = banco.obter_jogo(jogo_id, jogador["id"])
+    if jogo is None:
+        raise HTTPException(404, "Jogo não encontrado.")
+    estado = carregar_estado_do_jogo(jogo)
+    return MemoriaOut(memoria=estado.get("memoria") or "")
+
+
+@app.patch("/jogos/{jogo_id}/memoria", response_model=MemoriaOut)
+def atualizar_memoria_do_jogo(dados: MemoriaIn, jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
+    """Salva a Memória de Longo Prazo editada pelo jogador ou resume automaticamente via IA."""
+    with uma_jogada_por_vez(jogador["id"]):
+        jogo = banco.obter_jogo(jogo_id, jogador["id"])
+        if jogo is None:
+            raise HTTPException(404, "Jogo não encontrado.")
+        estado = carregar_estado_do_jogo(jogo)
+        if dados.auto_resumir:
+            try:
+                nova = motor.gerar_resumo_memoria(estado)
+            except motor.ErroIA as erro:
+                raise HTTPException(503, str(erro))
+        else:
+            nova = (dados.memoria or "").strip()[:2000]
+            estado["memoria"] = nova
+        banco.atualizar_jogo(
+            jogo_id, jogador["id"], motor.estado_para_texto(estado), bool(jogo["encerrado"])
+        )
+    return MemoriaOut(memoria=nova)
+
+
+@app.get("/jogos/{jogo_id}/diarios", response_model=list[DiarioOut])
+def listar_diarios_do_jogo(jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
+    jogo = banco.obter_jogo(jogo_id, jogador["id"])
+    if jogo is None:
+        raise HTTPException(404, "Jogo não encontrado.")
+    estado = carregar_estado_do_jogo(jogo)
+    return [DiarioOut(**d) for d in (estado.get("diarios") or [])]
+
+
+@app.post("/jogos/{jogo_id}/diarios/gerar", response_model=DiarioOut, status_code=201)
+def gerar_diario_do_jogo(jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
+    """Gera uma nova página do Diário Secreto do personagem sobre o protagonista."""
+    exigir_ritmo(jogador["id"])
+    with uma_jogada_por_vez(jogador["id"]):
+        jogo = banco.obter_jogo(jogo_id, jogador["id"])
+        if jogo is None:
+            raise HTTPException(404, "Jogo não encontrado.")
+        estado = carregar_estado_do_jogo(jogo)
+        try:
+            entrada = motor.gerar_pagina_diario(estado, instante_ms=_agora_ms())
+        except motor.ErroIA as erro:
+            raise HTTPException(503, str(erro))
+        banco.atualizar_jogo(
+            jogo_id, jogador["id"], motor.estado_para_texto(estado), bool(jogo["encerrado"])
+        )
+    return DiarioOut(**entrada)
+
+
+@app.get("/jogos/{jogo_id}/cartas", response_model=list[CartaOut])
+def listar_cartas_do_jogo(jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
+    jogo = banco.obter_jogo(jogo_id, jogador["id"])
+    if jogo is None:
+        raise HTTPException(404, "Jogo não encontrado.")
+    estado = carregar_estado_do_jogo(jogo)
+    return [CartaOut(**c) for c in (estado.get("cartas") or [])]
+
+
+@app.post("/jogos/{jogo_id}/cartas/gerar", response_model=CartaOut, status_code=201)
+def gerar_carta_do_jogo(jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
+    """Gera uma Carta de Memória (Memory Letter) enviada pelo personagem ao jogador."""
+    exigir_ritmo(jogador["id"])
+    with uma_jogada_por_vez(jogador["id"]):
+        jogo = banco.obter_jogo(jogo_id, jogador["id"])
+        if jogo is None:
+            raise HTTPException(404, "Jogo não encontrado.")
+        estado = carregar_estado_do_jogo(jogo)
+        try:
+            carta = motor.gerar_carta_memoria(estado, instante_ms=_agora_ms())
+        except motor.ErroIA as erro:
+            raise HTTPException(503, str(erro))
+        banco.atualizar_jogo(
+            jogo_id, jogador["id"], motor.estado_para_texto(estado), bool(jogo["encerrado"])
+        )
+    return CartaOut(**carta)
+
+
+@app.get("/jogos/{jogo_id}/savepoints", response_model=list[SavepointOut])
+def listar_savepoints_do_jogo(jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
+    jogo = banco.obter_jogo(jogo_id, jogador["id"])
+    if jogo is None:
+        raise HTTPException(404, "Jogo não encontrado.")
+    estado = carregar_estado_do_jogo(jogo)
+    return _resumo_savepoints(estado)
+
+
+@app.post("/jogos/{jogo_id}/savepoints", response_model=SavepointOut, status_code=201)
+def criar_savepoint_do_jogo(dados: SavepointIn, jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
+    """Salva o estado atual como um Ponto de Salvamento (Savepoint) para ramificar a história."""
+    with uma_jogada_por_vez(jogador["id"]):
+        jogo = banco.obter_jogo(jogo_id, jogador["id"])
+        if jogo is None:
+            raise HTTPException(404, "Jogo não encontrado.")
+        estado = carregar_estado_do_jogo(jogo)
+        novo = motor.criar_savepoint(estado, nome=dados.nome, instante_ms=_agora_ms())
+        banco.atualizar_jogo(
+            jogo_id, jogador["id"], motor.estado_para_texto(estado), bool(jogo["encerrado"])
+        )
+    return SavepointOut(
+        id=novo["id"],
+        nome=novo["nome"],
+        turno=novo["turno"],
+        local=novo["local"],
+        resumo=novo.get("resumo") or "",
+        criado_em=novo.get("criado_em"),
+    )
+
+
+@app.post("/jogos/{jogo_id}/savepoints/{save_id}/carregar", response_model=JogoOut)
+def carregar_savepoint_do_jogo(jogo_id: IdDoJogo, save_id: str, jogador=Depends(jogador_atual)):
+    """Restaura a história para um Ponto de Salvamento anterior."""
+    with uma_jogada_por_vez(jogador["id"]):
+        jogo = banco.obter_jogo(jogo_id, jogador["id"])
+        if jogo is None:
+            raise HTTPException(404, "Jogo não encontrado.")
+        estado = carregar_estado_do_jogo(jogo)
+        try:
+            motor.carregar_savepoint(estado, save_id)
+        except ValueError as erro:
+            raise HTTPException(404, str(erro))
+        morreu = False if estado.get("modo") == "historia" else (estado["personagem"]["vida"] <= 0)
+        banco.atualizar_jogo(jogo_id, jogador["id"], motor.estado_para_texto(estado), morreu)
+    return montar_saida(
+        jogo_id,
+        estado,
+        morreu,
+        jogadas_restantes(jogador["id"]),
+        completo=True,
+        mochis=int(jogador.get("mochis") or 0),
+    )
+
+
+@app.delete("/jogos/{jogo_id}/savepoints/{save_id}", status_code=204)
+def apagar_savepoint_do_jogo(jogo_id: IdDoJogo, save_id: str, jogador=Depends(jogador_atual)):
+    with uma_jogada_por_vez(jogador["id"]):
+        jogo = banco.obter_jogo(jogo_id, jogador["id"])
+        if jogo is None:
+            raise HTTPException(404, "Jogo não encontrado.")
+        estado = carregar_estado_do_jogo(jogo)
+        try:
+            motor.remover_savepoint(estado, save_id)
+        except ValueError as erro:
+            raise HTTPException(404, str(erro))
+        banco.atualizar_jogo(
+            jogo_id, jogador["id"], motor.estado_para_texto(estado), bool(jogo["encerrado"])
+        )
+    return Response(status_code=204)
 
 
 @app.delete("/jogos/{jogo_id}", status_code=204)

@@ -162,12 +162,13 @@ private fun AbaAventuras(vm: AppViewModel) {
             vm.conta?.let { c ->
                 item {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        ChipTag("⚡ Jogadas hoje: ${c.jogadasRestantesHoje}", destaque = true)
+                        ChipTag("🍡 Mochis: ${c.mochis}", destaque = true)
+                        ChipTag("⚡ Jogadas: ${c.jogadasRestantesHoje}", destaque = true)
                         ChipTag("🎲 RPGs: ${jogosRpg.size}")
-                        ChipTag("Total ativos: $ativos/$limiteAtivos")
+                        ChipTag("Ativos: $ativos/$limiteAtivos")
                     }
                 }
             }
@@ -1010,6 +1011,51 @@ private fun AbaPerfil(vm: AppViewModel) {
         }
 
         vm.conta?.let { c ->
+            item {
+                Surface(
+                    color = SuperficieAlta,
+                    shape = Cantos.cartao,
+                    border = BorderStroke(1.dp, Ouro.copy(alpha = 0.28f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                TituloSecao("Carteira de Mochis")
+                                Text(
+                                    "🍡 ${c.mochis} Mochis",
+                                    color = Ouro,
+                                    style = MaterialTheme.typography.headlineSmall
+                                )
+                            }
+                            if (c.resgateDiarioDisponivel) {
+                                Button(
+                                    onClick = { vm.resgatarMochiDiario() },
+                                    enabled = !vm.ocupado,
+                                    shape = Cantos.pilula
+                                ) {
+                                    Text("🎁 Resgatar +30")
+                                }
+                            } else {
+                                ChipTag("✓ Bônus de hoje resgatado")
+                            }
+                        }
+                        Text(
+                            "Use seus Mochis para conversar com sabores especiais de IA (Matcha, Strawberry, Chocolate, Peach, Blackberry, Sage e Unicorn).",
+                            color = TextoSuave,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
+            }
+
             item {
                 Surface(
                     color = SuperficieAlta,

@@ -36,7 +36,8 @@ data class NovoJogoRequest(
     // Cenário oficial escolhido na vitrine: o servidor injeta o "prompt secreto" dele.
     @SerializedName("cenario_id") val cenarioId: String? = null,
     // "Cérebro" de IA escolhido (veja /cerebros). Nulo = o padrão do servidor.
-    @SerializedName("modelo_id") val modeloId: String? = null
+    @SerializedName("modelo_id") val modeloId: String? = null,
+    val temperatura: Float? = null
 )
 
 // ---- Vitrine (aba Explorar) ----
@@ -54,14 +55,17 @@ data class CenarioDto(
     val capa: Boolean = false
 )
 
-// Os "cérebros" de IA (níveis de inteligência), com nomes de fantasia.
+// Os "cérebros"/sabores de IA (inspirados no Emochi), com custo em Mochis e categoria.
 data class CerebroDto(
     val id: String,
     val nome: String,
     val emoji: String = "",
     val descricao: String = "",
     val premium: Boolean = false,
-    // false = este modelo é premium e a conta do jogador ainda não tem acesso.
+    @SerializedName("custo_mochi") val custoMochi: Int = 0,
+    val categoria: String = "Geral",
+    @SerializedName("temperatura_padrao") val temperaturaPadrao: Float = 0.85f,
+    // false = este modelo é premium e a conta do jogador ainda não tem acesso/Mochis.
     val liberado: Boolean = true
 )
 
@@ -80,7 +84,9 @@ data class CenarioDoJogoDto(
 data class CerebroDoJogoDto(
     val id: String,
     val nome: String,
-    val emoji: String = ""
+    val emoji: String = "",
+    @SerializedName("custo_mochi") val custoMochi: Int = 0,
+    val categoria: String = "Geral"
 )
 
 data class GeneroInfo(
@@ -99,6 +105,31 @@ data class TurnoRequest(
     @SerializedName("pedido_id") val pedidoId: String? = null
 )
 
+data class ConfigModeloRequest(
+    @SerializedName("modelo_id") val modeloId: String? = null,
+    val temperatura: Float? = null
+)
+
+data class TrocarVersaoRequest(
+    val indice: Int,
+    @SerializedName("versao_idx") val versaoIdx: Int
+)
+
+data class EditarMensagemRequest(
+    val indice: Int,
+    val narrativa: String? = null,
+    val acao: String? = null
+)
+
+data class MemoriaRequest(
+    val memoria: String? = null,
+    @SerializedName("auto_resumir") val autoResumir: Boolean = false
+)
+
+data class SavepointRequest(
+    val nome: String? = null
+)
+
 data class EventoDto(
     val tipo: String,
     val texto: String
@@ -110,10 +141,55 @@ data class MensagemDto(
     // isto no lugar do texto da opção; sem ele, mostra a "acao" mesmo.
     val situacao: String? = null,
     val narrativa: String,
+    val versoes: List<String> = emptyList(),
+    @SerializedName("versao_ativa") val versaoAtiva: Int = 0,
     val eventos: List<EventoDto> = emptyList(),
     // Horários (epoch em ms) do envio do jogador e da resposta do narrador.
     @SerializedName("em_jogador") val emJogador: Long? = null,
     @SerializedName("em_narrador") val emNarrador: Long? = null
+)
+
+data class DiarioDto(
+    val id: String,
+    val titulo: String,
+    val conteudo: String,
+    val humor: String = "Reflexivo",
+    val turno: Int = 1,
+    @SerializedName("criado_em") val criadoEm: Long? = null,
+    val lido: Boolean = false
+)
+
+data class CartaDto(
+    val id: String,
+    val remetente: String,
+    val titulo: String,
+    val conteudo: String,
+    val turno: Int = 1,
+    @SerializedName("criada_em") val criadaEm: Long? = null,
+    val lida: Boolean = false
+)
+
+data class SavepointDto(
+    val id: String,
+    val nome: String,
+    val turno: Int,
+    val local: String,
+    val resumo: String = "",
+    @SerializedName("criado_em") val criadoEm: Long? = null
+)
+
+data class AutoRespostaResponse(
+    val sugestoes: List<String> = emptyList()
+)
+
+data class MemoriaResponse(
+    val memoria: String = ""
+)
+
+data class ResgateMochiResponse(
+    val ganho: Int = 0,
+    val mochis: Int = 0,
+    @SerializedName("ja_resgatado") val jaResgatado: Boolean = false
 )
 
 data class PersonagemDto(
@@ -144,7 +220,13 @@ data class JogoResponse(
     // Preenchidos só quando a história começou por um cenário da vitrine.
     val cenario: CenarioDoJogoDto? = null,
     // O "cérebro" de IA que está escrevendo esta aventura.
-    val modelo: CerebroDoJogoDto? = null
+    val modelo: CerebroDoJogoDto? = null,
+    val temperatura: Float = 0.85f,
+    val memoria: String = "",
+    val diarios: List<DiarioDto> = emptyList(),
+    val cartas: List<CartaDto> = emptyList(),
+    val savepoints: List<SavepointDto> = emptyList(),
+    val mochis: Int? = null
 )
 
 data class JogoResumo(
@@ -173,7 +255,9 @@ data class ContaResponse(
     @SerializedName("jogadas_restantes_hoje") val jogadasRestantesHoje: Int,
     @SerializedName("jogos_ativos") val jogosAtivos: Int,
     @SerializedName("max_jogos") val maxJogos: Int,
-    val premium: Boolean = false
+    val premium: Boolean = false,
+    val mochis: Int = 100,
+    @SerializedName("resgate_diario_disponivel") val resgateDiarioDisponivel: Boolean = true
 )
 
 data class FeedbackRequest(
