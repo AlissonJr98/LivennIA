@@ -330,10 +330,13 @@ class MemoriaOut(BaseModel):
     memoria: str
 
 
-class ResgateMochiOut(BaseModel):
+class ResgateLivenOut(BaseModel):
     ganho: int
-    mochis: int
+    livens: int
+    mochis: int = 0
     ja_resgatado: bool = False
+
+ResgateMochiOut = ResgateLivenOut
 
 
 class CenarioDoJogoOut(BaseModel):
@@ -351,6 +354,7 @@ class CerebroDoJogoOut(BaseModel):
     id: str
     nome: str
     emoji: str = ""
+    custo_livens: int = 0
     custo_mochi: int = 0
     categoria: str = "Geral"
 
@@ -378,6 +382,7 @@ class JogoOut(BaseModel):
     diarios: list[DiarioOut] = []
     cartas: list[CartaOut] = []
     savepoints: list[SavepointOut] = []
+    livens: Optional[int] = None
     mochis: Optional[int] = None
 
 
@@ -409,10 +414,11 @@ class CerebroOut(BaseModel):
     emoji: str
     descricao: str
     premium: bool = False
+    custo_livens: int = 0
     custo_mochi: int = 0
     categoria: str = "Geral"
     temperatura_padrao: float = 0.85
-    # False = o jogador não pode escolher este modelo agora (é premium e sem mochis suficientes).
+    # False = o jogador não pode escolher este modelo agora (é premium e sem Livens suficientes).
     liberado: bool = True
 
 
@@ -447,6 +453,7 @@ class ContaOut(BaseModel):
     jogos_ativos: int
     max_jogos: int
     premium: bool = False
+    livens: int = 100
     mochis: int = 100
     resgate_diario_disponivel: bool = True
 
@@ -600,6 +607,7 @@ def montar_saida(jogo_id, estado, encerrado, restantes, completo=False, mochis=N
                 id=modelo["id"],
                 nome=modelo["nome"],
                 emoji=modelo.get("emoji") or "",
+                custo_livens=int(modelo.get("custo_livens") or modelo.get("custo_mochi") or 0),
                 custo_mochi=int(modelo.get("custo_mochi") or 0),
                 categoria=modelo.get("categoria") or "Geral",
             )
@@ -611,6 +619,7 @@ def montar_saida(jogo_id, estado, encerrado, restantes, completo=False, mochis=N
         diarios=[DiarioOut(**d) for d in (estado.get("diarios") or [])],
         cartas=[CartaOut(**c) for c in (estado.get("cartas") or [])],
         savepoints=_resumo_savepoints(estado),
+        livens=mochis,
         mochis=mochis,
     )
 
@@ -651,7 +660,7 @@ def listar_catalogo(jogador=Depends(jogador_atual)):
 
 @app.get("/cerebros", response_model=list[CerebroOut])
 def listar_cerebros(jogador=Depends(jogador_atual)):
-    """Os "cérebros"/sabores de IA (inspirados no Emochi), com custo em Mochis e categoria."""
+    """Os "cérebros"/sabores de IA (LivennIA), com custo em Livens e categoria."""
     eh_premium = bool(jogador.get("premium"))
     mochis = int(jogador.get("mochis") or 0)
     return [
@@ -661,6 +670,7 @@ def listar_cerebros(jogador=Depends(jogador_atual)):
             emoji=item["emoji"],
             descricao=item["descricao"],
             premium=bool(item["premium"]),
+            custo_livens=int(item.get("custo_livens") or item.get("custo_mochi") or 0),
             custo_mochi=int(item.get("custo_mochi") or 0),
             categoria=item.get("categoria") or "Geral",
             temperatura_padrao=float(item.get("temperatura_padrao") or 0.85),
@@ -773,16 +783,19 @@ def ver_conta(jogador=Depends(jogador_atual)):
         jogos_ativos=banco.contar_jogos_ativos(jogador["id"]),
         max_jogos=config.MAX_JOGOS_POR_JOGADOR,
         premium=bool(jogador.get("premium")),
+        livens=int(jogador.get("mochis") or 0),
         mochis=int(jogador.get("mochis") or 0),
         resgate_diario_disponivel=(jogador.get("ultimo_resgate_mochi") != hoje_str),
     )
 
 
-@app.post("/carteira/resgatar-diario", response_model=ResgateMochiOut)
-def resgatar_mochi_diario(jogador=Depends(jogador_atual)):
-    """Resgata o bônus diário de +30 Mochis."""
-    ganho, saldo = banco.resgatar_mochi_diario(jogador["id"], bonus=30)
-    return ResgateMochiOut(ganho=ganho, mochis=saldo, ja_resgatado=(ganho == 0))
+@app.post("/carteira/resgatar-diario", response_model=ResgateLivenOut)
+def resgatar_livens_diarios(jogador=Depends(jogador_atual)):
+    """Resgata o bônus diário de +30 Livens."""
+    ganho, saldo = banco.resgatar_livens_diarios(jogador["id"], bonus=30)
+    return ResgateLivenOut(ganho=ganho, livens=saldo, mochis=saldo, ja_resgatado=(ganho == 0))
+
+resgatar_mochi_diario = resgatar_livens_diarios
 
 
 @app.delete("/conta", status_code=204)
@@ -793,18 +806,20 @@ def apagar_conta(jogador=Depends(jogador_atual)):
     return Response(status_code=204)
 
 
-def _cobrar_mochi_do_modelo(jogador, cerebro_dict):
-    """Se o modelo tiver custo em Mochis e o jogador não for VIP, debita os Mochis."""
+def _cobrar_livens_do_modelo(jogador, cerebro_dict):
+    """Se o modelo tiver custo em Livens e o jogador não for VIP, debita os Livens."""
     saldo_atual = int(jogador.get("mochis") or 0)
     if not cerebro_dict:
         return saldo_atual
-    custo = int(cerebro_dict.get("custo_mochi") or 0)
+    custo = int(cerebro_dict.get("custo_livens") or cerebro_dict.get("custo_mochi") or 0)
     if custo <= 0 or jogador.get("premium"):
         return saldo_atual
     try:
-        return banco.debitar_mochis(jogador["id"], custo)
+        return banco.debitar_livens(jogador["id"], custo)
     except banco.ErroNegocio as erro:
         raise HTTPException(erro.status, erro.mensagem)
+
+_cobrar_mochi_do_modelo = _cobrar_livens_do_modelo
 
 
 @app.post("/jogos", response_model=JogoOut, status_code=201)
@@ -832,7 +847,7 @@ def criar_jogo(dados: NovoJogoIn, jogador=Depends(jogador_atual)):
             custo_m = int(cerebro.get("custo_mochi") or 0)
             if cerebro["premium"] and not jogador.get("premium") and int(jogador.get("mochis") or 0) < custo_m:
                 raise HTTPException(
-                    402, f"Este modelo custa {custo_m} Mochis 🍡 por turno. Resgate seu bônus diário ou escolha um modelo gratuito."
+                    402, f"Este modelo custa {custo_m} Livens ✨ por turno. Resgate seu bônus diário ou escolha um modelo gratuito."
                 )
         genero = item["genero"] if item else (
             dados.genero if dados.genero in motor.GENEROS else "Aventura"
@@ -1080,7 +1095,7 @@ def jogar_turno(dados: TurnoIn, jogo_id: IdDoJogo, jogador=Depends(jogador_atual
         custo_m = int(modelo_atual.get("custo_mochi") or 0)
         if custo_m > 0 and not jogador.get("premium") and int(jogador.get("mochis") or 0) < custo_m:
             raise HTTPException(
-                402, f"Mochis insuficientes ({custo_m} 🍡 necessários para {modelo_atual.get('nome', 'este modelo')}). Troque para Vanilla V2 (grátis) ou resgate Mochis."
+                402, f"Livens insuficientes ({custo_m} 🍡 necessários para {modelo_atual.get('nome', 'este modelo')}). Troque para Liven Flash (grátis) ou resgate Livens."
             )
         # "escolha" = o jogador tocou numa das opções (em vez de escrever com as próprias
         # palavras): a IA também devolve a "situacao" (o gesto dele) para o chat.
@@ -1094,7 +1109,7 @@ def jogar_turno(dados: TurnoIn, jogo_id: IdDoJogo, jogador=Depends(jogador_atual
 
 
 # ---------------------------------------------------------------
-# Rotas inspiradas no Emochi (Regenerar, Versões, Fix Reply,
+# Rotas do LivennIA (Regenerar, Versões, Fix Reply,
 # Auto-Resposta, Memória, Diário, Cartas de Memória e Savepoints)
 # ---------------------------------------------------------------
 @app.post("/jogos/{jogo_id}/config-modelo", response_model=JogoOut)
@@ -1112,7 +1127,7 @@ def configurar_modelo_do_jogo(dados: ConfigModeloIn, jogo_id: IdDoJogo, jogador=
             custo_m = int(cerebro.get("custo_mochi") or 0)
             if cerebro["premium"] and not jogador.get("premium") and int(jogador.get("mochis") or 0) < custo_m:
                 raise HTTPException(
-                    402, f"Você precisa de pelo menos {custo_m} Mochis 🍡 para ativar {cerebro['nome']}."
+                    402, f"Você precisa de pelo menos {custo_m} Livens ✨ para ativar {cerebro['nome']}."
                 )
             estado["modelo"] = motor._cerebro_guardado(cerebro)
             if dados.temperatura is None:
@@ -1148,7 +1163,7 @@ def regenerar_resposta(jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
         custo_m = int(modelo_atual.get("custo_mochi") or 0)
         if custo_m > 0 and not jogador.get("premium") and int(jogador.get("mochis") or 0) < custo_m:
             raise HTTPException(
-                402, f"Mochis insuficientes ({custo_m} 🍡 necessários)."
+                402, f"Livens insuficientes ({custo_m} 🍡 necessários)."
             )
         inicio = time.perf_counter()
         try:

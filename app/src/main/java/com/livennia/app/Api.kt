@@ -29,7 +29,9 @@ interface LivennIAApi {
     suspend fun conta(): ContaResponse
 
     @POST("carteira/resgatar-diario")
-    suspend fun resgatarMochiDiario(): ResgateMochiResponse
+    suspend fun resgatarLivensDiarios(): ResgateLivenResponse
+
+    suspend fun resgatarMochiDiario(): ResgateLivenResponse = resgatarLivensDiarios()
 
     @DELETE("conta")
     suspend fun apagarConta(): Response<Unit>
@@ -186,7 +188,7 @@ fun Throwable.paraErroApp(): ErroApp {
             val detalhe = lerDetalhe(response()?.errorBody()?.string())
             when (code()) {
                 401 -> ErroApp("Sua sessão não é mais válida. Entre novamente.", sessaoInvalida = true)
-                402 -> ErroApp(detalhe ?: "Mochis insuficientes para este modelo.")
+                402 -> ErroApp(detalhe ?: "Livens insuficientes para este motor.")
                 403 -> ErroApp(detalhe ?: "Acesso negado.")
                 404 -> ErroApp(detalhe ?: "Não encontrado.")
                 409 -> ErroApp(detalhe ?: "Não foi possível fazer isso agora.")

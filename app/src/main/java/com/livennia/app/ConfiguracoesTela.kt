@@ -213,7 +213,7 @@ fun ConfiguracoesTela(vm: AppViewModel) {
 
             Spacer(Modifier.height(4.dp))
 
-            // ---- Segurança & Filtro de palavras sensíveis (portado do Emochi) ----
+            // ---- Segurança & Filtro de palavras sensíveis do LivennIA ----
             TituloSecao("Segurança do chat")
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {

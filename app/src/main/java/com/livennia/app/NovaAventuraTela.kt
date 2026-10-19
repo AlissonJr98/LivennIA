@@ -91,7 +91,7 @@ fun NovaAventuraTela(vm: AppViewModel) {
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // ---- Seletor de Modo: RPG vs História (Livro / Emochi) ----
+                // ---- Seletor de Modo: RPG vs História (Livro / Conversa) ----
                 TituloSecao("Escolha o modo de experiência")
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -269,7 +269,7 @@ fun NovaAventuraTela(vm: AppViewModel) {
                     }
                 }
 
-                // ---- Ideia para a história (com sugestões prontas estilo Emochi) ----
+                // ---- Ideia para a história (com sugestões narrativas LivennIA) ----
                 val ideiasDoEstilo = vm.generos
                     .find { it.nome == vm.generoSelecionado }
                     ?.ideias
@@ -331,7 +331,7 @@ fun NovaAventuraTela(vm: AppViewModel) {
                     }
                 }
 
-                // ---- Ficha do personagem (Persona estilo Emochi) ----
+                // ---- Ficha do personagem (Persona LivennIA) ----
                 TituloSecao("Sua Persona / Protagonista (opcional)")
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -411,7 +411,7 @@ fun NovaAventuraTela(vm: AppViewModel) {
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // ---- Cérebro da IA (Sabores de modelos inspirados no Emochi) ----
+                // ---- Motor de IA (Motores criativos LivennIA) ----
                 if (vm.cerebros.isNotEmpty()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -425,7 +425,7 @@ fun NovaAventuraTela(vm: AppViewModel) {
                         ) {
                             Surface(color = SuperficieAlta, shape = Cantos.pilula) {
                                 Text(
-                                    "🍡 ${vm.conta?.mochis ?: 100} Mochis",
+                                    "✨ ${vm.conta?.livens ?: 100} Livens",
                                     color = Ouro,
                                     style = MaterialTheme.typography.labelMedium,
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
@@ -436,7 +436,7 @@ fun NovaAventuraTela(vm: AppViewModel) {
                                     color = Ouro.copy(alpha = 0.22f),
                                     shape = Cantos.pilula,
                                     border = BorderStroke(1.dp, Ouro),
-                                    modifier = Modifier.clickable { vm.resgatarMochiDiario() }
+                                    modifier = Modifier.clickable { vm.resgatarLivensDiarios() }
                                 ) {
                                     Text(
                                         "+30 grátis",
@@ -449,7 +449,7 @@ fun NovaAventuraTela(vm: AppViewModel) {
                         }
                     }
                     Text(
-                        "Escolha o sabor narrativo da IA (Vanilla V2 é grátis; sabores especiais usam Mochis por turno).",
+                        "Escolha o motor narrativo da IA (Liven Flash é grátis; motores especiais usam Livens por turno).",
                         color = TextoSuave,
                         style = MaterialTheme.typography.labelSmall
                     )
@@ -485,7 +485,7 @@ fun NovaAventuraTela(vm: AppViewModel) {
     }
 }
 
-// Cartão de um sabor/"cérebro" de IA: nome, categoria, custo em Mochis e descrição.
+// Cartão de um motor de IA: nome, categoria, custo em Livens e descrição.
 @Composable
 private fun CartaoCerebro(cerebro: CerebroDto, selecionado: Boolean, onClick: () -> Unit) {
     Surface(
@@ -508,8 +508,8 @@ private fun CartaoCerebro(cerebro: CerebroDto, selecionado: Boolean, onClick: ()
                     Text(cerebro.nome, style = MaterialTheme.typography.titleMedium)
                     ChipTag(cerebro.categoria, destaque = false)
                     ChipTag(
-                        if (cerebro.custoMochi <= 0) "Grátis" else "🍡 ${cerebro.custoMochi}/turno",
-                        destaque = cerebro.custoMochi > 0
+                        if (cerebro.custoLivens <= 0) "Grátis" else "✨ ${cerebro.custoLivens}/turno",
+                        destaque = cerebro.custoLivens > 0
                     )
                 }
                 Spacer(Modifier.height(2.dp))
@@ -520,7 +520,7 @@ private fun CartaoCerebro(cerebro: CerebroDto, selecionado: Boolean, onClick: ()
                 )
                 if (!cerebro.liberado) {
                     Text(
-                        "Resgate seus Mochis diários (+30 🍡) para usar este sabor.",
+                        "Resgate seus Livens diários (+30 ✨) para usar este motor.",
                         color = Ouro,
                         style = MaterialTheme.typography.labelSmall
                     )

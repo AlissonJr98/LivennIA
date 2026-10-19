@@ -84,15 +84,15 @@ private val PaletaLivroClara = Paleta(
 // versões: no escuro a cor é a viva; no claro, o tom fundo da mesma cor.
 private fun paletaNeon(corDestaque: CorNeon, escuro: Boolean): Paleta = if (escuro) {
     Paleta(
-        fundo = Color(0xFF0A0A0A),
-        superficie = Color(0xFF161616),
-        superficieAlta = Color(0xFF212121),
-        textoPrincipal = Color(0xFFFFFFFF),
+        fundo = Color(0xFF0C0E14),
+        superficie = Color(0xFF141722),
+        superficieAlta = Color(0xFF1E2232),
+        textoPrincipal = Color(0xFFF1F5F9),
         destaque = corDestaque.cor,
         acento = Color(0xFFFF4D4D),
-        textoSuave = Color(0xFF9C9C9C),
-        contorno = Color(0xFF323232),
-        gradienteTopo = Color(0xFF141414),
+        textoSuave = Color(0xFF94A3B8),
+        contorno = Color(0xFF282E42),
+        gradienteTopo = Color(0xFF10131C),
         erro = Color(0xFFFF6B6B),
         escuro = true
     )
@@ -112,7 +112,7 @@ private fun paletaNeon(corDestaque: CorNeon, escuro: Boolean): Paleta = if (escu
     )
 }
 
-private val LocalPaleta = staticCompositionLocalOf { paletaNeon(CorNeon.AMARELO, escuro = true) }
+private val LocalPaleta = staticCompositionLocalOf { paletaNeon(CorNeon.ROXO, escuro = true) }
 
 // Atalhos usados nas telas. São lidos dentro de composables e resolvem
 // para a cor do tema ativo.

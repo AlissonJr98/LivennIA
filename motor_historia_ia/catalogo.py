@@ -733,151 +733,175 @@ CENARIOS = [
 ]
 
 # ---------------------------------------------------------------
-# Cérebros e Sabores de IA (inspirados nos modelos do Emochi)
+# Motores e Estilos Narrativos LivennIA
 # ---------------------------------------------------------------
 # "modelo" é o nome real do modelo Gemini (o jogador nunca vê isso).
-# "custo_mochi" é quantos Mochis a jogada consome (0 = grátis; contas premium têm
-# isenção nos modelos de categoria "Premium", exatamente como o vipFree do Emochi).
+# "custo_livens" / "custo_mochi" é quantos Livens a jogada consome (0 = grátis;
+# contas premium têm isenção nos modelos de categoria "Premium").
 CEREBROS = [
     {
-        "id": "livennia-basico",
-        "nome": "Vanilla V2 (Básico)",
-        "emoji": "🍦",
-        "descricao": "Rápido, imersivo e gratuito para conversas e aventuras ágeis.",
+        "id": "livennia-flash",
+        "nome": "Liven Flash (Básico)",
+        "emoji": "⚡",
+        "descricao": "Rápido, imersivo e gratuito para diálogos e aventuras ágeis.",
         "modelo": "gemini-3.1-flash-lite",
         "premium": False,
+        "custo_livens": 0,
         "custo_mochi": 0,
         "categoria": "Grátis",
         "temperatura_padrao": 0.75,
         "estilo_prompt": (
-            "ESTILO DO MODELO (VANILLA V2): Mantenha um ritmo ágil, claro e envolvente, "
+            "ESTILO DO MOTOR (LIVEN FLASH): Mantenha um ritmo ágil, claro e envolvente, "
             "equilibrando ação direta e diálogos naturais sem prolixidade."
         ),
     },
     {
-        "id": "emochi-matcha",
-        "nome": "Matcha",
-        "emoji": "🍵",
-        "descricao": "Diálogos rápidos, espirituosos, provocações inteligentes e ritmo vivo.",
+        "id": "livennia-spark",
+        "nome": "Liven Spark",
+        "emoji": "✨",
+        "descricao": "Diálogos rápidos, espirituosos, química verbal e provocações inteligentes.",
         "modelo": "gemini-3.1-flash-lite",
         "premium": False,
+        "custo_livens": 2,
         "custo_mochi": 2,
         "categoria": "Premium",
         "temperatura_padrao": 0.85,
         "estilo_prompt": (
-            "ESTILO DO MODELO (MATCHA): Priorize diálogos espirituosos, química verbal, "
+            "ESTILO DO MOTOR (LIVEN SPARK): Priorize diálogos espirituosos, química verbal, "
             "respostas afiadas, humor sutil e ritmo dinâmico entre os personagens."
         ),
     },
     {
-        "id": "livennia-avancado",
-        "nome": "Blueberry (Avançado)",
-        "emoji": "🫐",
-        "descricao": "Roleplay versátil, diálogos naturais e profundidade emocional.",
+        "id": "livennia-pulse",
+        "nome": "Liven Pulse (Avançado)",
+        "emoji": "🌊",
+        "descricao": "Roleplay versátil, diálogos naturais e profundidade emocional autêntica.",
         "modelo": "gemini-3.5-flash-lite",
         "premium": False,
+        "custo_livens": 2,
         "custo_mochi": 2,
         "categoria": "Premium",
         "temperatura_padrao": 0.85,
         "estilo_prompt": (
-            "ESTILO DO MODELO (BLUEBERRY): Roleplay versátil e equilibrado, com foco em "
+            "ESTILO DO MOTOR (LIVEN PULSE): Roleplay versátil e equilibrado, com foco em "
             "reações emocionais autênticas, linguagem corporal rica e fluidez narrativa."
         ),
     },
     {
-        "id": "emochi-strawberry",
-        "nome": "Strawberry",
-        "emoji": "🍓",
+        "id": "livennia-velvet",
+        "nome": "Liven Velvet",
+        "emoji": "🌹",
         "descricao": "Expressivo, dramático, intenso e profundamente romântico.",
         "modelo": "gemini-3.5-flash-lite",
         "premium": False,
+        "custo_livens": 3,
         "custo_mochi": 3,
         "categoria": "Premium",
         "temperatura_padrao": 0.92,
         "estilo_prompt": (
-            "ESTILO DO MODELO (STRAWBERRY): Escrita intensamente expressiva, dramática e "
+            "ESTILO DO MOTOR (LIVEN VELVET): Escrita intensamente expressiva, dramática e "
             "romântica. Destaque olhares, batimentos, tensão emocional, subtexto afetivo e "
             "vulnerabilidade dos personagens."
         ),
     },
     {
-        "id": "emochi-chocolate",
-        "nome": "Chocolate",
-        "emoji": "🍫",
-        "descricao": "Descrições sensoriais ricas e construção de mundo imersiva.",
+        "id": "livennia-amber",
+        "nome": "Liven Amber",
+        "emoji": "🔥",
+        "descricao": "Descrições sensoriais ricas, ambientação viva e construção de mundo imersiva.",
         "modelo": "gemini-3.5-flash-lite",
         "premium": False,
+        "custo_livens": 3,
         "custo_mochi": 3,
         "categoria": "Premium",
         "temperatura_padrao": 0.88,
         "estilo_prompt": (
-            "ESTILO DO MODELO (CHOCOLATE): Capriche na atmosfera sensorial (sons, texturas, "
+            "ESTILO DO MOTOR (LIVEN AMBER): Capriche na atmosfera sensorial (sons, texturas, "
             "luzes, cheiros) e na construção detalhada do cenário e da ambientação."
         ),
     },
     {
-        "id": "emochi-peach",
-        "nome": "Peach",
-        "emoji": "🍑",
-        "descricao": "Reviravoltas criativas, ousadia e narrativa provocante.",
+        "id": "livennia-eclipse",
+        "nome": "Liven Eclipse",
+        "emoji": "🔮",
+        "descricao": "Reviravoltas criativas, ousadia provocante e narrativa imprevisível.",
         "modelo": "gemini-3.5-flash-lite",
         "premium": False,
+        "custo_livens": 3,
         "custo_mochi": 3,
         "categoria": "Premium",
         "temperatura_padrao": 0.95,
         "estilo_prompt": (
-            "ESTILO DO MODELO (PEACH): Traga reviravoltas criativas, surpresas na cena, "
+            "ESTILO DO MOTOR (LIVEN ECLIPSE): Traga reviravoltas criativas, surpresas na cena, "
             "carisma ousado e interações cheias de personalidade e tensão."
         ),
     },
     {
-        "id": "livennia-mestre",
-        "nome": "Blackberry (Mestre)",
-        "emoji": "🍇",
+        "id": "livennia-prime",
+        "nome": "Liven Prime (Mestre)",
+        "emoji": "👑",
         "descricao": "Raciocínio profundo, tramas complexas e alta inteligência narrativa.",
         "modelo": "gemini-3.8-flash",
         "premium": True,
+        "custo_livens": 5,
         "custo_mochi": 5,
         "categoria": "Flagship",
         "temperatura_padrao": 0.85,
         "estilo_prompt": (
-            "ESTILO DO MODELO (BLACKBERRY): Alta inteligência narrativa, coerência rigorosa "
+            "ESTILO DO MOTOR (LIVEN PRIME): Alta inteligência narrativa, coerência rigorosa "
             "de longo prazo, psicologia complexa dos personagens e consequências lógicas."
         ),
     },
     {
-        "id": "emochi-sage",
-        "nome": "Sage",
-        "emoji": "🌿",
-        "descricao": "Prosa literária magistral, contexto longo e psicologia nuançada.",
+        "id": "livennia-oracle",
+        "nome": "Liven Oracle",
+        "emoji": "📜",
+        "descricao": "Prosa literária refinada, contexto amplo e psicologia nuançada.",
         "modelo": "gemini-3.8-flash",
         "premium": True,
+        "custo_livens": 10,
         "custo_mochi": 10,
         "categoria": "Flagship",
         "temperatura_padrao": 0.82,
         "estilo_prompt": (
-            "ESTILO DO MODELO (SAGE): Prosa digna de um romance literário premiado, com "
-            "psicologia profunda, subtexto sofisticado e desenvolvimento lento e memorável."
+            "ESTILO DO MOTOR (LIVEN ORACLE): Prosa digna de um romance literário refinado, com "
+            "psicologia profunda, subtexto sofisticado e desenvolvimento memorável."
         ),
     },
     {
-        "id": "emochi-unicorn",
-        "nome": "Unicorn",
-        "emoji": "🦄",
-        "descricao": "Nosso modelo mais poderoso para imersão máxima e cenas inesquecíveis.",
+        "id": "livennia-infinity",
+        "nome": "Liven Infinity",
+        "emoji": "🌌",
+        "descricao": "Nosso motor mais poderoso para imersão cinematográfica e cenas inesquecíveis.",
         "modelo": "gemini-3.8-flash",
         "premium": True,
+        "custo_livens": 10,
         "custo_mochi": 10,
         "categoria": "Ultra Flagship",
         "temperatura_padrao": 0.90,
         "estilo_prompt": (
-            "ESTILO DO MODELO (UNICORN): Imersão cinematográfica máxima. Combine diálogos "
+            "ESTILO DO MOTOR (LIVEN INFINITY): Imersão cinematográfica máxima. Combine diálogos "
             "magnéticos, ações detalhadas entre asteriscos, ritmo perfeito e ganchos irresistíveis."
         ),
     },
 ]
 
-CEREBRO_PADRAO = "livennia-basico"
+ALIASES_CEREBROS = {
+    "livennia-basico": "livennia-flash",
+    "emochi-vanilla": "livennia-flash",
+    "emochi-matcha": "livennia-spark",
+    "livennia-avancado": "livennia-pulse",
+    "emochi-blueberry": "livennia-pulse",
+    "emochi-strawberry": "livennia-velvet",
+    "emochi-chocolate": "livennia-amber",
+    "emochi-peach": "livennia-eclipse",
+    "livennia-mestre": "livennia-prime",
+    "emochi-blackberry": "livennia-prime",
+    "emochi-sage": "livennia-oracle",
+    "emochi-unicorn": "livennia-infinity",
+}
+
+CEREBRO_PADRAO = "livennia-flash"
 
 
 # ---------------------------------------------------------------
@@ -914,8 +938,9 @@ def listar_cenarios():
 def cerebro(cerebro_id):
     if not isinstance(cerebro_id, str):
         return None
+    c_id = ALIASES_CEREBROS.get(cerebro_id, cerebro_id)
     for item in CEREBROS:
-        if item["id"] == cerebro_id:
+        if item["id"] == c_id:
             return dict(item)
     return None
 

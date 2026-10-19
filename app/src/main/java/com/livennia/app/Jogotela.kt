@@ -260,8 +260,8 @@ fun JogoTela(vm: AppViewModel) {
                 }
             }
 
-            // ---- Barra de recursos Emochi: Mochi, Memória, Diário, Cartas, Saves, Modelo/Temp ----
-            BarraFerramentasEmochi(
+            // ---- Barra de recursos LivennIA: Livens, Memória, Diário, Cartas, Saves, Motor/Temp ----
+            BarraFerramentasLiven(
                 vm = vm,
                 jogo = jogo,
                 onAbrirDialogo = { dialogo = it }
@@ -391,7 +391,7 @@ fun JogoTela(vm: AppViewModel) {
                         )
                     }
 
-                    // Gaveta de Auto-Respostas geradas estilo Emochi
+                    // Gaveta de Auto-Respostas LivennIA
                     FaixaSugestoesAutoResposta(
                         sugestoes = vm.sugestoesAutoResposta,
                         ocupado = vm.ocupado,
@@ -576,7 +576,7 @@ private fun BalaoJogador(
     }
 }
 
-// ---- Fala do narrador: texto corrido com ícones à esquerda e controles Emochi no rodapé ----
+// ---- Fala do narrador: texto literário e controles LivennIA no rodapé ----
 @Composable
 private fun BlocoNarrador(
     texto: String,
@@ -640,7 +640,7 @@ private fun BlocoNarrador(
                     }
                 }
                 Spacer(Modifier.height(8.dp))
-                RodapeMensagemEmochi(
+                RodapeMensagemLiven(
                     rotuloEsquerda = hora?.let { horaDaMensagem(it) } ?: "",
                     versoes = versoes,
                     versaoAtiva = versaoAtiva,
@@ -736,7 +736,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                 .fillMaxSize()
                 .safeDrawingPadding()
         ) {
-            // ---- Cabeçalho estilo Livro / Emochi ----
+            // ---- Cabeçalho imersivo estilo Livro ----
             Surface(color = Color.Transparent) {
                 Row(
                     modifier = Modifier
@@ -836,14 +836,14 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                 }
             }
 
-            // ---- Barra de recursos Emochi: Mochi, Memória, Diário, Cartas, Saves, Modelo/Temp ----
-            BarraFerramentasEmochi(
+            // ---- Barra de recursos LivennIA: Livens, Memória, Diário, Cartas, Saves, Motor/Temp ----
+            BarraFerramentasLiven(
                 vm = vm,
                 jogo = jogo,
                 onAbrirDialogo = { dialogo = it }
             )
 
-            // ---- Páginas da história e diálogos (Estilo Emochi + Livro) ----
+            // ---- Páginas da história e diálogos (Estilo Livro) ----
             LazyColumn(
                 state = listaChat,
                 modifier = Modifier
@@ -877,7 +877,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                                     modifier = Modifier.fillMaxWidth(0.86f)
                                 ) {
                                     Text(
-                                        text = parsearNarrativaEmochi(
+                                        text = parsearNarrativaLivro(
                                             texto = acaoTexto,
                                             corFala = corFala,
                                             corAcao = corAcao,
@@ -901,7 +901,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             }
                         }
 
-                        // Bloco literário da IA / Personagem (Estilo Emochi)
+                        // Bloco literário da IA / Personagem
                         Surface(
                             color = SuperficieAlta.copy(alpha = 0.88f),
                             shape = RoundedCornerShape(
@@ -919,7 +919,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                         ) {
                             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
                                 Text(
-                                    text = parsearNarrativaEmochi(
+                                    text = parsearNarrativaLivro(
                                         texto = textoMostrado,
                                         corFala = corFala,
                                         corAcao = corAcao,
@@ -931,7 +931,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                                     )
                                 )
                                 Spacer(Modifier.height(8.dp))
-                                RodapeMensagemEmochi(
+                                RodapeMensagemLiven(
                                     rotuloEsquerda = msg.emNarrador?.let { horaDaMensagem(it) } ?: "Cap. ${indice + 1}",
                                     versoes = msg.versoes,
                                     versaoAtiva = msg.versaoAtiva,
@@ -1079,7 +1079,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                         )
                     }
 
-                    // Gaveta de Auto-Respostas geradas estilo Emochi
+                    // Gaveta de Auto-Respostas LivennIA
                     FaixaSugestoesAutoResposta(
                         sugestoes = vm.sugestoesAutoResposta,
                         ocupado = vm.ocupado,
@@ -1168,12 +1168,12 @@ private fun JogoModoHistoria(vm: AppViewModel) {
 }
 
 @Composable
-private fun BarraFerramentasEmochi(
+private fun BarraFerramentasLiven(
     vm: AppViewModel,
     jogo: JogoResponse,
     onAbrirDialogo: (DialogoAberto) -> Unit
 ) {
-    val saldoMochis = vm.conta?.mochis ?: jogo.mochis ?: 0
+    val saldoLivens = vm.conta?.livens ?: jogo.livens ?: 0
     val podeResgatarHoje = vm.conta?.resgateDiarioDisponivel == true
 
     Row(
@@ -1184,17 +1184,17 @@ private fun BarraFerramentasEmochi(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Pílula de Mochi (com resgate diário ao tocar se disponível)
+        // Pílula de Livens (com resgate diário ao tocar se disponível)
         Surface(
             color = Ouro.copy(alpha = 0.16f),
             shape = Cantos.pilula,
             border = BorderStroke(1.dp, Ouro.copy(alpha = 0.45f)),
             modifier = Modifier.clickable(enabled = podeResgatarHoje) {
-                vm.resgatarMochiDiario()
+                vm.resgatarLivensDiarios()
             }
         ) {
             Text(
-                text = if (podeResgatarHoje) "🍡 $saldoMochis (+30)" else "🍡 $saldoMochis",
+                text = if (podeResgatarHoje) "✨ $saldoLivens (+30)" else "✨ $saldoLivens",
                 style = MaterialTheme.typography.labelSmall,
                 color = Ouro,
                 fontWeight = FontWeight.SemiBold,
@@ -1283,7 +1283,7 @@ private fun BarraFerramentasEmochi(
 }
 
 @Composable
-private fun RodapeMensagemEmochi(
+private fun RodapeMensagemLiven(
     rotuloEsquerda: String,
     versoes: List<String>,
     versaoAtiva: Int,
@@ -1825,7 +1825,7 @@ private fun GerenciadorDialogosJogo(
                                         )
                                     }
                                     Text(
-                                        text = if (c.custoMochi == 0) "Grátis" else "🍡 ${c.custoMochi}",
+                                        text = if (c.custoLivens == 0) "Grátis" else "✨ ${c.custoLivens}",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = Ouro
                                     )

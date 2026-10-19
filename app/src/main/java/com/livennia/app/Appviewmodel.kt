@@ -106,7 +106,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         prefs.modoLeitura = modo.name
     }
 
-    // Filtro local de palavras sensíveis (portado do SensitiveWordChecker do Emochi).
+    // Filtro local de palavras sensíveis do LivennIA.
     var filtroPalavrasSensiveis by mutableStateOf(prefs.filtroPalavrasSensiveis)
         private set
 
@@ -390,16 +390,16 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         danoRecente = (vidaAntes - resposta.personagem.vida).coerceAtLeast(0)
         jogoAtual = resposta
         chat = chat + resposta.historico.orEmpty()
-        resposta.mochis?.let { novoSaldo ->
-            conta = conta?.copy(mochis = novoSaldo)
+        (resposta.livens ?: resposta.mochis)?.let { novoSaldo ->
+            conta = conta?.copy(livens = novoSaldo)
         }
     }
 
     private fun aplicarJogoCompleto(resposta: JogoResponse) {
         jogoAtual = resposta
         chat = resposta.historico.orEmpty()
-        resposta.mochis?.let { novoSaldo ->
-            conta = conta?.copy(mochis = novoSaldo)
+        (resposta.livens ?: resposta.mochis)?.let { novoSaldo ->
+            conta = conta?.copy(livens = novoSaldo)
         }
     }
 
@@ -798,7 +798,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // ---- Recursos inspirados no Emochi ----
+    // ---- Recursos LivennIA ----
     var sugestoesAutoResposta by mutableStateOf<List<String>>(emptyList())
         private set
 
@@ -809,18 +809,20 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         sugestoesAutoResposta = emptyList()
     }
 
-    fun resgatarMochiDiario() {
-        executar("Resgatando bônus diário de Mochis...") { api ->
-            val res = api.resgatarMochiDiario()
-            conta = conta?.copy(mochis = res.mochis, resgateDiarioDisponivel = false)
+    fun resgatarLivensDiarios() {
+        executar("Resgatando bônus diário de Livens...") { api ->
+            val res = api.resgatarLivensDiarios()
+            conta = conta?.copy(livens = res.livens, resgateDiarioDisponivel = false)
             runCatching { cerebros = api.cerebros() }
             aviso = if (res.jaResgatado) {
-                "Você já resgatou seus Mochis de hoje! Saldo: ${res.mochis} 🍡"
+                "Você já resgatou seus Livens de hoje! Saldo: ${res.livens} ✨"
             } else {
-                "+${res.ganho} Mochis resgatados! Saldo atual: ${res.mochis} 🍡"
+                "+${res.ganho} Livens resgatados! Saldo atual: ${res.livens} ✨"
             }
         }
     }
+
+    fun resgatarMochiDiario() = resgatarLivensDiarios()
 
     fun configurarModeloDoJogo(modeloId: String?, temperatura: Float?) {
         val id = jogoAtual?.jogoId ?: return

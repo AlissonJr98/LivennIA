@@ -4,7 +4,7 @@ import android.content.Context
 import org.json.JSONObject
 
 /**
- * Portado do `SensitiveWordChecker` do Emochi.
+ * Filtro de palavras sensíveis do LivennIA.
  * Carrega a lista de palavras sensíveis em Português e Inglês de
  * `assets/sensitive_words/chat_block_keywords.json` e verifica textos localmente
  * (ignorando espaços intercalados e maiúsculas/minúsculas).

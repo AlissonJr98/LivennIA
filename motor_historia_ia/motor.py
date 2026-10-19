@@ -487,9 +487,9 @@ def _cerebro_guardado(bruto):
         return None
     id_c = limpar_texto(bruto["id"], 40) if isinstance(bruto.get("id"), str) else ""
     cat_c = catalogo.cerebro(id_c) if id_c else None
-    custo = bruto.get("custo_mochi")
+    custo = bruto.get("custo_livens") if bruto.get("custo_livens") is not None else bruto.get("custo_mochi")
     if not isinstance(custo, int) or isinstance(custo, bool) or custo < 0:
-        custo = cat_c.get("custo_mochi", 0) if cat_c else 0
+        custo = (cat_c.get("custo_livens") or cat_c.get("custo_mochi", 0)) if cat_c else 0
     temp_padrao = bruto.get("temperatura_padrao")
     if not isinstance(temp_padrao, (int, float)) or isinstance(temp_padrao, bool):
         temp_padrao = cat_c.get("temperatura_padrao", 0.85) if cat_c else 0.85
@@ -504,6 +504,7 @@ def _cerebro_guardado(bruto):
         "nome": limpar_texto(bruto["nome"], 40) if isinstance(bruto.get("nome"), str) else modelo,
         "emoji": limpar_texto(bruto["emoji"], 8) if isinstance(bruto.get("emoji"), str) else "",
         "modelo": modelo,
+        "custo_livens": int(custo),
         "custo_mochi": int(custo),
         "categoria": limpar_texto(categoria, 40),
         "temperatura_padrao": round(float(max(0.2, min(1.4, temp_padrao))), 2),
@@ -1058,7 +1059,7 @@ def _montar_prompt(estado, acao, escolha=False, historico_custom=None):
             for t in hist_fonte[-config.TURNOS_NA_MEMORIA:]
         ],
     }
-    # Memória de longo prazo editável pelo jogador (inspirada no Emochi).
+    # Memória de longo prazo editável pelo jogador (no LivennIA).
     memoria = (estado.get("memoria") or "").strip()
     if memoria:
         contexto["memoria_de_longo_prazo"] = memoria
@@ -1490,7 +1491,7 @@ def pedir_turno(estado, acao, escolha=False, historico_custom=None):
 
 
 # ---------------------------------------------------------------
-# Recursos Emochi: Regenerar, Versões, Editar Fala, Auto-Resposta,
+# Recursos LivennIA: Regenerar, Versões, Editar Fala, Auto-Resposta,
 # Memória, Diário do Personagem, Cartas de Memória e Savepoints
 # ---------------------------------------------------------------
 def regenerar_ultimo_turno(estado, em_narrador=None):
@@ -1586,7 +1587,7 @@ def _chamar_json_auxiliar(estado, instrucao_sistema, prompt_usuario, temp=0.85):
 
 
 def gerar_auto_respostas(estado):
-    """Gera 3 sugestões criativas de resposta para o jogador (Auto-Reply / Inspiração do Emochi)."""
+    """Gera 3 sugestões criativas de resposta para o jogador (Auto-Reply / Inspiração LivennIA)."""
     ultimos = [
         {"jogador": t["acao"], "narrador": t["narrativa"]}
         for t in (estado.get("historico") or [])[-4:]
@@ -1799,4 +1800,4 @@ def remover_savepoint(estado, save_id):
     novos = [s for s in saves if s.get("id") != save_id]
     if len(novos) == len(saves):
         raise ValueError("Ponto de salvamento não encontrado.")
-    estado["savepoints"] = novos
+    estado["savepoints"] = novos

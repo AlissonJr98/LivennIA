@@ -67,7 +67,7 @@ class LimitadorDeTaxa:
 
 
 # ---------------------------------------------------------------
-# Filtro de palavras sensíveis (portado do SensitiveWordChecker do Emochi)
+# Filtro de palavras sensíveis (Filtro de palavras sensíveis do LivennIA)
 # ---------------------------------------------------------------
 import json
 import os
@@ -120,4 +120,4 @@ def verificar_palavra_sensivel(texto: str):
     for original, regex in _carregar_palavras_sensiveis():
         if regex.search(texto):
             return original
-    return None
+    return None

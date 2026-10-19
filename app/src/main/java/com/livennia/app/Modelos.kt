@@ -55,19 +55,21 @@ data class CenarioDto(
     val capa: Boolean = false
 )
 
-// Os "cérebros"/sabores de IA (inspirados no Emochi), com custo em Mochis e categoria.
+// Motores de IA LivennIA com custo em Livens e categoria.
 data class CerebroDto(
     val id: String,
     val nome: String,
     val emoji: String = "",
     val descricao: String = "",
     val premium: Boolean = false,
-    @SerializedName("custo_mochi") val custoMochi: Int = 0,
+    @SerializedName("custo_livens", alternate = ["custo_mochi"]) val custoLivens: Int = 0,
     val categoria: String = "Geral",
     @SerializedName("temperatura_padrao") val temperaturaPadrao: Float = 0.85f,
-    // false = este modelo é premium e a conta do jogador ainda não tem acesso/Mochis.
+    // false = este modelo é premium e a conta do jogador ainda não tem acesso/Livens.
     val liberado: Boolean = true
-)
+) {
+    val custoMochi: Int get() = custoLivens
+}
 
 data class CapaResponse(val capa: Boolean = true)
 
@@ -85,9 +87,11 @@ data class CerebroDoJogoDto(
     val id: String,
     val nome: String,
     val emoji: String = "",
-    @SerializedName("custo_mochi") val custoMochi: Int = 0,
+    @SerializedName("custo_livens", alternate = ["custo_mochi"]) val custoLivens: Int = 0,
     val categoria: String = "Geral"
-)
+) {
+    val custoMochi: Int get() = custoLivens
+}
 
 data class GeneroInfo(
     val nome: String,
@@ -186,11 +190,15 @@ data class MemoriaResponse(
     val memoria: String = ""
 )
 
-data class ResgateMochiResponse(
+data class ResgateLivenResponse(
     val ganho: Int = 0,
-    val mochis: Int = 0,
+    @SerializedName("livens", alternate = ["mochis"]) val livens: Int = 0,
     @SerializedName("ja_resgatado") val jaResgatado: Boolean = false
-)
+) {
+    val mochis: Int get() = livens
+}
+
+typealias ResgateMochiResponse = ResgateLivenResponse
 
 data class PersonagemDto(
     val nome: String,
@@ -226,8 +234,10 @@ data class JogoResponse(
     val diarios: List<DiarioDto> = emptyList(),
     val cartas: List<CartaDto> = emptyList(),
     val savepoints: List<SavepointDto> = emptyList(),
-    val mochis: Int? = null
-)
+    @SerializedName("livens", alternate = ["mochis"]) val livens: Int? = null
+) {
+    val mochis: Int? get() = livens
+}
 
 data class JogoResumo(
     @SerializedName("jogo_id") val jogoId: String,
@@ -256,9 +266,11 @@ data class ContaResponse(
     @SerializedName("jogos_ativos") val jogosAtivos: Int,
     @SerializedName("max_jogos") val maxJogos: Int,
     val premium: Boolean = false,
-    val mochis: Int = 100,
+    @SerializedName("livens", alternate = ["mochis"]) val livens: Int = 100,
     @SerializedName("resgate_diario_disponivel") val resgateDiarioDisponivel: Boolean = true
-)
+) {
+    val mochis: Int get() = livens
+}
 
 data class FeedbackRequest(
     val nota: Int,

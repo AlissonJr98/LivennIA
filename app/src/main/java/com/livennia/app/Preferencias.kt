@@ -58,7 +58,7 @@ class Preferencias(context: Context) {
 
     // Cor de destaque do estilo Neon (Amarelo, Ciano, Roxo ou Vermelho).
     var corNeon: String
-        get() = p.getString("cor_neon", CorNeon.AMARELO.name) ?: CorNeon.AMARELO.name
+        get() = p.getString("cor_neon", CorNeon.ROXO.name) ?: CorNeon.ROXO.name
         set(valor) {
             p.edit().putString("cor_neon", valor).apply()
         }
@@ -92,7 +92,7 @@ class Preferencias(context: Context) {
             p.edit().putString("modo_leitura", valor).apply()
         }
 
-    // Filtro local de palavras sensíveis (portado do SensitiveWordChecker do Emochi).
+    // Filtro local de palavras sensíveis do LivennIA.
     var filtroPalavrasSensiveis: Boolean
         get() = p.getBoolean("filtro_palavras_sensiveis", true)
         set(valor) {

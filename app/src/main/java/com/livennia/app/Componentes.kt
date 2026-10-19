@@ -239,10 +239,10 @@ fun parsearNarrativa(texto: String): AnnotatedString = buildAnnotatedString {
     append(texto.substring(lastIndex))
 }
 
-// Formatação especial estilo Emochi / Livro:
+// Formatação especial estilo LivennIA / Livro:
 // - *ações, pensamentos e descrições* ficam em itálico e cor suave
 // - "diálogos falados" ganham destaque luminoso e peso médio/negrito
-fun parsearNarrativaEmochi(
+fun parsearNarrativaLivro(
     texto: String,
     corFala: Color,
     corAcao: Color,

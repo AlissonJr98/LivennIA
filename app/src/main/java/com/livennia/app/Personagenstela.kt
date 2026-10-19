@@ -2,6 +2,7 @@ package com.livennia.app
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -165,7 +166,7 @@ private fun AbaAventuras(vm: AppViewModel) {
                         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        ChipTag("🍡 Mochis: ${c.mochis}", destaque = true)
+                        ChipTag("✨ Livens: ${c.livens}", destaque = true)
                         ChipTag("⚡ Jogadas: ${c.jogadasRestantesHoje}", destaque = true)
                         ChipTag("🎲 RPGs: ${jogosRpg.size}")
                         ChipTag("Ativos: $ativos/$limiteAtivos")
@@ -222,7 +223,7 @@ private fun AbaAventuras(vm: AppViewModel) {
 }
 
 // ---------------------------------------------------------------
-// Aba "Histórias": modo livro / conversa livre estilo Emochi (sem HP e sem morte).
+// Aba "Histórias": modo livro / conversa livre LivennIA (sem HP e sem morte).
 // ---------------------------------------------------------------
 @Composable
 private fun AbaHistorias(vm: AppViewModel) {
@@ -322,7 +323,7 @@ private fun AbaHistorias(vm: AppViewModel) {
     }
 }
 
-// Card de uma história no Modo História (estilo Emochi / Livro: sem barra de vida, mostra prévia da narrativa).
+// Card de uma história no Modo História (Livro / Conversa viva).
 @Composable
 private fun LinhaHistoria(
     jogo: JogoResumo,
@@ -458,7 +459,7 @@ private fun LinhaAventura(
 }
 
 // ---------------------------------------------------------------
-// Aba "Explorar": a vitrine de cenários e personagens oficiais (estilo Emochi).
+// Aba "Explorar": a vitrine de cenários e personagens oficiais do LivennIA.
 // O "prompt secreto" de cada cenário fica só no servidor: tocar no card abre a
 // prévia da história e permite começar em Modo História ou Modo RPG.
 // ---------------------------------------------------------------
@@ -471,7 +472,7 @@ private fun AbaExplorar(vm: AppViewModel) {
     var estiloFiltro by rememberSaveable { mutableStateOf("Todos") }
     var cenarioPrevia by remember { mutableStateOf<CenarioDto?>(null) }
 
-    // Lista de estilos disponíveis para filtrar na barra horizontal (como no Emochi).
+    // Lista de estilos disponíveis para filtrar na barra horizontal.
     val estilosDisponiveis = remember(vm.catalogo, vm.generos) {
         val nomes = linkedSetOf("Todos")
         vm.generos.forEach { nomes.add(it.nome) }
@@ -556,7 +557,7 @@ private fun AbaExplorar(vm: AppViewModel) {
             }
         }
 
-        // Barra de busca estilo Emochi + filtros horizontais por estilo de história.
+        // Barra de busca + filtros horizontais por estilo de história.
         item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
@@ -704,7 +705,7 @@ private fun AbaExplorar(vm: AppViewModel) {
     }
 }
 
-// Um card da vitrine: arte full-bleed, selo do estilo no topo e texto em degradê (estilo Emochi).
+// Um card da vitrine: arte full-bleed, selo do estilo no topo e texto em degradê.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CardCenario(
@@ -720,6 +721,7 @@ private fun CardCenario(
             .fillMaxWidth()
             .aspectRatio(0.66f)
             .clip(Cantos.imagem)
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), Cantos.imagem)
             .clickable(enabled = habilitado) { onAbrir() }
     ) {
         CapaCenario(
@@ -840,7 +842,7 @@ private fun CardCenario(
     }
 }
 
-// Modal estilo Emochi ao tocar em um personagem da vitrine: mostra capa, tags,
+// Modal detalhado ao tocar em um personagem da vitrine: mostra capa, tags,
 // sinopse completa, a Cena de Abertura e os botões para começar em História ou RPG.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -1028,16 +1030,16 @@ private fun AbaPerfil(vm: AppViewModel) {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column {
-                                TituloSecao("Carteira de Mochis")
+                                TituloSecao("Carteira de Livens")
                                 Text(
-                                    "🍡 ${c.mochis} Mochis",
+                                    "✨ ${c.livens} Livens",
                                     color = Ouro,
                                     style = MaterialTheme.typography.headlineSmall
                                 )
                             }
                             if (c.resgateDiarioDisponivel) {
                                 Button(
-                                    onClick = { vm.resgatarMochiDiario() },
+                                    onClick = { vm.resgatarLivensDiarios() },
                                     enabled = !vm.ocupado,
                                     shape = Cantos.pilula
                                 ) {
@@ -1048,7 +1050,7 @@ private fun AbaPerfil(vm: AppViewModel) {
                             }
                         }
                         Text(
-                            "Use seus Mochis para conversar com sabores especiais de IA (Matcha, Strawberry, Chocolate, Peach, Blackberry, Sage e Unicorn).",
+                            "Use seus Livens para conversar com motores especiais de IA (Liven Spark, Liven Pulse, Liven Velvet, Liven Amber, Liven Eclipse, Liven Prime, Liven Oracle e Liven Infinity).",
                             color = TextoSuave,
                             style = MaterialTheme.typography.labelSmall
                         )

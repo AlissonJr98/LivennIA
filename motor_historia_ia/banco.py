@@ -210,11 +210,15 @@ def jogador_por_token_hash(token_hash):
             "FROM jogadores WHERE token_hash = ?",
             (token_hash,),
         ).fetchone()
-    return dict(linha) if linha else None
+    if not linha:
+        return None
+    d = dict(linha)
+    d["livens"] = d.get("mochis", 0)
+    return d
 
 
-def resgatar_mochi_diario(jogador_id, bonus=30):
-    """Concede o bônus diário de Mochis (1x por dia no fuso do servidor). Devolve o novo saldo."""
+def resgatar_livens_diarios(jogador_id, bonus=30):
+    """Concede o bônus diário de Livens (1x por dia no fuso do servidor). Devolve o novo saldo."""
     dia_atual = hoje()
     with transacao() as c:
         linha = c.execute(
@@ -223,7 +227,7 @@ def resgatar_mochi_diario(jogador_id, bonus=30):
         if linha is None:
             raise ErroNegocio(404, "Jogador não encontrado.")
         if linha["ultimo_resgate_mochi"] == dia_atual:
-            raise ErroNegocio(409, "Você já resgatou seus Mochis diários hoje. Volte amanhã!")
+            raise ErroNegocio(409, "Você já resgatou seus Livens diários hoje. Volte amanhã!")
         novo_saldo = (linha["mochis"] or 0) + int(bonus)
         c.execute(
             "UPDATE jogadores SET mochis = ?, ultimo_resgate_mochi = ? WHERE id = ?",
@@ -231,9 +235,11 @@ def resgatar_mochi_diario(jogador_id, bonus=30):
         )
         return novo_saldo
 
+resgatar_mochi_diario = resgatar_livens_diarios
 
-def debitar_mochis(jogador_id, custo):
-    """Debita `custo` Mochis da carteira do jogador. Levanta ErroNegocio(402) se faltar saldo."""
+
+def debitar_livens(jogador_id, custo):
+    """Debita `custo` Livens da carteira do jogador. Levanta ErroNegocio(402) se faltar saldo."""
     custo = int(custo or 0)
     if custo <= 0:
         return
@@ -243,18 +249,22 @@ def debitar_mochis(jogador_id, custo):
         if saldo < custo:
             raise ErroNegocio(
                 402,
-                f"Saldo insuficiente de Mochis ({saldo} disponíveis, {custo} necessários). "
-                "Resgate seu bônus diário ou escolha um modelo gratuito!",
+                f"Saldo insuficiente de Livens ({saldo} disponíveis, {custo} necessários). "
+                "Resgate seu bônus diário ou escolha um motor gratuito!",
             )
         c.execute("UPDATE jogadores SET mochis = mochis - ? WHERE id = ?", (custo, jogador_id))
 
+debitar_mochis = debitar_livens
 
-def adicionar_mochis(jogador_id, quantidade):
+
+def adicionar_livens(jogador_id, quantidade):
     with transacao() as c:
         c.execute(
             "UPDATE jogadores SET mochis = COALESCE(mochis, 0) + ? WHERE id = ?",
             (int(quantidade), jogador_id),
         )
+
+adicionar_mochis = adicionar_livens
 
 
 def definir_premium(jogador_id, premium):
@@ -307,7 +317,11 @@ def obter_jogo(jogo_id, jogador_id):
             "SELECT id, estado, encerrado, atualizado_em FROM jogos WHERE id = ? AND jogador_id = ?",
             (jogo_id, jogador_id),
         ).fetchone()
-    return dict(linha) if linha else None
+    if not linha:
+        return None
+    d = dict(linha)
+    d["livens"] = d.get("mochis", 0)
+    return d
 
 
 def listar_jogos(jogador_id):
