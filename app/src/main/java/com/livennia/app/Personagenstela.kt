@@ -70,6 +70,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -141,13 +142,13 @@ private fun AbaAventuras(vm: AppViewModel) {
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 10.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Modo RPG", style = MaterialTheme.typography.headlineMedium)
+                        Text("Modo RPG", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         Text(
                             "Aventuras táticas com vida, inventário e escolhas • Olá, ${vm.apelido}",
                             color = TextoSuave,
@@ -181,7 +182,7 @@ private fun AbaAventuras(vm: AppViewModel) {
             if (jogosRpg.isEmpty() && !vm.ocupado) {
                 item {
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text("🎲", style = MaterialTheme.typography.displayMedium)
@@ -239,15 +240,15 @@ private fun AbaHistorias(vm: AppViewModel) {
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Modo História", style = MaterialTheme.typography.headlineMedium)
+                        Text("Modo História", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         Text(
-                            "Livros interativos e roleplay livre com a IA, sem barra de vida.",
+                            "Livros interativos e roleplay livre, sem barra de vida.",
                             color = TextoSuave,
                             style = MaterialTheme.typography.labelMedium
                         )
@@ -278,7 +279,7 @@ private fun AbaHistorias(vm: AppViewModel) {
             if (historias.isEmpty() && !vm.ocupado) {
                 item {
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text("📖", style = MaterialTheme.typography.displayMedium)
@@ -497,69 +498,24 @@ private fun AbaExplorar(vm: AppViewModel) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
-            Column {
-                Text("Explorar", style = MaterialTheme.typography.headlineMedium)
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Explorar", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text(
-                    "Descubra personagens e mundos prontos ou crie sua própria história.",
+                    "Descubra personagens e mundos prontos ou crie o seu.",
                     color = TextoSuave,
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.labelMedium
                 )
             }
         }
 
-        // Caminho livre: dois botões neutros (sem parecer que um está selecionado).
+        // Barra de busca + filtros horizontais compactos
         item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Surface(
-                    color = SuperficieAlta,
-                    shape = Cantos.cartao,
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable(enabled = !vm.ocupado) { vm.comecarAventuraLivre("rpg") }
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Text("🎲 Criar RPG", style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.height(2.dp))
-                        Text(
-                            "Com vida, itens e escolhas.",
-                            color = TextoSuave,
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
-                }
-                Surface(
-                    color = SuperficieAlta,
-                    shape = Cantos.cartao,
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable(enabled = !vm.ocupado) { vm.comecarAventuraLivre("historia") }
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Text("📖 Criar História", style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.height(2.dp))
-                        Text(
-                            "Livro vivo e conversa livre.",
-                            color = TextoSuave,
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
-                }
-            }
-        }
-
-        // Barra de busca + filtros horizontais por estilo de história.
-        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = busca,
                     onValueChange = { busca = it.take(60) },
@@ -567,7 +523,8 @@ private fun AbaExplorar(vm: AppViewModel) {
                         Icon(
                             Icons.Filled.Search,
                             contentDescription = null,
-                            tint = TextoSuave
+                            tint = TextoSuave,
+                            modifier = Modifier.size(20.dp)
                         )
                     },
                     trailingIcon = {
@@ -576,12 +533,13 @@ private fun AbaExplorar(vm: AppViewModel) {
                                 Icon(
                                     Icons.Filled.Close,
                                     contentDescription = "Limpar busca",
-                                    tint = TextoSuave
+                                    tint = TextoSuave,
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                         }
                     },
-                    placeholder = { Text("Buscar personagem, tema ou tag...") },
+                    placeholder = { Text("Buscar personagem, tema ou tag...", style = MaterialTheme.typography.bodyMedium) },
                     singleLine = true,
                     shape = Cantos.pilula,
                     modifier = Modifier.fillMaxWidth()
@@ -591,7 +549,7 @@ private fun AbaExplorar(vm: AppViewModel) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     estilosDisponiveis.forEach { estilo ->
                         val ativo = estilo == estiloFiltro
@@ -611,8 +569,9 @@ private fun AbaExplorar(vm: AppViewModel) {
                             Text(
                                 text = "$emoji $estilo",
                                 color = if (ativo) Ouro else TextoSuave,
-                                style = MaterialTheme.typography.labelMedium,
-                                modifier = Modifier.padding(horizontal = 13.dp, vertical = 7.dp)
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (ativo) FontWeight.SemiBold else FontWeight.Normal,
+                                modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp)
                             )
                         }
                     }
@@ -620,20 +579,70 @@ private fun AbaExplorar(vm: AppViewModel) {
             }
         }
 
+        // Ações rápidas compactas: Criar RPG / Criar História
         item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    color = SuperficieAlta,
+                    shape = Cantos.pilula,
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(enabled = !vm.ocupado) { vm.comecarAventuraLivre("rpg") }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text("🎲", style = MaterialTheme.typography.bodyMedium)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Criar RPG", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium)
+                    }
+                }
+                Surface(
+                    color = SuperficieAlta,
+                    shape = Cantos.pilula,
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(enabled = !vm.ocupado) { vm.comecarAventuraLivre("historia") }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text("📖", style = MaterialTheme.typography.bodyMedium)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Criar História", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium)
+                    }
+                }
+            }
+        }
+
+        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TituloSecao(
+                Text(
                     if (estiloFiltro == "Todos") "Personagens & Mundos (${catalogoFiltrado.size})"
-                    else "$estiloFiltro (${catalogoFiltrado.size})"
+                    else "$estiloFiltro (${catalogoFiltrado.size})",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
                 )
                 if (estiloFiltro != "Todos" || busca.isNotBlank()) {
-                    TextButton(onClick = { estiloFiltro = "Todos"; busca = "" }) {
-                        Text("Ver todos", style = MaterialTheme.typography.labelSmall)
-                    }
+                    Text(
+                        "Ver todos",
+                        color = Ouro,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.clickable { estiloFiltro = "Todos"; busca = "" }
+                    )
                 }
             }
         }
@@ -985,13 +994,13 @@ private fun AbaPerfil(vm: AppViewModel) {
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item {
-            Column {
-                Text("Perfil", style = MaterialTheme.typography.headlineMedium)
-                Text("Sua conta e preferências.", color = TextoSuave, style = MaterialTheme.typography.bodyMedium)
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Perfil", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text("Sua conta e preferências.", color = TextoSuave, style = MaterialTheme.typography.labelMedium)
             }
         }
 
@@ -1163,13 +1172,13 @@ private fun BarraInferior(
         modifier = Modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(start = 16.dp, end = 16.dp, top = 26.dp, bottom = 10.dp)
+            .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 6.dp)
     ) {
         Surface(
             color = SuperficieAlta,
             shape = Cantos.grande,
             shadowElevation = 16.dp,
-            modifier = Modifier.fillMaxWidth().height(66.dp)
+            modifier = Modifier.fillMaxWidth().height(60.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp),
@@ -1177,7 +1186,7 @@ private fun BarraInferior(
             ) {
                 ItemBarraEmoji("🎲", "RPG", aba == 0) { onSelecionar(0) }
                 ItemBarraEmoji("📖", "Histórias", aba == 1) { onSelecionar(1) }
-                Spacer(Modifier.width(62.dp))
+                Spacer(Modifier.width(56.dp))
                 ItemBarra(Icons.Filled.Search, "Explorar", aba == 2) { onSelecionar(2) }
                 ItemBarra(Icons.Filled.Person, "Perfil", aba == 3) { onSelecionar(3) }
             }
@@ -1187,8 +1196,8 @@ private fun BarraInferior(
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .offset(y = (-8).dp)
-                .size(62.dp)
+                .offset(y = (-6).dp)
+                .size(56.dp)
                 .clip(CircleShape)
                 .background(Ouro)
                 .clickable { onNova() },

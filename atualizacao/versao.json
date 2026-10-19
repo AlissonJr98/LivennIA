@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 4,
-  "versaoNome": "1.3.0",
-  "notas": "Identidade visual renovada e ecossistema LivennIA: Carteira de Livens (+30 diários), 9 motores de IA (Liven Flash, Spark, Pulse, Velvet, Amber, Eclipse, Prime, Oracle, Infinity) com controle de Temperatura, Memória de Longo Prazo, Diário Secreto, Cartas de Memória, Savepoints, Regeneração/Edição de respostas, Auto-Resposta e Filtro de Segurança.",
+  "versaoCodigo": 5,
+  "versaoNome": "1.3.1",
+  "notas": "Novo ícone oficial do LivennIA, otimização de espaçamentos nas abas Explorar, RPG, Histórias e Perfil, e refinamento de layout.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }
