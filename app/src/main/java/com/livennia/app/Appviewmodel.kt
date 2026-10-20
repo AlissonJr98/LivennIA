@@ -68,7 +68,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // Aba ativa na tela principal (0 = RPG, 1 = Histórias, 2 = Explorar, 3 = Perfil).
-    var abaPrincipal by mutableStateOf(0)
+    var abaPrincipal by mutableStateOf(2)
         private set
 
     fun selecionarAba(aba: Int) {
@@ -443,9 +443,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         ApiClient.token = prefs.token
         verificarAtualizacaoGitHub(manual = false)
         if (tela == Tela.Personagens) {
-            // Retoma a última aventura se houver uma salva no aparelho.
-            if (!prefs.ultimoJogoId.isNullOrEmpty()) retomarUltimoJogo()
-            else carregarPersonagens()
+            abaPrincipal = 2
+            carregarPersonagens()
         }
     }
 
@@ -753,6 +752,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             tela = Tela.Entrada
             return
         }
+        abaPrincipal = 2
         tela = Tela.Personagens
         carregarPersonagens()
     }

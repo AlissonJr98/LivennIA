@@ -278,7 +278,7 @@ fun ConfiguracoesTela(vm: AppViewModel) {
                 // Seção 4: Feedback
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = "Feedback",
+                        text = "Comunidade e Suporte",
                         style = MaterialTheme.typography.labelMedium,
                         color = corSecaoTitulo,
                         modifier = Modifier.padding(start = 4.dp)
@@ -290,22 +290,22 @@ fun ConfiguracoesTela(vm: AppViewModel) {
                     ) {
                         Column {
                             ItemConfigLinha(
-                                titulo = "Reportar erro",
+                                titulo = "Relatar instabilidade",
                                 aoClicar = { subTelaAtiva = SubTelaAtiva.ReportarErro }
                             )
                             DivisorConfig()
                             ItemConfigLinha(
-                                titulo = "Solicitar recurso",
+                                titulo = "Propor nova funcionalidade",
                                 aoClicar = { subTelaAtiva = SubTelaAtiva.SolicitarRecurso }
                             )
                             DivisorConfig()
                             ItemConfigLinha(
-                                titulo = "Pesquisa",
+                                titulo = "Central da comunidade e ideias",
                                 aoClicar = { subTelaAtiva = SubTelaAtiva.Pesquisa }
                             )
                             DivisorConfig()
                             ItemConfigLinha(
-                                titulo = "Entrar no Discord",
+                                titulo = "Comunidade Oficial Discord",
                                 aoClicar = { dialogoAberto = DialogoConfig.Comunidade }
                             )
                         }
@@ -332,12 +332,12 @@ fun ConfiguracoesTela(vm: AppViewModel) {
                             )
                             DivisorConfig()
                             ItemConfigLinha(
-                                titulo = "Sobre",
+                                titulo = "Sobre o LivennIA",
                                 aoClicar = { subTelaAtiva = SubTelaAtiva.Sobre }
                             )
                             DivisorConfig()
                             ItemConfigLinha(
-                                titulo = "Diagnóstico de rede",
+                                titulo = "Diagnóstico de conexão",
                                 aoClicar = { subTelaAtiva = SubTelaAtiva.DiagnosticoRede }
                             )
                             DivisorConfig()
