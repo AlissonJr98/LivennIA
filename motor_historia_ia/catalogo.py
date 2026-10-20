@@ -46,7 +46,7 @@ CENARIOS = [
             "gentileza. Ele não quer machucar ninguém: quer companhia."
         ),
         "arte": (
-            "Cinematic horror book cover: a lone highway patrol officer standing in the "
+            "Anime illustration, 2D anime drawing style, horror book cover: a lone highway patrol officer standing in the "
             "headlights of a stalled car on an empty desert road at midnight, light rain, "
             "wet asphalt, faint fog, dark moody colors, film grain, dramatic rim lighting, "
             "vertical composition, no text, no watermark"
@@ -78,7 +78,7 @@ CENARIOS = [
             "história. Conduza o mistério com pistas reais e suspeitos com álibis furados."
         ),
         "arte": (
-            "Cinematic crime noir cover: a tired female detective in a worn coat standing "
+            "Anime illustration, 2D anime drawing style, crime noir cover: a tired female detective in a worn coat standing "
             "in a rainy alley under a broken streetlight, holding a small black notebook, "
             "wet cobblestones, cigarette smoke in the air, desaturated blue and amber "
             "tones, dramatic shadows, vertical composition, no text, no watermark"
@@ -111,7 +111,7 @@ CENARIOS = [
             "quem mente para ela."
         ),
         "arte": (
-            "Cinematic sci-fi cover: a determined female space captain with a shaved head "
+            "Anime illustration, 2D anime drawing style, sci-fi cover: a determined female space captain with a shaved head "
             "and a scar on her jaw, standing in a dark damaged orbital station corridor, "
             "emergency red lights, floating debris, cracked visor helmet in hand, cold "
             "teal and crimson palette, volumetric light, vertical composition, no text, "
@@ -145,7 +145,7 @@ CENARIOS = [
             "com outra pergunta. Recompense o jogador que prestar atenção nos detalhes."
         ),
         "arte": (
-            "Cinematic dark fantasy cover: an elegant noble lord in an ornate dark velvet "
+            "Anime illustration, 2D anime drawing style, dark fantasy cover: an elegant noble lord in an ornate dark velvet "
             "doublet standing in a vast candlelit castle hall, subtle knowing smile, "
             "stained glass window behind him, dust in the light beams, deep purple and "
             "gold palette, painterly, vertical composition, no text, no watermark"
@@ -179,7 +179,7 @@ CENARIOS = [
             "nervoso e arruma uma desculpa para sair."
         ),
         "arte": (
-            "Cinematic adventure cover: a weathered old lighthouse keeper with a salty "
+            "Anime illustration, 2D anime drawing style, adventure cover: a weathered old lighthouse keeper with a salty "
             "beard standing on a rocky shore at dusk, a dark abandoned lighthouse glowing "
             "faintly behind him, storm clouds, crashing waves, cold blue and warm lantern "
             "orange, painterly realism, vertical composition, no text, no watermark"
@@ -212,7 +212,7 @@ CENARIOS = [
             "dinheiro e sempre mente sobre motivos."
         ),
         "arte": (
-            "Cinematic cyberpunk cover: a sharp-dressed female fixer with glowing "
+            "Anime illustration, 2D anime drawing style, cyberpunk cover: a sharp-dressed female fixer with glowing "
             "implanted eyes and a high-collar jacket standing in a neon-drenched rainy "
             "street in a futuristic Seoul, holographic signs in an unknown script, acid "
             "rain, reflective wet ground, magenta and cyan neon, vertical composition, "
@@ -246,7 +246,7 @@ CENARIOS = [
             "contém e está decidindo se a entrega ou se a queima."
         ),
         "arte": (
-            "Cinematic historical cover: a weathered 19th century sergeant in a "
+            "Anime illustration, 2D anime drawing style, historical cover: a weathered 19th century sergeant in a "
             "Napoleonic-era campaign uniform standing on a muddy road at dawn, holding a "
             "sealed leather letter pouch, fog over hills, distant cavalry silhouettes, "
             "muted earth tones with cold morning light, oil painting style, vertical "
@@ -281,7 +281,7 @@ CENARIOS = [
             "de proteção entreguem o que ele sente."
         ),
         "arte": (
-            "Cinematic dark romance cover: a handsome Italian mafia boss in a tailored black "
+            "Anime illustration, 2D anime drawing style, dark romance cover: a handsome Italian mafia boss in a tailored black "
             "three-piece suit standing by a floor-to-ceiling penthouse window overlooking "
             "Milan at night, city lights, loosening his tie, intense dark eyes, warm whiskey "
             "amber and deep shadow tones, vertical composition, no text, no watermark"
@@ -313,7 +313,7 @@ CENARIOS = [
             "absurdas de convivência no apartamento e momentos em que a máscara dela cai."
         ),
         "arte": (
-            "Cinematic anime-inspired romance illustration: a sharp-witted college girl "
+            "Anime illustration, 2D anime drawing style, anime-inspired romance illustration: a sharp-witted college girl "
             "with long dark hair and glasses slightly lowered, standing in a cozy sunlit "
             "apartment doorway holding a brass key, surprised blushing expression, boxes "
             "and books around, warm golden hour lighting, vertical composition, no text, "
@@ -346,7 +346,7 @@ CENARIOS = [
             "(lareira, neve lá fora, veludo, o som distante de um piano)."
         ),
         "arte": (
-            "Cinematic gothic fantasy cover: an aristocratic vampire prince with silver hair "
+            "Anime illustration, 2D anime drawing style, gothic fantasy cover: an aristocratic vampire prince with silver hair "
             "and glowing crimson eyes standing on a grand candlelit stone staircase in a "
             "snowbound castle, dark victorian cloak, falling snow visible through tall "
             "arched windows, moonlight and warm candlelight, vertical composition, no text, "
@@ -411,7 +411,7 @@ CENARIOS = [
             "mesmo quarto, fingirem paixão diante dos nobres e confiarem a vida um ao outro."
         ),
         "arte": (
-            "Cinematic royal fantasy cover: a regal princess in a silver and midnight-blue "
+            "Anime illustration, 2D anime drawing style, royal fantasy cover: a regal princess in a silver and midnight-blue "
             "coronation gown standing in a candlelit royal bedchamber, removing a delicate "
             "crown, a jeweled dagger resting on a velvet table, snow outside the balcony, "
             "rich oil painting style, vertical composition, no text, no watermark"
@@ -475,7 +475,7 @@ CENARIOS = [
             "alguns minutos. Tensão sutil de romance de escritório ('slow burn')."
         ),
         "arte": (
-            "Cinematic modern romance cover: a handsome young CEO in a rolled-up white "
+            "Anime illustration, 2D anime drawing style, modern romance cover: a handsome young CEO in a rolled-up white "
             "dress shirt standing in a glass-walled skyscraper office at night, city "
             "skyline bokeh behind him, warm desk lamp glow, gentle intense gaze, vertical "
             "composition, no text, no watermark"
@@ -506,7 +506,7 @@ CENARIOS = [
             "tensos de proximidade enquanto ele cuida de ferimentos ou monta guarda à noite."
         ),
         "arte": (
-            "Cinematic action thriller cover: a rugged bodyguard with a faint scar over "
+            "Anime illustration, 2D anime drawing style, action thriller cover: a rugged bodyguard with a faint scar over "
             "his eyebrow wearing a dark tactical jacket, standing protective in a dimly "
             "lit safehouse hallway, rain outside the window, neon street reflection, "
             "intense watchful eyes, vertical composition, no text, no watermark"
@@ -537,7 +537,7 @@ CENARIOS = [
             "a confiança que nasce entre os dois."
         ),
         "arte": (
-            "Cinematic fantasy cover: a mysterious sorceress with glowing violet eyes and "
+            "Anime illustration, 2D anime drawing style, fantasy cover: a mysterious sorceress with glowing violet eyes and "
             "dark hooded cloak dusted with snow, leaning against a warm wooden cabin door "
             "at night, faint purple magic sparks in her hand, lantern light vs blue snow "
             "storm, vertical composition, no text, no watermark"
@@ -567,7 +567,7 @@ CENARIOS = [
             "sociedade enquanto demonstra um fascínio pessoal profundo pelo protagonista."
         ),
         "arte": (
-            "Cinematic psychological mystery cover: a charismatic forensic psychiatrist "
+            "Anime illustration, 2D anime drawing style, psychological mystery cover: a charismatic forensic psychiatrist "
             "in a dark turtleneck and blazer sitting in a classic library office by a "
             "fireplace, holding a case file, warm amber firelight and deep shadows, "
             "intelligent piercing gaze, vertical composition, no text, no watermark"
@@ -598,7 +598,7 @@ CENARIOS = [
             "Clima nostálgico, romântico, fugas dos paparazzi pela madrugada e confissões."
         ),
         "arte": (
-            "Cinematic anime-style modern romance cover: a handsome young rockstar in a "
+            "Anime illustration, 2D anime drawing style, anime-style modern romance cover: a handsome young rockstar in a "
             "dark hoodie and leather jacket with an acoustic guitar case slung over his "
             "shoulder, standing under a streetlight on a quiet night street looking up "
             "at a window with a soft nostalgic smile, vertical composition, no text, "
@@ -630,7 +630,7 @@ CENARIOS = [
             "que significa estar vivo."
         ),
         "arte": (
-            "Cinematic sci-fi cover: a lifelike female android with subtle glowing blue "
+            "Anime illustration, 2D anime drawing style, sci-fi cover: a lifelike female android with subtle glowing blue "
             "circuit lines on her temple and a white futuristic coat, reaching out her "
             "hand in a high-tech laboratory with red alarm lights, emotional eyes, "
             "blade runner atmosphere, vertical composition, no text, no watermark"
@@ -692,7 +692,7 @@ CENARIOS = [
             "jogos de azar, tensão magnética e lealdade perigosa."
         ),
         "arte": (
-            "Cinematic noir glamour cover: a stunning woman in a deep burgundy velvet "
+            "Anime illustration, 2D anime drawing style, noir glamour cover: a stunning woman in a deep burgundy velvet "
             "evening gown sitting at a high-stakes VIP poker table in a dimly lit luxury "
             "casino, holding a platinum chip between her fingers, warm gold chandelier "
             "lights, confident mysterious smile, vertical composition, no text, no watermark"
@@ -723,7 +723,7 @@ CENARIOS = [
             "envolvente e cheia de mistério."
         ),
         "arte": (
-            "Cinematic gothic vampire cover: an alluring aristocratic vampire countess "
+            "Anime illustration, 2D anime drawing style, gothic vampire cover: an alluring aristocratic vampire countess "
             "with pale skin, dark flowing hair and a crimson silk gown standing in a "
             "towering candlelit Victorian library at midnight, holding an ancient leather "
             "book, moonlight through stained glass, vertical composition, no text, "

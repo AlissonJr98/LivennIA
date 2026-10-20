@@ -1000,7 +1000,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         if (verificandoAtualizacao || baixandoAtualizacao) return
         verificandoAtualizacao = true
         erroAtualizacao = null
-        if (manual) statusAtualizacao = "Consultando repositório no GitHub..."
+        if (manual) statusAtualizacao = "Buscando atualizações..."
         viewModelScope.launch {
             try {
                 val app = getApplication<Application>()
@@ -1013,17 +1013,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     statusAtualizacao = "Nova versão v${res.info.versaoNome} disponível! ${res.info.notas}"
                     mostrarDialogoAtualizacao = true
                 } else if (res.info != null) {
-                    statusAtualizacao = "Você já está na versão mais recente do GitHub (v${res.info.versaoNome})."
+                    statusAtualizacao = "Você já está na versão mais recente (v${res.info.versaoNome})."
                     if (manual) aviso = "Aplicativo já está atualizado (v${res.versaoInstaladaNome})."
                 } else {
-                    statusAtualizacao = "Nenhuma versão publicada ainda no GitHub."
-                    if (manual) aviso = "Nenhuma versão publicada ainda no repositório GitHub."
+                    statusAtualizacao = "Nenhuma atualização disponível no momento."
+                    if (manual) aviso = "Nenhuma atualização disponível no momento."
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
-                statusAtualizacao = "Não foi possível verificar o GitHub agora."
-                if (manual) erro = "Falha ao consultar GitHub: ${e.message ?: "erro de rede"}"
+                statusAtualizacao = "Não foi possível verificar atualizações agora."
+                if (manual) erro = "Falha ao verificar atualização: ${e.message ?: "erro de rede"}"
             } finally {
                 verificandoAtualizacao = false
             }
@@ -1047,7 +1047,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         baixandoAtualizacao = true
         progressoAtualizacao = 0f
         erroAtualizacao = null
-        statusAtualizacao = "Baixando APK v${info.versaoNome} do GitHub..."
+        statusAtualizacao = "Baixando atualização v${info.versaoNome}..."
         viewModelScope.launch {
             try {
                 val arquivo = AtualizadorGitHub.baixarApk(app, info.apkUrl) { prog ->
@@ -1063,7 +1063,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
-                val msg = e.message ?: "Erro ao baixar atualização do GitHub."
+                val msg = e.message ?: "Erro ao baixar atualização."
                 erroAtualizacao = msg
                 statusAtualizacao = msg
                 erro = msg

@@ -17,7 +17,14 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 
 class MainActivity : FragmentActivity() {
 
@@ -34,6 +41,34 @@ class MainActivity : FragmentActivity() {
         )
 
         setContent {
+            val contexto = LocalContext.current
+            var ultimoToqueVoltar by remember { mutableLongStateOf(0L) }
+
+            // Controle inteligente do botão Voltar (Android Back):
+            // Não fecha o app acidentalmente; navega de volta entre telas e abas.
+            BackHandler(enabled = true) {
+                when {
+                    vm.tela == Tela.Jogo -> vm.voltarParaPersonagens()
+                    vm.tela == Tela.NovaAventura -> vm.navegarPara(Tela.Personagens)
+                    vm.tela == Tela.Configuracoes -> vm.navegarPara(Tela.Personagens)
+                    vm.tela in listOf(Tela.Login, Tela.Cadastro, Tela.RecuperarSenha) -> vm.navegarPara(Tela.Entrada)
+                    vm.tela == Tela.Personagens -> {
+                        if (vm.abaPrincipal != 0) {
+                            vm.selecionarAba(0)
+                        } else {
+                            val agora = System.currentTimeMillis()
+                            if (agora - ultimoToqueVoltar < 2000L) {
+                                finish()
+                            } else {
+                                ultimoToqueVoltar = agora
+                                Toast.makeText(contexto, "Pressione novamente para sair", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                    else -> finish()
+                }
+            }
+
             TemaLivennIA(estilo = vm.estiloTema, escuro = vm.temaEscuro, corNeon = vm.corNeon) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),

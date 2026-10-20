@@ -243,7 +243,7 @@ object AtualizadorGitHub {
 
         http.newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) {
-                throw IllegalStateException("Não foi possível baixar o APK no GitHub (HTTP ${resp.code}).")
+                throw IllegalStateException("Não foi possível baixar o arquivo de atualização (HTTP ${resp.code}).")
             }
             val body = resp.body ?: throw IllegalStateException("Resposta vazia ao baixar o APK.")
             val total = body.contentLength()
@@ -267,7 +267,7 @@ object AtualizadorGitHub {
         // Verifica se é realmente um arquivo APK (ZIP começa com 'P' 'K')
         if (destino.length() < 50_000L) {
             destino.delete()
-            throw IllegalStateException("O arquivo baixado do GitHub é inválido ou ainda não foi publicado.")
+            throw IllegalStateException("O arquivo de atualização é inválido ou ainda não foi publicado.")
         }
         val cabecalho = destino.inputStream().use {
             val b = ByteArray(2)
@@ -351,9 +351,9 @@ fun DialogoAtualizacaoGitHub(
                     Text("🚀", style = MaterialTheme.typography.headlineMedium)
                     Spacer(Modifier.width(10.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Atualização via GitHub", style = MaterialTheme.typography.titleLarge)
+                        Text("Atualização do LivennIA", style = MaterialTheme.typography.titleLarge)
                         Text(
-                            "Instalada: v$versaoInstalada  →  GitHub: v${info.versaoNome}",
+                            "Instalada: v$versaoInstalada  •  Disponível: v${info.versaoNome}",
                             color = Ouro,
                             style = MaterialTheme.typography.labelMedium
                         )
@@ -384,7 +384,7 @@ fun DialogoAtualizacaoGitHub(
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         val pct = (progresso * 100).toInt()
                         Text(
-                            "Baixando atualização do GitHub... $pct%",
+                            "Baixando atualização... $pct%",
                             color = Ouro,
                             style = MaterialTheme.typography.labelMedium
                         )
@@ -414,7 +414,7 @@ fun DialogoAtualizacaoGitHub(
                         when {
                             baixando -> "Baixando APK..."
                             apkPronto -> "📦 Instalar atualização agora"
-                            else -> "⬇ Baixar e atualizar pelo GitHub"
+                            else -> "⬇ Baixar e atualizar"
                         }
                     )
                 }
@@ -449,14 +449,14 @@ fun CardAtualizacaoGitHub(vm: AppViewModel) {
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Atualização do App (GitHub)", style = MaterialTheme.typography.titleMedium)
+                    Text("Atualização do Aplicativo", style = MaterialTheme.typography.titleMedium)
                     Text(
                         "Versão instalada: v${vm.versaoInstaladaNome} (build ${vm.versaoInstaladaCodigo})",
                         color = TextoSuave,
                         style = MaterialTheme.typography.labelSmall
                     )
                     Text(
-                        "Repositório: github.com/${AtualizadorGitHub.DONO_REPO}/${AtualizadorGitHub.NOME_REPO}",
+                        "Canal oficial de atualizações LivennIA",
                         color = Ouro.copy(alpha = 0.85f),
                         style = MaterialTheme.typography.labelSmall
                     )
@@ -499,7 +499,7 @@ fun CardAtualizacaoGitHub(vm: AppViewModel) {
                         Spacer(Modifier.width(6.dp))
                         Text("Buscando...")
                     } else {
-                        Text("🔄 Verificar no GitHub")
+                        Text("🔄 Buscar atualizações")
                     }
                 }
 

@@ -41,4 +41,6 @@ venv/
 *.sqlite3
 motor_historia_ia/dados/*
 !motor_historia_ia/dados/palavras_sensiveis.json
+!motor_historia_ia/dados/capas/
+!motor_historia_ia/dados/capas/**
 motor_historia_ia/saves/
