@@ -36,6 +36,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -554,24 +556,34 @@ private fun ItemSobreLinha(
 }
 
 // -------------------------------------------------------------
-// 3. FÓRUM INTERATIVO DA COMUNIDADE & FEEDBACK (Imagens 1, 3 e 4)
+// 3. FÓRUM INTERATIVO DA COMUNIDADE & FEEDBACK
 // -------------------------------------------------------------
 data class ComentarioItem(
-    val autor: String,
+    val id: String = java.util.UUID.randomUUID().toString(),
+    var autor: String,
     val data: String,
-    val texto: String
+    var texto: String,
+    val ehMeu: Boolean = false
 )
 
 data class PostSugestaoItem(
     val id: String,
-    val titulo: String,
-    val descricao: String,
-    var votos: Int,
-    var votado: Boolean,
-    val status: String,
-    val categoria: String,
-    val data: String,
-    val comentarios: MutableList<ComentarioItem>
+    var titulo: String,
+    var descricao: String,
+    var votos: Int = 1,
+    var votado: Boolean = false,
+    var likes: Int = 0,
+    var curtiu: Boolean = false,
+    var amei: Int = 0,
+    var amou: Boolean = false,
+    var fogo: Int = 0,
+    var fogou: Boolean = false,
+    var status: String = "💡 Em Avaliação",
+    var categoria: String = "Novos Recursos",
+    val data: String = "Hoje",
+    var autor: String = "Criador",
+    val ehMeu: Boolean = false,
+    val comentarios: MutableList<ComentarioItem> = mutableListOf()
 )
 
 @Composable
@@ -582,6 +594,8 @@ fun SubTelaPesquisa(
 ) {
     BackHandler { onVoltar() }
     val contexto = LocalContext.current
+    val meuApelido = vm.apelido.ifBlank { "Criador" }
+
     var abaSelecionada by rememberSaveable { mutableStateOf("Ideias") }
     var filtroSelecionado by rememberSaveable { mutableStateOf("Destaque") }
     var buscaQuery by rememberSaveable { mutableStateOf("") }
@@ -591,98 +605,24 @@ fun SubTelaPesquisa(
     // Diálogos de interação
     var postSelecionado by remember { mutableStateOf<PostSugestaoItem?>(null) }
     var modalNovaIdeia by remember { mutableStateOf(false) }
+    var postEmEdicao by remember { mutableStateOf<PostSugestaoItem?>(null) }
+    var postParaExcluir by remember { mutableStateOf<PostSugestaoItem?>(null) }
+    var comentarioEmEdicao by remember { mutableStateOf<Pair<PostSugestaoItem, ComentarioItem>?>(null) }
 
-    // Lista viva de ideias da comunidade
-    val posts = remember {
-        mutableStateListOf(
-            PostSugestaoItem(
-                id = "1",
-                titulo = "Modo Adulto e Sem Censura para RPG e Histórias",
-                descricao = "Chave de conteúdo maduro para narrativas profundas e sem restrições em diálogos românticos ou de combate...",
-                votos = 56820,
-                votado = false,
-                status = "💡 Em Avaliação",
-                categoria = "Novos Recursos",
-                data = "Dez 08",
-                comentarios = mutableListOf(
-                    ComentarioItem("Victor M.", "Dez 09", "Excelente proposta! Essencial para autores de ficção madura."),
-                    ComentarioItem("Clara Luz", "Dez 10", "Concordo plenamente, desde que seja opcional nas configurações.")
-                )
-            ),
-            PostSugestaoItem(
-                id = "2",
-                titulo = "Memória Infinita de Personagens em Longas Campanhas",
-                descricao = "Capacidade da IA de lembrar de juramentos, laços e eventos marcantes mesmo após muitos capítulos...",
-                votos = 25140,
-                votado = false,
-                status = "💡 Em Avaliação",
-                categoria = "Melhorias de IA",
-                data = "Dez 13",
-                comentarios = mutableListOf(
-                    ComentarioItem("Renan", "Dez 14", "Isso mudaria completamente minhas sessões de RPG de mesa!")
-                )
-            ),
-            PostSugestaoItem(
-                id = "3",
-                titulo = "Vozes e Sotaques Distintos para cada Personagem",
-                descricao = "Reprodução de falas de NPCs com tons dramáticos, entonações de suspense e sotaques regionais...",
-                votos = 16980,
-                votado = false,
-                status = "🎯 Planejado",
-                categoria = "Novos Recursos",
-                data = "Dez 22",
-                comentarios = mutableListOf(
-                    ComentarioItem("Mestre André", "Dez 23", "Poder ouvir as falas do vilão com voz sombria seria sensacional.")
-                )
-            ),
-            PostSugestaoItem(
-                id = "4",
-                titulo = "Grupos e Histórias com Vários Personagens Simultâneos",
-                descricao = "Salas onde mais de um personagem de IA conversa e reage às ações do jogador de forma orgânica...",
-                votos = 12890,
-                votado = false,
-                status = "🛠️ Em Desenvolvimento",
-                categoria = "Novos Recursos",
-                data = "Dez 19",
-                comentarios = mutableListOf(
-                    ComentarioItem("Beatriz", "Dez 20", "Já estou imaginando um grupo de aventureiros completo interagindo.")
-                )
-            ),
-            PostSugestaoItem(
-                id = "5",
-                titulo = "Salvar e Exportar Histórias em Livro Digital (PDF/EPUB)",
-                descricao = "Gerar documento formatado com as ilustrações geradas para guardar ou imprimir suas aventuras...",
-                votos = 7430,
-                votado = false,
-                status = "🎯 Planejado",
-                categoria = "Novos Recursos",
-                data = "Dez 12",
-                comentarios = mutableListOf()
-            ),
-            PostSugestaoItem(
-                id = "6",
-                titulo = "Rolagem Fluida do Chat com Margem Inferior",
-                descricao = "Acompanhamento automático das mensagens enquanto a IA digita, sem necessidade de rolar manualmente...",
-                votos = 6120,
-                votado = true,
-                status = "✨ Já no App!",
-                categoria = "Bugs & Ajustes",
-                data = "Ontem",
-                comentarios = mutableListOf(
-                    ComentarioItem("Equipe LivennIA", "Hoje", "Implementado na versão v1.3.4!")
-                )
-            )
-        )
-    }
+    // Começa vazio, conforme solicitado para a comunidade ir preenchendo
+    val posts = remember { mutableStateListOf<PostSugestaoItem>() }
 
-    // Itens filtrados
+    // Itens filtrados e ordenados em ordem
     val postsFiltrados = posts.filter { p ->
-        val combinaBusca = buscaQuery.isBlank() || p.titulo.contains(buscaQuery, ignoreCase = true) || p.descricao.contains(buscaQuery, ignoreCase = true)
+        val combinaBusca = buscaQuery.isBlank() ||
+                p.titulo.contains(buscaQuery, ignoreCase = true) ||
+                p.descricao.contains(buscaQuery, ignoreCase = true)
         val combinaCategoria = categoriaFiltro == "Todas" || p.categoria == categoriaFiltro
         combinaBusca && combinaCategoria
     }.let { list ->
         when (filtroSelecionado) {
-            "Recentes" -> list.reversed()
+            "Recentes" -> list.sortedByDescending { it.id.toLongOrNull() ?: 0L }
+            "Amei" -> list.sortedByDescending { it.amei + it.likes }
             "Concluidas" -> list.filter { it.status.contains("Já no App") }
             else -> list.sortedByDescending { it.votos }
         }
@@ -725,15 +665,16 @@ fun SubTelaPesquisa(
                 }
             }
 
-            // Abas Superiores
+            // Abas Superiores (com rolagem horizontal evitando quebra de linha de 'Atualizações')
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 AbaPillLivenn(
-                    titulo = "💡 Ideias & Sugestões",
+                    titulo = "💡 Sugestões",
                     selecionado = abaSelecionada == "Ideias",
                     aoClicar = { abaSelecionada = "Ideias" }
                 )
@@ -784,7 +725,7 @@ fun SubTelaPesquisa(
                                 modifier = Modifier.weight(1f),
                                 decorationBox = { innerTextField ->
                                     if (buscaQuery.isEmpty()) {
-                                        Text("Buscar ideias, mecânicas ou bugs...", color = TextoMudo, fontSize = 13.sp)
+                                        Text("Buscar propostas, mecânicas ou bugs...", color = TextoMudo, fontSize = 13.sp)
                                     }
                                     innerTextField()
                                 }
@@ -804,7 +745,7 @@ fun SubTelaPesquisa(
 
                     Spacer(Modifier.height(10.dp))
 
-                    // Linha com Botão "+ Nova Sugestão" e Filtros
+                    // Linha com Botão '+ Propor Ideia' e Filtro de Categoria
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -873,17 +814,25 @@ fun SubTelaPesquisa(
 
                     Spacer(Modifier.height(8.dp))
 
-                    // Filtros rápidos
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    // Filtros rápidos em ordem
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
                         FiltroPillLivenn(
-                            titulo = "🔥 Mais Populares",
+                            titulo = "🔥 Mais Votados",
                             selecionado = filtroSelecionado == "Destaque",
                             aoClicar = { filtroSelecionado = "Destaque" }
                         )
                         FiltroPillLivenn(
-                            titulo = "⚡ Mais Recentes",
+                            titulo = "⚡ Recentes",
                             selecionado = filtroSelecionado == "Recentes",
                             aoClicar = { filtroSelecionado = "Recentes" }
+                        )
+                        FiltroPillLivenn(
+                            titulo = "❤️ Mais Amados",
+                            selecionado = filtroSelecionado == "Amei",
+                            aoClicar = { filtroSelecionado = "Amei" }
                         )
                         FiltroPillLivenn(
                             titulo = "✨ Já no App",
@@ -893,25 +842,97 @@ fun SubTelaPesquisa(
                     }
                 }
 
-                // Lista de Ideias com Apoio e Abertura de Discussão
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(postsFiltrados, key = { it.id }) { post ->
-                        CardPostLivenn(
-                            item = post,
-                            onVotar = {
-                                post.votado = !post.votado
-                                if (post.votado) post.votos++ else post.votos--
-                            },
-                            aoClicar = { postSelecionado = post }
-                        )
+                // Lista de Propostas ou Estado Vazio quando não há nada ainda
+                if (postsFiltrados.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Surface(
+                            color = CardObsidian,
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, CardObsidianBorda),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(60.dp)
+                                        .background(DouradoLivenn.copy(alpha = 0.12f), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("💡", fontSize = 28.sp)
+                                }
+                                Spacer(Modifier.height(14.dp))
+                                Text(
+                                    text = if (buscaQuery.isNotEmpty()) "Nenhuma proposta encontrada" else "Nenhuma proposta ainda",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextoClaro
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    text = if (buscaQuery.isNotEmpty())
+                                        "Tente buscar por outras palavras ou limpe os filtros."
+                                    else
+                                        "A central da comunidade está pronta! Seja o primeiro a propor uma ideia ou sugestão de melhoria para o LivennIA.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextoSecundario,
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(Modifier.height(16.dp))
+                                Button(
+                                    onClick = { modalNovaIdeia = true },
+                                    colors = ButtonDefaults.buttonColors(containerColor = DouradoBotao),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Propor Primeira Ideia", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                }
+                            }
+                        }
                     }
-                    item {
-                        Spacer(Modifier.height(24.dp))
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(postsFiltrados, key = { it.id }) { post ->
+                            CardPostLivenn(
+                                item = post,
+                                meuApelido = meuApelido,
+                                onVotar = {
+                                    post.votado = !post.votado
+                                    if (post.votado) post.votos++ else post.votos--
+                                },
+                                onAmei = {
+                                    post.amou = !post.amou
+                                    if (post.amou) post.amei++ else post.amei--
+                                },
+                                onLike = {
+                                    post.curtiu = !post.curtiu
+                                    if (post.curtiu) post.likes++ else post.likes--
+                                },
+                                onFogo = {
+                                    post.fogou = !post.fogou
+                                    if (post.fogou) post.fogo++ else post.fogo--
+                                },
+                                onEditar = { postEmEdicao = post },
+                                onExcluir = { postParaExcluir = post },
+                                aoClicar = { postSelecionado = post }
+                            )
+                        }
+                        item {
+                            Spacer(Modifier.height(24.dp))
+                        }
                     }
                 }
             } else if (abaSelecionada == "Roadmap") {
@@ -979,27 +1000,26 @@ fun SubTelaPesquisa(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     CardChangelogCompleto(
-                        versao = "LivennIA v1.3.4 — Fórum Interativo, Modelos de IA e Navegação!",
+                        versao = "LivennIA v1.4.0 — Perfil Moderno, Fórum & Central da Comunidade!",
                         data = "Hoje • Outubro 2026",
                         tags = listOf("● Novo Recurso" to VerdeEstavel, "● Melhorias" to DouradoLivenn, "● Correções" to Color(0xFF64B5F6)),
-                        descricao = "Olá criadores! Acabamos de disponibilizar a versão v1.3.4 do LivennIA, trazendo grandes melhorias solicitadas pela comunidade para tornar a experiência de jogo e criação muito mais fluida e envolvente.",
+                        descricao = "Olá criadores! Lançamos a versão v1.4.0 do LivennIA, trazendo a nova Tela de Perfil e o Fórum Interativo de Feedback para construção comunitária do app.",
                         itens = listOf(
-                            "1. Fórum Interativo da Comunidade: Dê sugestões, vote nas melhores ideias dos autores e acompanhe o Roadmap em tempo real.",
-                            "2. Rolagem Automática no Chat: As mensagens agora acompanham a escrita da IA com margem de segurança na barra inferior.",
-                            "3. Modelos de IA Autênticos: Escolha entre Liven Flash, Liven Spark, Velvet, Amber e os modelos VIP Prime com estilos narrativos únicos.",
-                            "4. Abertura Direta na Vitrine: O app agora abre na aba Explorar para visualização de novos mundos."
+                            "1. Fórum Interativo da Comunidade: Envie propostas, vote, reaja com amei e like e acompanhe o Roadmap em tempo real.",
+                            "2. Gestão do Autor: Edite ou apague suas próprias propostas e comentários a qualquer momento.",
+                            "3. Tela de Perfil Redesenhada: Status de chats, nível, energia, planos VIP e caixa surpresa de aventuras.",
+                            "4. Rolagem Fluida e Navegação Direta: O app abre no Explorar e acompanha o texto da IA sem cortes."
                         )
                     )
 
                     CardChangelogCompleto(
-                        versao = "LivennIA v1.3.3 — Pôsteres Imersivos e Afinidade",
+                        versao = "LivennIA v1.3.4 — Modelos de IA e Diagnóstico de Rede",
                         data = "Outubro 2026",
                         tags = listOf("● Novo Recurso" to VerdeEstavel, "● Melhorias" to DouradoLivenn),
-                        descricao = "Nova vitrine com pôsteres dinâmicos e sistema de afinidade de relacionamentos nos cenários de RPG.",
+                        descricao = "Adição de novos modelos narrativos de IA e diagnóstico em tempo real de conexão e latência.",
                         itens = listOf(
-                            "1. Pôsteres de Alta Qualidade: Retratos imersivos para cada história.",
-                            "2. Sistema de Vínculo: Acompanhe como os personagens reagem às suas escolhas morais.",
-                            "3. Respostas Rápidas: Sugestões inteligentes de diálogo acima do teclado."
+                            "1. Seletor de Modelos de IA: Modelos Grátis com Anúncio, Modo Energia e VIP Prime.",
+                            "2. Diagnóstico de Rede: Verificação de DNS, IP, latência e conectividade com o servidor."
                         )
                     )
                 }
@@ -1031,6 +1051,7 @@ fun SubTelaPesquisa(
                     }
                     Spacer(Modifier.height(4.dp))
                     Text(post.titulo, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextoClaro)
+                    Text("Por ${post.autor}", style = MaterialTheme.typography.bodySmall, color = DouradoLivenn.copy(alpha = 0.8f), fontSize = 11.sp)
                 }
             },
             text = {
@@ -1042,10 +1063,32 @@ fun SubTelaPesquisa(
                 ) {
                     Text(post.descricao, style = MaterialTheme.typography.bodySmall, color = TextoSecundario)
 
+                    // Barra de Reações dentro da discussão
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        ChipReacaoPequeno(emoji = "❤️", contador = post.amei, ativo = post.amou, corAtiva = Color(0xFFFF4081)) {
+                            post.amou = !post.amou
+                            if (post.amou) post.amei++ else post.amei--
+                        }
+                        ChipReacaoPequeno(emoji = "👍", contador = post.likes, ativo = post.curtiu, corAtiva = DouradoLivenn) {
+                            post.curtiu = !post.curtiu
+                            if (post.curtiu) post.likes++ else post.likes--
+                        }
+                        ChipReacaoPequeno(emoji = "🔥", contador = post.fogo, ativo = post.fogou, corAtiva = Color(0xFFFFB74D)) {
+                            post.fogou = !post.fogou
+                            if (post.fogou) post.fogo++ else post.fogo--
+                        }
+                    }
+
                     HorizontalDivider(color = Color.White.copy(alpha = 0.06f))
 
                     Text(
-                        text = "Comentários da Comunidade (${post.comentarios.size})",
+                        text = "Comentários (${post.comentarios.size})",
                         fontWeight = FontWeight.Bold,
                         color = TextoClaro,
                         fontSize = 13.sp
@@ -1053,13 +1096,15 @@ fun SubTelaPesquisa(
 
                     if (post.comentarios.isEmpty()) {
                         Text(
-                            "Seja o primeiro a deixar uma opinião sobre esta ideia!",
+                            "Nenhum comentário ainda. Deixe sua opinião sobre esta ideia!",
                             color = TextoMudo,
                             fontSize = 12.sp,
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
                     } else {
                         post.comentarios.forEach { c ->
+                            val ehDonoComentario = c.ehMeu || c.autor == meuApelido
+
                             Surface(
                                 color = Color.White.copy(alpha = 0.03f),
                                 shape = RoundedCornerShape(8.dp),
@@ -1068,10 +1113,47 @@ fun SubTelaPesquisa(
                                 Column(modifier = Modifier.padding(10.dp)) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text(c.autor, fontWeight = FontWeight.Bold, color = DouradoLivenn, fontSize = 11.sp)
-                                        Text(c.data, color = TextoMudo, fontSize = 10.sp)
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(c.autor, fontWeight = FontWeight.Bold, color = DouradoLivenn, fontSize = 11.sp)
+                                            if (ehDonoComentario) {
+                                                Spacer(Modifier.width(4.dp))
+                                                Text("(Você)", color = TextoMudo, fontSize = 9.sp)
+                                            }
+                                        }
+
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(c.data, color = TextoMudo, fontSize = 10.sp)
+
+                                            // Opções do Dono do Comentário (Editar e Apagar)
+                                            if (ehDonoComentario) {
+                                                Spacer(Modifier.width(8.dp))
+                                                Icon(
+                                                    imageVector = Icons.Default.Edit,
+                                                    contentDescription = "Editar Comentário",
+                                                    tint = DouradoLivenn,
+                                                    modifier = Modifier
+                                                        .size(14.dp)
+                                                        .clickable {
+                                                            comentarioEmEdicao = Pair(post, c)
+                                                        }
+                                                )
+                                                Spacer(Modifier.width(8.dp))
+                                                Icon(
+                                                    imageVector = Icons.Default.Delete,
+                                                    contentDescription = "Apagar Comentário",
+                                                    tint = VermelhoSuave,
+                                                    modifier = Modifier
+                                                        .size(14.dp)
+                                                        .clickable {
+                                                            post.comentarios.remove(c)
+                                                            Toast.makeText(contexto, "Comentário apagado!", Toast.LENGTH_SHORT).show()
+                                                        }
+                                                )
+                                            }
+                                        }
                                     }
                                     Spacer(Modifier.height(4.dp))
                                     Text(c.texto, color = TextoClaro, fontSize = 12.sp)
@@ -1082,7 +1164,7 @@ fun SubTelaPesquisa(
 
                     Spacer(Modifier.height(8.dp))
 
-                    // Caixa de Novo Comentário
+                    // Caixa de Envio de Novo Comentário
                     Surface(
                         color = CardObsidian,
                         shape = RoundedCornerShape(10.dp),
@@ -1099,21 +1181,23 @@ fun SubTelaPesquisa(
                                 textStyle = TextStyle(color = TextoClaro, fontSize = 12.sp),
                                 cursorBrush = SolidColor(DouradoLivenn),
                                 modifier = Modifier.weight(1f),
-                                decorationBox = { inner ->
+                                decorationBox = { innerTextField ->
                                     if (novoComentario.isEmpty()) {
-                                        Text("Escreva seu comentário...", color = TextoMudo, fontSize = 12.sp)
+                                        Text("Escreva sua opinião...", color = TextoMudo, fontSize = 12.sp)
                                     }
-                                    inner()
+                                    innerTextField()
                                 }
                             )
+
                             IconButton(
                                 onClick = {
                                     if (novoComentario.isNotBlank()) {
                                         post.comentarios.add(
                                             ComentarioItem(
-                                                autor = vm.apelido.ifBlank { "Autor LivennIA" },
-                                                data = "Agora",
-                                                texto = novoComentario.trim()
+                                                autor = meuApelido,
+                                                data = "Hoje",
+                                                texto = novoComentario.trim(),
+                                                ehMeu = true
                                             )
                                         )
                                         novoComentario = ""
@@ -1193,6 +1277,8 @@ fun SubTelaPesquisa(
                                     status = "💡 Em Avaliação",
                                     categoria = categoriaSelecionada,
                                     data = "Hoje",
+                                    autor = meuApelido,
+                                    ehMeu = true,
                                     comentarios = mutableListOf()
                                 )
                             )
@@ -1214,14 +1300,162 @@ fun SubTelaPesquisa(
             containerColor = CardObsidian
         )
     }
+
+    // MODAL: EDITAR POST (DONO)
+    if (postEmEdicao != null) {
+        val post = postEmEdicao!!
+        var tituloEditado by remember(post.id) { mutableStateOf(post.titulo) }
+        var descEditada by remember(post.id) { mutableStateOf(post.descricao) }
+
+        AlertDialog(
+            onDismissRequest = { postEmEdicao = null },
+            title = {
+                Text("Editar Proposta", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextoClaro)
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .verticalScroll(rememberScrollState())
+                        .height(280.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text("Título da proposta:", color = TextoSecundario, fontSize = 12.sp)
+                    CampoTextoObsidian(
+                        valor = tituloEditado,
+                        onValorChange = { tituloEditado = it },
+                        placeholder = "Título...",
+                        linhas = 1
+                    )
+
+                    Text("Descrição detalhada:", color = TextoSecundario, fontSize = 12.sp)
+                    CampoTextoObsidian(
+                        valor = descEditada,
+                        onValorChange = { descEditada = it },
+                        placeholder = "Descrição...",
+                        linhas = 4
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (tituloEditado.isNotBlank()) {
+                            post.titulo = tituloEditado.trim()
+                            post.descricao = descEditada.trim()
+                            postEmEdicao = null
+                            Toast.makeText(contexto, "Proposta atualizada!", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    enabled = tituloEditado.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(containerColor = DouradoBotao)
+                ) {
+                    Text("Salvar Alterações", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { postEmEdicao = null }) {
+                    Text("Cancelar", color = TextoSecundario)
+                }
+            },
+            containerColor = CardObsidian
+        )
+    }
+
+    // MODAL: CONFIRMAR EXCLUSÃO DO POST (DONO)
+    if (postParaExcluir != null) {
+        val post = postParaExcluir!!
+        AlertDialog(
+            onDismissRequest = { postParaExcluir = null },
+            title = {
+                Text("Excluir Proposta?", color = TextoClaro, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Text(
+                    "Deseja realmente apagar '${post.titulo}'? Todas as reações e comentários também serão removidos.",
+                    color = TextoSecundario,
+                    fontSize = 13.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        posts.remove(post)
+                        if (postSelecionado?.id == post.id) {
+                            postSelecionado = null
+                        }
+                        postParaExcluir = null
+                        Toast.makeText(contexto, "Proposta excluída com sucesso!", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = VermelhoSuave)
+                ) {
+                    Text("Excluir", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { postParaExcluir = null }) {
+                    Text("Cancelar", color = TextoSecundario)
+                }
+            },
+            containerColor = CardObsidian
+        )
+    }
+
+    // MODAL: EDITAR COMENTÁRIO (DONO)
+    if (comentarioEmEdicao != null) {
+        val (_, cAlvo) = comentarioEmEdicao!!
+        var textoEditado by remember(cAlvo.id) { mutableStateOf(cAlvo.texto) }
+
+        AlertDialog(
+            onDismissRequest = { comentarioEmEdicao = null },
+            title = {
+                Text("Editar Comentário", color = TextoClaro, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            },
+            text = {
+                CampoTextoObsidian(
+                    valor = textoEditado,
+                    onValorChange = { textoEditado = it },
+                    placeholder = "Edite sua resposta...",
+                    linhas = 3
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (textoEditado.isNotBlank()) {
+                            cAlvo.texto = textoEditado.trim()
+                            comentarioEmEdicao = null
+                            Toast.makeText(contexto, "Comentário atualizado!", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = DouradoBotao)
+                ) {
+                    Text("Salvar", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { comentarioEmEdicao = null }) {
+                    Text("Cancelar", color = TextoSecundario)
+                }
+            },
+            containerColor = CardObsidian
+        )
+    }
 }
 
 @Composable
 private fun CardPostLivenn(
     item: PostSugestaoItem,
+    meuApelido: String,
     onVotar: () -> Unit,
+    onAmei: () -> Unit,
+    onLike: () -> Unit,
+    onFogo: () -> Unit,
+    onEditar: () -> Unit,
+    onExcluir: () -> Unit,
     aoClicar: () -> Unit
 ) {
+    val ehDono = item.ehMeu || item.autor == meuApelido
+
     Surface(
         color = CardObsidian,
         shape = RoundedCornerShape(14.dp),
@@ -1230,96 +1464,249 @@ private fun CardPostLivenn(
             .fillMaxWidth()
             .clickable { aoClicar() }
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Surface(
-                color = if (item.votado) DouradoLivenn.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.04f),
-                shape = RoundedCornerShape(10.dp),
-                border = BorderStroke(
-                    1.dp,
-                    if (item.votado) DouradoLivenn else Color.White.copy(alpha = 0.08f)
-                ),
-                modifier = Modifier
-                    .width(54.dp)
-                    .clickable { onVotar() }
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top
             ) {
-                Column(
-                    modifier = Modifier.padding(vertical = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                // Botão de Apoio / Voto
+                Surface(
+                    color = if (item.votado) DouradoLivenn.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.04f),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(
+                        1.dp,
+                        if (item.votado) DouradoLivenn else Color.White.copy(alpha = 0.08f)
+                    ),
+                    modifier = Modifier
+                        .width(52.dp)
+                        .clickable { onVotar() }
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.KeyboardArrowUp,
-                        contentDescription = "Apoiar",
-                        tint = if (item.votado) DouradoLivenn else TextoSecundario,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text(
-                        text = if (item.votos >= 1000) String.format("%.1fK", item.votos / 1000f) else item.votos.toString(),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (item.votado) DouradoLivenn else TextoClaro
-                    )
+                    Column(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.KeyboardArrowUp,
+                            contentDescription = "Apoiar",
+                            tint = if (item.votado) DouradoLivenn else TextoSecundario,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = if (item.votos >= 1000) String.format("%.1fK", item.votos / 1000f) else item.votos.toString(),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (item.votado) DouradoLivenn else TextoClaro
+                        )
+                    }
                 }
-            }
 
-            Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(10.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.titulo,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = TextoClaro
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = item.descricao,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextoSecundario,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Surface(
-                        color = Color.White.copy(alpha = 0.08f),
-                        shape = RoundedCornerShape(4.dp)
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = item.status,
-                            fontSize = 10.sp,
+                            text = item.titulo,
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = DouradoLivenn,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            color = TextoClaro,
+                            modifier = Modifier.weight(1f)
                         )
+
+                        // Ações do dono da proposta (Editar e Apagar)
+                        if (ehDono) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                IconButton(
+                                    onClick = onEditar,
+                                    modifier = Modifier.size(26.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Editar",
+                                        tint = DouradoLivenn,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                                IconButton(
+                                    onClick = onExcluir,
+                                    modifier = Modifier.size(26.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Apagar",
+                                        tint = VermelhoSuave,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
 
-                    Text("•", color = TextoMudo, fontSize = 10.sp)
-                    Text(item.data, color = TextoMudo, fontSize = 11.sp)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = item.descricao,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextoSecundario,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(Modifier.height(6.dp))
 
-                    Spacer(Modifier.weight(1f))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Surface(
+                            color = Color.White.copy(alpha = 0.08f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = item.status,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = DouradoLivenn,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.ChatBubbleOutline,
-                            contentDescription = null,
-                            tint = TextoMudo,
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            text = item.comentarios.size.toString(),
-                            color = TextoMudo,
-                            fontSize = 11.sp
-                        )
+                        Text("•", color = TextoMudo, fontSize = 10.sp)
+                        Text("Por ${item.autor}", color = TextoMudo, fontSize = 10.sp, maxLines = 1)
+                        Text("•", color = TextoMudo, fontSize = 10.sp)
+                        Text(item.data, color = TextoMudo, fontSize = 10.sp)
                     }
                 }
             }
+
+            Spacer(Modifier.height(10.dp))
+            HorizontalDivider(color = Color.White.copy(alpha = 0.04f))
+            Spacer(Modifier.height(8.dp))
+
+            // Barra de Interações: Amei ❤️, Like 👍, Fogo 🔥 e Comentários 💬
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                // Botão Amei ❤️
+                Surface(
+                    color = if (item.amou) Color(0xFFE91E63).copy(alpha = 0.18f) else Color.White.copy(alpha = 0.04f),
+                    shape = RoundedCornerShape(50),
+                    border = BorderStroke(1.dp, if (item.amou) Color(0xFFE91E63) else Color.White.copy(alpha = 0.08f)),
+                    modifier = Modifier.clickable { onAmei() }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("❤️", fontSize = 11.sp)
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = item.amei.toString(),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (item.amou) Color(0xFFFF4081) else TextoSecundario
+                        )
+                    }
+                }
+
+                // Botão Like 👍
+                Surface(
+                    color = if (item.curtiu) DouradoLivenn.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.04f),
+                    shape = RoundedCornerShape(50),
+                    border = BorderStroke(1.dp, if (item.curtiu) DouradoLivenn else Color.White.copy(alpha = 0.08f)),
+                    modifier = Modifier.clickable { onLike() }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("👍", fontSize = 11.sp)
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = item.likes.toString(),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (item.curtiu) DouradoLivenn else TextoSecundario
+                        )
+                    }
+                }
+
+                // Botão Fogo 🔥
+                Surface(
+                    color = if (item.fogou) Color(0xFFFF9800).copy(alpha = 0.18f) else Color.White.copy(alpha = 0.04f),
+                    shape = RoundedCornerShape(50),
+                    border = BorderStroke(1.dp, if (item.fogou) Color(0xFFFF9800) else Color.White.copy(alpha = 0.08f)),
+                    modifier = Modifier.clickable { onFogo() }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("🔥", fontSize = 11.sp)
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = item.fogo.toString(),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (item.fogou) Color(0xFFFFB74D) else TextoSecundario
+                        )
+                    }
+                }
+
+                Spacer(Modifier.weight(1f))
+
+                // Contador de comentários 💬
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable { aoClicar() }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ChatBubbleOutline,
+                        contentDescription = null,
+                        tint = TextoMudo,
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = item.comentarios.size.toString(),
+                        color = TextoMudo,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChipReacaoPequeno(
+    emoji: String,
+    contador: Int,
+    ativo: Boolean,
+    corAtiva: Color,
+    aoClicar: () -> Unit
+) {
+    Surface(
+        color = if (ativo) corAtiva.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.04f),
+        shape = RoundedCornerShape(50),
+        border = BorderStroke(1.dp, if (ativo) corAtiva else Color.White.copy(alpha = 0.08f)),
+        modifier = Modifier.clickable { aoClicar() }
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(emoji, fontSize = 12.sp)
+            Spacer(Modifier.width(4.dp))
+            Text(
+                text = contador.toString(),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (ativo) corAtiva else TextoSecundario
+            )
         }
     }
 }
@@ -1495,6 +1882,8 @@ private fun AbaPillLivenn(titulo: String, selecionado: Boolean, aoClicar: () -> 
             color = if (selecionado) TextoClaro else TextoSecundario,
             fontWeight = if (selecionado) FontWeight.Bold else FontWeight.Normal,
             fontSize = 13.sp,
+            maxLines = 1,
+            softWrap = false,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
         )
     }
