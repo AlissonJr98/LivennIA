@@ -23,6 +23,7 @@ sealed class Tela {
     object Configuracoes : Tela()
     object NovaAventura : Tela()
     object Jogo : Tela()
+    object Feedback : Tela()
 }
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
@@ -122,6 +123,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     var apelido by mutableStateOf(prefs.apelido)
         private set
+
+    fun alterarApelido(novo: String) {
+        val limpo = novo.trim().take(30)
+        if (limpo.isNotEmpty()) {
+            apelido = limpo
+            prefs.apelido = limpo
+        }
+    }
 
     var ocupado by mutableStateOf(false)
         private set

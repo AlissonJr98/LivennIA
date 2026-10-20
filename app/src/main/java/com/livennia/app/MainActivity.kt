@@ -51,6 +51,7 @@ class MainActivity : FragmentActivity() {
                     vm.tela == Tela.Jogo -> vm.voltarParaPersonagens()
                     vm.tela == Tela.NovaAventura -> vm.navegarPara(Tela.Personagens)
                     vm.tela == Tela.Configuracoes -> vm.navegarPara(Tela.Personagens)
+                    vm.tela == Tela.Feedback -> vm.navegarPara(Tela.Personagens)
                     vm.tela in listOf(Tela.Login, Tela.Cadastro, Tela.RecuperarSenha) -> vm.navegarPara(Tela.Entrada)
                     vm.tela == Tela.Personagens -> {
                         if (vm.abaPrincipal != 0) {
@@ -92,6 +93,7 @@ class MainActivity : FragmentActivity() {
                             Tela.Configuracoes -> ConfiguracoesTela(vm)
                             Tela.NovaAventura -> NovaAventuraTela(vm)
                             Tela.Jogo -> JogoTela(vm)
+                            Tela.Feedback -> FeedbackTela(vm)
                         }
                     }
 

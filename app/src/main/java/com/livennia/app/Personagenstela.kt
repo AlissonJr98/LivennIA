@@ -1,5 +1,10 @@
 package com.livennia.app
 
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -1101,171 +1106,718 @@ private fun ChipSobreArte(texto: String) {
 // ---------------------------------------------------------------
 @Composable
 private fun AbaPerfil(vm: AppViewModel) {
+    val contexto = LocalContext.current
+    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
     var confirmarApagarConta by rememberSaveable { mutableStateOf(false) }
     var confirmarSair by rememberSaveable { mutableStateOf(false) }
+    var mostrarEditarPerfil by rememberSaveable { mutableStateOf(false) }
+    var mostrarDialogoCarteira by rememberSaveable { mutableStateOf(false) }
+    var mostrarDialogoVip by rememberSaveable { mutableStateOf(false) }
+    var mostrarDialogoPersona by rememberSaveable { mutableStateOf(false) }
+    var mostrarDialogoLaboratorio by rememberSaveable { mutableStateOf(false) }
+    var mostrarDialogoDiscord by rememberSaveable { mutableStateOf(false) }
+
+    val jogosRpg = vm.jogos.filter { it.modo != "historia" }
+    val jogosHistoria = vm.jogos.filter { it.modo == "historia" }
+    val uidDisplay = "LVN-" + (vm.apelido.hashCode().absoluteValue % 900000 + 100000).toString()
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF000000)),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // ---- 1. TOPO: TÍTULO E ÍCONES SUPERIORES (DISCORD, ESTRELA FEEDBACK, ENGRENAGEM CONFIG) ----
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("Perfil", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("Sua conta e preferências.", color = TextoSuave, style = MaterialTheme.typography.labelMedium)
-            }
-        }
-
-        item {
-            Surface(
-                color = SuperficieAlta,
-                shape = Cantos.cartao,
-                modifier = Modifier.fillMaxWidth()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    AvatarPersonagem(seed = vm.apelido.hashCode(), nome = vm.apelido, tamanho = 52)
-                    Spacer(Modifier.width(12.dp))
-                    Column {
-                        Text(vm.apelido, style = MaterialTheme.typography.titleMedium)
-                        Text("Servidor: ${vm.servidor}", color = TextoSuave, style = MaterialTheme.typography.labelSmall)
-                    }
-                }
-            }
-        }
+                Text(
+                    text = "Perfil",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
 
-        vm.conta?.let { c ->
-            item {
-                Surface(
-                    color = SuperficieAlta,
-                    shape = Cantos.cartao,
-                    border = BorderStroke(1.dp, Ouro.copy(alpha = 0.28f)),
-                    modifier = Modifier.fillMaxWidth()
+                // Ícones de ação no topo direito (Matching Imagem 2 do Emochi com assinatura LivennIA)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    // Ícone Discord
+                    IconButton(
+                        onClick = { mostrarDialogoDiscord = true },
+                        modifier = Modifier.size(38.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                        Surface(
+                            color = Color(0xFF161618),
+                            shape = CircleShape,
+                            border = BorderStroke(1.dp, Color(0xFF26262A)),
+                            modifier = Modifier.fillMaxSize()
                         ) {
-                            Column {
-                                TituloSecao("Carteira de Livens")
-                                Text(
-                                    "✨ ${c.livens} Livens",
-                                    color = Ouro,
-                                    style = MaterialTheme.typography.headlineSmall
-                                )
-                            }
-                            if (c.resgateDiarioDisponivel) {
-                                Button(
-                                    onClick = { vm.resgatarLivensDiarios() },
-                                    enabled = !vm.ocupado,
-                                    shape = Cantos.pilula
-                                ) {
-                                    Text("🎁 Resgatar +30")
-                                }
-                            } else {
-                                ChipTag("✓ Bônus de hoje resgatado")
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("💬", fontSize = 16.sp)
                             }
                         }
-                        Text(
-                            "Use seus Livens para conversar com motores especiais de IA (Liven Spark, Liven Pulse, Liven Velvet, Liven Amber, Liven Eclipse, Liven Prime, Liven Oracle e Liven Infinity).",
-                            color = TextoSuave,
-                            style = MaterialTheme.typography.labelSmall
-                        )
                     }
-                }
-            }
 
-            item {
-                Surface(
-                    color = SuperficieAlta,
-                    shape = Cantos.cartao,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        TituloSecao("Uso de hoje")
-                        Text(
-                            "Jogadas: ${c.jogadasHoje} de ${c.limiteDiario} (restam ${c.jogadasRestantesHoje})",
-                            color = TextoSuave,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            "Personagens ativos: ${c.jogosAtivos} de ${c.maxJogos}",
-                            color = TextoSuave,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                    // ÍCONE ESTRELA: FÓRUM INTERATIVO & FEEDBACK DA COMUNIDADE (Solicitação do usuário)
+                    IconButton(
+                        onClick = { vm.navegarPara(Tela.Feedback) },
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Surface(
+                            color = Color(0xFF161618),
+                            shape = CircleShape,
+                            border = BorderStroke(1.dp, Color(0xFFF5C842).copy(alpha = 0.5f)),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("⭐", fontSize = 16.sp)
+                            }
+                        }
+                    }
+
+                    // Ícone Configurações (Engrenagem)
+                    IconButton(
+                        onClick = { vm.navegarPara(Tela.Configuracoes) },
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Surface(
+                            color = Color(0xFF161618),
+                            shape = CircleShape,
+                            border = BorderStroke(1.dp, Color(0xFF26262A)),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = "Configurações",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
 
+        // ---- 2. CARTÃO DO USUÁRIO: AVATAR, APELIDO, UID E BOTÃO EDITAR ----
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Avatar redondo com indicador de edição
+                Box(
+                    modifier = Modifier.clickable { mostrarEditarPerfil = true }
+                ) {
+                    AvatarPersonagem(
+                        seed = vm.apelido.hashCode(),
+                        nome = vm.apelido,
+                        tamanho = 72
+                    )
+                    Surface(
+                        color = Color(0xFFF5C842),
+                        shape = CircleShape,
+                        border = BorderStroke(2.dp, Color.Black),
+                        modifier = Modifier
+                            .size(22.dp)
+                            .align(Alignment.BottomEnd)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text("✎", fontSize = 11.sp, color = Color.Black, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                Spacer(Modifier.width(16.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = vm.apelido,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                            color = Color(0xFF161618),
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, Color(0xFF26262A)),
+                            modifier = Modifier.clickable {
+                                clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(uidDisplay))
+                                Toast.makeText(contexto, "UID copiado!", Toast.LENGTH_SHORT).show()
+                            }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "UID: $uidDisplay",
+                                    color = Color(0xFF8E8E93),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text("📋", fontSize = 10.sp)
+                            }
+                        }
+
+                        Surface(
+                            color = Color(0xFF161618),
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, Color(0xFF26262A)),
+                            modifier = Modifier.clickable { mostrarEditarPerfil = true }
+                        ) {
+                            Text(
+                                text = "Editar perfil",
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // ---- 3. LINHA DE ESTATÍSTICAS / MÉTRICAS (CHATS, SALVOS, SEGUIDORES, SEGUINDO) ----
+        item {
+            Surface(
+                color = Color(0xFF161618),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Color(0xFF26262A)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    MetricaPerfilItem(valor = vm.jogos.size.toString(), rotulo = "Chats")
+                    DivisorVerticalPerfil()
+                    MetricaPerfilItem(valor = vm.jogos.count { !it.encerrado }.toString(), rotulo = "Ativos")
+                    DivisorVerticalPerfil()
+                    MetricaPerfilItem(valor = (vm.conta?.livens ?: 0).toString(), rotulo = "Livens", corValor = Color(0xFFF5C842))
+                    DivisorVerticalPerfil()
+                    MetricaPerfilItem(valor = (vm.jogos.size + 1).toString(), rotulo = "Nível")
+                }
+            }
+        }
+
+        // ---- 4. CARDS DE PLANOS & BENEFÍCIOS (ULTRA E PLUS - Matching Imagem 2) ----
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Card Ultra VIP (Dourado)
+                Surface(
+                    color = Color(0xFF1B1812),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, Color(0xFFF5C842).copy(alpha = 0.4f)),
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { mostrarDialogoVip = true }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Liven Ultra",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                color = Color(0xFFF5C842)
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = "2000 Livens + Prosa VIP",
+                                fontSize = 11.sp,
+                                color = Color(0xFFB89832)
+                            )
+                        }
+                        Text("👑", fontSize = 24.sp)
+                    }
+                }
+
+                // Card Plus (Prateado / Aço)
+                Surface(
+                    color = Color(0xFF14171C),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, Color(0xFF8EAFCE).copy(alpha = 0.35f)),
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { mostrarDialogoVip = true }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Liven Plus",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                color = Color(0xFFB0CDE8)
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = "7 Modelos Pro liberados",
+                                fontSize = 11.sp,
+                                color = Color(0xFF7A9BB8)
+                            )
+                        }
+                        Text("✨", fontSize = 24.sp)
+                    }
+                }
+            }
+        }
+
+        // ---- 5. BOTÕES DE ACESSO RÁPIDO: CLUBE VIP, CARTEIRA, PERSONA, LABORATÓRIO ----
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                BotaoAcaoRedondoPerfil(
+                    icone = "👑",
+                    rotulo = "VIP",
+                    aoClicar = { mostrarDialogoVip = true }
+                )
+                BotaoAcaoRedondoPerfil(
+                    icone = "⚡",
+                    rotulo = "Carteira",
+                    aoClicar = { mostrarDialogoCarteira = true }
+                )
+                BotaoAcaoRedondoPerfil(
+                    icone = "🎭",
+                    rotulo = "Persona",
+                    aoClicar = { mostrarDialogoPersona = true }
+                )
+                BotaoAcaoRedondoPerfil(
+                    icone = "🧪",
+                    rotulo = "Laboratório",
+                    aoClicar = { mostrarDialogoLaboratorio = true }
+                )
+            }
+        }
+
+        // ---- 6. SEÇÃO "PERSONAGEM" / MINHAS CRIAÇÕES ----
+        item {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Personagem & Aventuras",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+
+                if (vm.jogos.isEmpty()) {
+                    // Ilustração da Caixa Surpresa 3D (Matching Imagem 2 do Emochi com assinatura LivennIA)
+                    Surface(
+                        color = Color(0xFF161618),
+                        shape = RoundedCornerShape(20.dp),
+                        border = BorderStroke(1.dp, Color(0xFF26262A)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 28.dp, horizontal = 16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text("📦", fontSize = 54.sp)
+                            Spacer(Modifier.height(10.dp))
+                            Text(
+                                text = "Nenhum personagem ainda",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF8E8E93)
+                            )
+                            Spacer(Modifier.height(14.dp))
+                            Button(
+                                onClick = { vm.comecarAventuraLivre() },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5C842)),
+                                shape = RoundedCornerShape(50),
+                                modifier = Modifier
+                                    .width(140.dp)
+                                    .height(42.dp)
+                            ) {
+                                Text(
+                                    text = "Criar",
+                                    color = Color.Black,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    // Lista das aventuras ativas do jogador
+                    vm.jogos.take(4).forEach { jogo ->
+                        Surface(
+                            color = Color(0xFF161618),
+                            shape = RoundedCornerShape(14.dp),
+                            border = BorderStroke(1.dp, Color(0xFF26262A)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { vm.abrirJogo(jogo.jogoId) }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                AvatarPersonagem(seed = jogo.avatarSeed, nome = jogo.nome, tamanho = 46)
+                                Spacer(Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = jogo.nome,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        text = "${jogo.cenarioNome} • ${if (jogo.modo == "historia") "História" else "RPG"}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color(0xFF8E8E93)
+                                    )
+                                }
+                                Surface(
+                                    color = Color(0xFFF5C842).copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(50)
+                                ) {
+                                    Text(
+                                        text = "Jogar ▶",
+                                        color = Color(0xFFF5C842),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ---- 7. CONFIGURAÇÕES ADICIONAIS & CONTA ----
         item {
             CardAtualizacaoGitHub(vm)
         }
 
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = { vm.navegarPara(Tela.Configuracoes) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Filled.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Configurações")
-                }
-                // O interruptor vale nos dois estilos (o Neon claro entrou junto).
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 OutlinedButton(
                     onClick = { vm.alternarTema() },
-                    modifier = Modifier.fillMaxWidth()
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Text(if (vm.temaEscuro) "☀  Modo claro" else "🌙  Modo escuro")
+                    Text(if (vm.temaEscuro) "☀ Claro" else "🌙 Escuro", fontSize = 12.sp)
                 }
-                OutlinedButton(
-                    onClick = { confirmarApagarConta = true },
-                    enabled = !vm.ocupado,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Apagar conta", color = MaterialTheme.colorScheme.error)
-                }
+
                 OutlinedButton(
                     onClick = { confirmarSair = true },
-                    modifier = Modifier.fillMaxWidth()
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Text("Sair")
+                    Text("Sair da Conta", fontSize = 12.sp)
                 }
             }
         }
     }
 
-    if (confirmarApagarConta) {
-        DialogoConfirmar(
-            titulo = "Apagar sua conta?",
-            texto = "Sua conta e todos os seus personagens serão apagados para sempre. " +
-                    "Você precisará de um novo convite para voltar.",
-            rotuloConfirmar = "Apagar tudo",
-            onConfirmar = {
-                confirmarApagarConta = false
-                vm.apagarConta()
+    // DIÁLOGOS DE APOIO
+    if (mostrarEditarPerfil) {
+        var novoNome by remember { mutableStateOf(vm.apelido) }
+        AlertDialog(
+            onDismissRequest = { mostrarEditarPerfil = false },
+            title = { Text("Editar Apelido", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Escolha como os personagens e mestres chamarão você:", color = Color(0xFF8E8E93), fontSize = 13.sp)
+                    OutlinedTextField(
+                        value = novoNome,
+                        onValueChange = { novoNome = it.take(25) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             },
-            onFechar = { confirmarApagarConta = false }
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (novoNome.isNotBlank()) {
+                            vm.alterarApelido(novoNome)
+                            Toast.makeText(contexto, "Perfil atualizado!", Toast.LENGTH_SHORT).show()
+                        }
+                        mostrarEditarPerfil = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5C842))
+                ) {
+                    Text("Salvar", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarEditarPerfil = false }) {
+                    Text("Cancelar", color = Color(0xFF8E8E93))
+                }
+            },
+            containerColor = Color(0xFF161618)
+        )
+    }
+
+    if (mostrarDialogoCarteira) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogoCarteira = false },
+            title = { Text("Carteira de Livens", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "Saldo atual: ✨ ${vm.conta?.livens ?: 0} Livens",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFF5C842)
+                    )
+                    Text(
+                        text = "Os Livens são usados para turnos narrativos nos modelos especiais como Liven Spark, Velvet, Amber e Eclipse.",
+                        color = Color(0xFF8E8E93),
+                        fontSize = 13.sp
+                    )
+                    if (vm.conta?.resgateDiarioDisponivel == true) {
+                        Button(
+                            onClick = {
+                                vm.resgatarLivensDiarios()
+                                mostrarDialogoCarteira = false
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5C842)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("🎁 Resgatar Bônus Diário (+30)", color = Color.Black, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        Text(
+                            text = "✓ Bônus diário de hoje já resgatado! Volte amanhã para mais.",
+                            color = Color(0xFF4CAF50),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { mostrarDialogoCarteira = false }) {
+                    Text("Fechar", color = Color(0xFFF5C842))
+                }
+            },
+            containerColor = Color(0xFF161618)
+        )
+    }
+
+    if (mostrarDialogoVip) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogoVip = false },
+            title = { Text("Planos & Vantagens LivennIA", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("👑 Liven Ultra VIP", fontWeight = FontWeight.Bold, color = Color(0xFFF5C842), fontSize = 14.sp)
+                    Text("• Acesso prioritário aos cérebros de IA Gemini 2.5 Pro.", color = Color(0xFF8E8E93), fontSize = 12.sp)
+                    Text("• Prosa cinematográfica e diálogos profundos sem limite diário.", color = Color(0xFF8E8E93), fontSize = 12.sp)
+                    Text("• 2000 Livens bônus creditados mensalmente.", color = Color(0xFF8E8E93), fontSize = 12.sp)
+                    Spacer(Modifier.height(4.dp))
+                    Text("✨ Liven Plus", fontWeight = FontWeight.Bold, color = Color(0xFFB0CDE8), fontSize = 14.sp)
+                    Text("• Geração de retratos e capas de cenários sem fila.", color = Color(0xFF8E8E93), fontSize = 12.sp)
+                    Text("• Bônus diário turbinado.", color = Color(0xFF8E8E93), fontSize = 12.sp)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { mostrarDialogoVip = false }) {
+                    Text("Entendido", color = Color(0xFFF5C842))
+                }
+            },
+            containerColor = Color(0xFF161618)
+        )
+    }
+
+    if (mostrarDialogoPersona) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogoPersona = false },
+            title = { Text("Persona do Jogador", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Personalize como os personagens de IA percebem seu protagonista em todas as histórias:", color = Color(0xFF8E8E93), fontSize = 13.sp)
+                    Text("• Nome Ativo: ${vm.apelido}", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text("• Estilo de Narrativa Padrão: ${if (vm.modoLeitura == AppViewModel.ModoLeitura.HISTORIA) "História Contínua" else "RPG Dinâmico"}", color = Color.White, fontSize = 13.sp)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { mostrarDialogoPersona = false }) {
+                    Text("OK", color = Color(0xFFF5C842))
+                }
+            },
+            containerColor = Color(0xFF161618)
+        )
+    }
+
+    if (mostrarDialogoLaboratorio) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogoLaboratorio = false },
+            title = { Text("Laboratório de Modelos de IA", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Experimente motores de IA com diferentes diretrizes de escrita:", color = Color(0xFF8E8E93), fontSize = 13.sp)
+                    Text("⚡ Liven Flash: Velocidade extrema para respostas ágeis.", color = Color.White, fontSize = 12.sp)
+                    Text("✨ Liven Spark: Tom espirituoso e diálogos afiados.", color = Color.White, fontSize = 12.sp)
+                    Text("🌹 Liven Velvet: Foco em romance, tensão corporal e emoção.", color = Color.White, fontSize = 12.sp)
+                    Text("🍂 Liven Amber: Descrições sensoriais ricas do mundo.", color = Color.White, fontSize = 12.sp)
+                    Text("👑 Liven Prime: Mestre narrador de alta inteligência.", color = Color(0xFFF5C842), fontSize = 12.sp)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { mostrarDialogoLaboratorio = false }) {
+                    Text("Explorar Modelos", color = Color(0xFFF5C842))
+                }
+            },
+            containerColor = Color(0xFF161618)
+        )
+    }
+
+    if (mostrarDialogoDiscord) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogoDiscord = false },
+            title = { Text("Comunidade Oficial", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Participe da comunidade de autores e mestres de RPG do LivennIA:", color = Color(0xFF8E8E93), fontSize = 13.sp)
+                    Surface(
+                        color = Color(0xFF202225),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "💬 Servidor Oficial da Comunidade LivennIA",
+                            color = Color(0xFFF5C842),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { mostrarDialogoDiscord = false }) {
+                    Text("Fechar", color = Color(0xFFF5C842))
+                }
+            },
+            containerColor = Color(0xFF161618)
         )
     }
 
     if (confirmarSair) {
         DialogoConfirmar(
             titulo = "Sair da conta?",
-            texto = "Você vai sair e suas aventuras ficam guardadas no servidor. " +
-                    "Para voltar depois vai ser preciso um código de convite novo " +
-                    "(a entrada por e-mail ainda não está ativa).",
+            texto = "Suas histórias ficam salvas no servidor e você poderá retornar quando quiser.",
             rotuloConfirmar = "Sair",
             onConfirmar = {
                 confirmarSair = false
                 vm.sair()
             },
             onFechar = { confirmarSair = false }
+        )
+    }
+}
+
+@Composable
+private fun MetricaPerfilItem(
+    valor: String,
+    rotulo: String,
+    corValor: Color = Color.White
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = valor,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Bold,
+            color = corValor
+        )
+        Text(
+            text = rotulo,
+            fontSize = 11.sp,
+            color = Color(0xFF8E8E93)
+        )
+    }
+}
+
+@Composable
+private fun DivisorVerticalPerfil() {
+    Box(
+        modifier = Modifier
+            .width(1.dp)
+            .height(24.dp)
+            .background(Color.White.copy(alpha = 0.08f))
+    )
+}
+
+@Composable
+private fun BotaoAcaoRedondoPerfil(
+    icone: String,
+    rotulo: String,
+    aoClicar: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable { aoClicar() }
+    ) {
+        Surface(
+            color = Color(0xFF161618),
+            shape = CircleShape,
+            border = BorderStroke(1.dp, Color(0xFF26262A)),
+            modifier = Modifier.size(54.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(icone, fontSize = 22.sp)
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = rotulo,
+            fontSize = 12.sp,
+            color = Color.White,
+            fontWeight = FontWeight.Medium
         )
     }
 }
