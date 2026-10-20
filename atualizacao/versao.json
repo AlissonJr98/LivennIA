@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 8,
-  "versaoNome": "1.3.4",
-  "notas": "Rolagem automatica inteligente no chat durante a digitacao da IA, novo seletor de Modelos de IA categorizados (Gratis com anuncio, Usa Energia e Premium VIP) com estilos narrativos reais, e nova tela de Configuracoes redesenhada no estilo Emochi (modo escuro OLED, secoes agrupadas e diagnostico de rede em tempo real).",
+  "versaoCodigo": 9,
+  "versaoNome": "1.4.0",
+  "notas": "Nova Tela de Perfil moderna com estatisticas, planos VIP, atalhos rapidos e caixa surpresa de aventuras; Novo Forum Interativo de Feedback (icone da estrela) com votacao de ideias da comunidade, quadro Roadmap (Kanban) e notas de versao com reacoes de emojis; Inicializacao direta no Explorar e melhorias gerais de estabilidade.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }
