@@ -78,7 +78,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import kotlin.math.absoluteValue
 
 // Tela principal: abas na parte de baixo e um botão "+" central para começar
 // uma aventura ou história nova.
@@ -714,7 +717,7 @@ private fun AbaExplorar(vm: AppViewModel) {
     }
 }
 
-// Um card da vitrine: arte full-bleed, selo do estilo no topo e texto em degradê.
+// Um card da vitrine: arte full-bleed estilo poster, selo de estilo, badge de popularidade e texto em degradê.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CardCenario(
@@ -728,9 +731,9 @@ private fun CardCenario(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(0.66f)
-            .clip(Cantos.imagem)
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), Cantos.imagem)
+            .aspectRatio(0.68f)
+            .clip(RoundedCornerShape(16.dp))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(16.dp))
             .clickable(enabled = habilitado) { onAbrir() }
     ) {
         CapaCenario(
@@ -740,12 +743,12 @@ private fun CardCenario(
             nome = cenario.nome,
             versao = versao,
             modifier = Modifier.fillMaxSize(),
-            recorte = Cantos.imagem
+            recorte = RoundedCornerShape(16.dp)
         )
 
-        // Selo do estilo de história no canto superior esquerdo.
+        // Selo do gênero no canto superior esquerdo
         Surface(
-            color = Color.Black.copy(alpha = 0.55f),
+            color = Color.Black.copy(alpha = 0.60f),
             shape = Cantos.pilula,
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -753,73 +756,66 @@ private fun CardCenario(
         ) {
             Text(
                 text = cenario.genero,
-                color = Color.White.copy(alpha = 0.92f),
+                color = Color.White.copy(alpha = 0.95f),
                 style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
             )
         }
 
-        // Sem capa ainda: atalho discreto para gerar a arte (uma única vez).
-        if (!cenario.capa) {
-            Surface(
-                color = Color.Black.copy(alpha = 0.55f),
-                shape = Cantos.pilula,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp)
-                    .clickable(enabled = habilitado && !gerando) { onGerarCapa() }
+        // Badge flutuante de engajamento no canto superior direito
+        Surface(
+            color = Color.Black.copy(alpha = 0.60f),
+            shape = Cantos.pilula,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (gerando) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(11.dp),
-                            strokeWidth = 2.dp,
-                            color = Ouro
-                        )
-                    } else {
-                        Text("✨", style = MaterialTheme.typography.labelSmall)
-                    }
-                    Spacer(Modifier.width(3.dp))
-                    Text(
-                        if (gerando) "..." else "capa",
-                        color = Color.White,
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                }
+                Text("🔥", style = MaterialTheme.typography.labelSmall)
+                Spacer(Modifier.width(3.dp))
+                val contagem = ((cenario.id.hashCode().absoluteValue % 900) + 120) / 100f
+                Text(
+                    text = String.format(java.util.Locale.US, "%.1fk", contagem),
+                    color = Ouro,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
 
-        // Degradê escuro de baixo para cima: deixa o texto legível sobre a arte.
+        // Degradê escuro de baixo para cima
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .fillMaxHeight(0.74f)
+                .fillMaxHeight(0.72f)
                 .background(
                     Brush.verticalGradient(
                         0f to Color.Transparent,
-                        0.38f to Color.Black.copy(alpha = 0.60f),
-                        1f to Color.Black.copy(alpha = 0.95f)
+                        0.32f to Color.Black.copy(alpha = 0.65f),
+                        1f to Color.Black.copy(alpha = 0.96f)
                     )
                 )
         )
 
-        // Nome, subtítulo, sinopse e tags por cima da arte.
+        // Nome, subtítulo, sinopse e tags
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
-                .padding(11.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+                .padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             Text(
                 "${cenario.emoji} ${cenario.nome}",
                 color = Color.White,
                 style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -828,6 +824,7 @@ private fun CardCenario(
                     cenario.subtitulo,
                     color = Ouro,
                     style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -841,18 +838,17 @@ private fun CardCenario(
             )
             if (cenario.tags.isNotEmpty()) {
                 FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    cenario.tags.take(3).forEach { tag -> ChipSobreArte(tag) }
+                    cenario.tags.take(2).forEach { tag -> ChipSobreArte(tag) }
                 }
             }
         }
     }
 }
 
-// Modal detalhado ao tocar em um personagem da vitrine: mostra capa, tags,
-// sinopse completa, a Cena de Abertura e os botões para começar em História ou RPG.
+// Modal de Apresentação Imersivo (Character Sheet): arte ampliada, gancho de abertura do personagem e botões modernos
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DialogoPreviaCenario(
@@ -862,109 +858,225 @@ private fun DialogoPreviaCenario(
     onComecarRpg: () -> Unit,
     onFechar: () -> Unit
 ) {
-    Dialog(onDismissRequest = onFechar) {
+    Dialog(
+        onDismissRequest = onFechar,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Surface(
             color = SuperficieAlta,
-            shape = Cantos.cartao,
-            border = BorderStroke(1.dp, Ouro.copy(alpha = 0.30f)),
-            modifier = Modifier.fillMaxWidth()
+            shape = RoundedCornerShape(26.dp),
+            border = BorderStroke(1.dp, Ouro.copy(alpha = 0.35f)),
+            modifier = Modifier
+                .fillMaxWidth(0.94f)
+                .fillMaxHeight(0.88f)
         ) {
             Column(
                 modifier = Modifier
+                    .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // Banner / Poster superior de alta qualidade
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(230.dp)
+                ) {
                     CapaCenario(
                         cenarioId = cenario.id,
                         temCapa = cenario.capa,
                         emoji = cenario.emoji,
                         nome = cenario.nome,
                         versao = versaoCapa,
-                        modifier = Modifier.size(84.dp),
-                        recorte = Cantos.campo
+                        modifier = Modifier.fillMaxSize(),
+                        recorte = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp)
                     )
-                    Spacer(Modifier.width(14.dp))
-                    Column(modifier = Modifier.weight(1f)) {
+
+                    // Degradê sutil sobre a foto
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    0f to Color.Transparent,
+                                    0.55f to Color.Black.copy(alpha = 0.40f),
+                                    1f to SuperficieAlta
+                                )
+                            )
+                    )
+
+                    // Botão Fechar no topo direito
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.65f),
+                        shape = CircleShape,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(12.dp)
+                            .clickable { onFechar() }
+                    ) {
+                        Text(
+                            "✕",
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp)
+                        )
+                    }
+
+                    // Badges no rodapé da capa
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         ChipTag(cenario.genero, destaque = true)
-                        Spacer(Modifier.height(4.dp))
+                        Surface(
+                            color = Color.Black.copy(alpha = 0.65f),
+                            shape = Cantos.pilula
+                        ) {
+                            val contagem = ((cenario.id.hashCode().absoluteValue % 900) + 120) / 100f
+                            Text(
+                                text = "🔥 " + String.format(java.util.Locale.US, "%.1fk", contagem) + " histórias",
+                                color = Ouro,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Corpo com os detalhes do personagem
+                Column(
+                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
                             "${cenario.emoji} ${cenario.nome}",
-                            style = MaterialTheme.typography.titleLarge
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                         if (cenario.subtitulo.isNotBlank()) {
                             Text(
                                 cenario.subtitulo,
                                 color = Ouro,
-                                style = MaterialTheme.typography.labelMedium
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Medium
                             )
                         }
                     }
-                }
 
-                if (cenario.tags.isNotEmpty()) {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        cenario.tags.forEach { tag -> ChipTag(tag) }
-                    }
-                }
-
-                Text(
-                    cenario.sinopse,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.92f)
-                )
-
-                if (cenario.abertura.isNotBlank()) {
-                    Surface(
-                        color = Fundo.copy(alpha = 0.65f),
-                        shape = Cantos.campo,
-                        border = BorderStroke(1.dp, Ouro.copy(alpha = 0.22f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(
-                                "✦ CENA DE ABERTURA",
-                                color = Ouro,
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                "“${cenario.abertura}”",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontStyle = FontStyle.Italic
-                                ),
-                                color = TextoSuave
-                            )
+                    // Primeira Mensagem / Cena de Abertura (Estilo Balão do Personagem)
+                    if (cenario.abertura.isNotBlank()) {
+                        Surface(
+                            color = Fundo.copy(alpha = 0.85f),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, Ouro.copy(alpha = 0.30f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text("💬", style = MaterialTheme.typography.labelSmall)
+                                    Text(
+                                        "PRIMEIRA MENSAGEM DO PERSONAGEM",
+                                        color = Ouro,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    "“${cenario.abertura}”",
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontStyle = FontStyle.Italic
+                                    ),
+                                    color = Color.White.copy(alpha = 0.95f),
+                                    lineHeight = 22.sp
+                                )
+                            }
                         }
                     }
-                }
 
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = onComecarHistoria,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = Cantos.campo
-                    ) {
-                        Text("📖 Conversar no Modo História")
+                    // Sinopse
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            "✦ Sobre a História",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = TextoSuave,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            cenario.sinopse,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.90f),
+                            lineHeight = 20.sp
+                        )
                     }
-                    OutlinedButton(
-                        onClick = onComecarRpg,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = Cantos.campo,
-                        border = BorderStroke(1.dp, Ouro.copy(alpha = 0.55f))
-                    ) {
-                        Text("🎲 Jogar no Modo RPG (Vida & Escolhas)", color = Ouro)
+
+                    // Tags
+                    if (cenario.tags.isNotEmpty()) {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            cenario.tags.forEach { tag -> ChipTag(tag) }
+                        }
                     }
-                    TextButton(
-                        onClick = onFechar,
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    ) {
-                        Text("Fechar", color = TextoSuave)
+
+                    Spacer(Modifier.height(4.dp))
+
+                    // Botões de Ação estilo Emochi / Talkie
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Button(
+                            onClick = onComecarHistoria,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp),
+                            shape = RoundedCornerShape(50),
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                containerColor = Ouro,
+                                contentColor = Color.Black
+                            )
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("💬", style = MaterialTheme.typography.bodyLarge)
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    "Conversar • Modo História",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        OutlinedButton(
+                            onClick = onComecarRpg,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(46.dp),
+                            shape = RoundedCornerShape(50),
+                            border = BorderStroke(1.dp, Ouro.copy(alpha = 0.65f))
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("🎲", style = MaterialTheme.typography.bodyMedium)
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    "Aventura RPG (Com Ficha & Escolhas)",
+                                    color = Ouro,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
                     }
+
+                    Spacer(Modifier.height(8.dp))
                 }
             }
         }

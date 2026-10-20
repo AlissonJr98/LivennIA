@@ -40,6 +40,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -84,7 +85,56 @@ private enum class DialogoAberto {
     Diarios,
     Cartas,
     Savepoints,
-    ModeloTemperatura
+    ModeloTemperatura,
+    Vinculo
+}
+
+data class NivelVinculo(
+    val nivel: Int,
+    val titulo: String,
+    val descricao: String,
+    val progresso: Float,
+    val icone: String = "✦"
+)
+
+fun calcularVinculo(turno: Int): NivelVinculo {
+    return when {
+        turno <= 2 -> NivelVinculo(
+            nivel = 1,
+            titulo = "Primeiras Palavras",
+            descricao = "Vocês acabaram de se encontrar. O personagem ainda está observando sua postura e avaliando suas intenções.",
+            progresso = (turno / 3f).coerceIn(0.15f, 1f),
+            icone = "🌱"
+        )
+        turno <= 6 -> NivelVinculo(
+            nivel = 2,
+            titulo = "Curiosidade Mútua",
+            descricao = "O gelo inicial foi quebrado. O personagem demonstra genuíno interesse nas suas respostas e atitudes.",
+            progresso = ((turno - 2) / 4f).coerceIn(0.15f, 1f),
+            icone = "✨"
+        )
+        turno <= 12 -> NivelVinculo(
+            nivel = 3,
+            titulo = "Cúmplices",
+            descricao = "Uma sintonia evidente surgiu entre vocês. O personagem confia nos seus conselhos diante de escolhas difíceis.",
+            progresso = ((turno - 6) / 6f).coerceIn(0.15f, 1f),
+            icone = "🤝"
+        )
+        turno <= 20 -> NivelVinculo(
+            nivel = 4,
+            titulo = "Confiança Profunda",
+            descricao = "O personagem compartilha segredos íntimos e sentimentos reais que não revela a mais ninguém.",
+            progresso = ((turno - 12) / 8f).coerceIn(0.15f, 1f),
+            icone = "💖"
+        )
+        else -> NivelVinculo(
+            nivel = 5,
+            titulo = "Vínculo Inquebrável",
+            descricao = "Uma conexão inabalável e histórica forjada por cada momento compartilhado nesta jornada.",
+            progresso = 1f,
+            icone = "👑"
+        )
+    }
 }
 
 @Composable
@@ -392,10 +442,28 @@ fun JogoTela(vm: AppViewModel) {
                     }
 
                     // Gaveta de Auto-Respostas LivennIA
+                    val sugestoesAtuais = remember(vm.sugestoesAutoResposta, jogo.cena.opcoes) {
+                        if (vm.sugestoesAutoResposta.isNotEmpty()) {
+                            vm.sugestoesAutoResposta
+                        } else if (jogo.cena.opcoes.isNotEmpty()) {
+                            jogo.cena.opcoes
+                        } else {
+                            listOf(
+                                "Perguntar mais sobre isso",
+                                "Observar a reação com atenção",
+                                "Dar um passo à frente com cautela"
+                            )
+                        }
+                    }
                     FaixaSugestoesAutoResposta(
-                        sugestoes = vm.sugestoesAutoResposta,
+                        sugestoes = sugestoesAtuais,
                         ocupado = vm.ocupado,
-                        aoEscolher = { sugestao -> acaoLivre = sugestao }
+                        gerandoIA = vm.gerandoAutoResposta,
+                        aoPedirSugestoesIA = { vm.gerarSugestoesAutoResposta() },
+                        aoEscolher = { sugestao ->
+                            acaoLivre = sugestao
+                            haptico.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        }
                     )
 
                     if (jogo.fimDeJogo) {
@@ -1080,10 +1148,28 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                     }
 
                     // Gaveta de Auto-Respostas LivennIA
+                    val sugestoesAtuais = remember(vm.sugestoesAutoResposta, jogo.cena.opcoes) {
+                        if (vm.sugestoesAutoResposta.isNotEmpty()) {
+                            vm.sugestoesAutoResposta
+                        } else if (jogo.cena.opcoes.isNotEmpty()) {
+                            jogo.cena.opcoes
+                        } else {
+                            listOf(
+                                "Perguntar mais sobre isso",
+                                "Observar a reação com atenção",
+                                "Dar um passo à frente com cautela"
+                            )
+                        }
+                    }
                     FaixaSugestoesAutoResposta(
-                        sugestoes = vm.sugestoesAutoResposta,
+                        sugestoes = sugestoesAtuais,
                         ocupado = vm.ocupado,
-                        aoEscolher = { sugestao -> acaoLivre = sugestao }
+                        gerandoIA = vm.gerandoAutoResposta,
+                        aoPedirSugestoesIA = { vm.gerarSugestoesAutoResposta() },
+                        aoEscolher = { sugestao ->
+                            acaoLivre = sugestao
+                            haptico.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        }
                     )
 
                     AnimatedVisibility(visible = mostrarSugestoes && terminou && jogo.cena.opcoes.isNotEmpty()) {
@@ -1184,6 +1270,29 @@ private fun BarraFerramentasLiven(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Selo de Vínculo & Afinidade
+        val vinculo = calcularVinculo(jogo.turno)
+        Surface(
+            color = Ouro.copy(alpha = 0.18f),
+            shape = Cantos.pilula,
+            border = BorderStroke(1.dp, Ouro.copy(alpha = 0.50f)),
+            modifier = Modifier.clickable { onAbrirDialogo(DialogoAberto.Vinculo) }
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(vinculo.icone, style = MaterialTheme.typography.labelSmall)
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = "Nvl ${vinculo.nivel} • ${vinculo.titulo}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Ouro,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+
         // Pílula de Livens (com resgate diário ao tocar se disponível)
         Surface(
             color = Ouro.copy(alpha = 0.16f),
@@ -1385,32 +1494,65 @@ private fun RodapeMensagemLiven(
 private fun FaixaSugestoesAutoResposta(
     sugestoes: List<String>,
     ocupado: Boolean,
+    gerandoIA: Boolean,
+    aoPedirSugestoesIA: () -> Unit,
     aoEscolher: (String) -> Unit
 ) {
-    AnimatedVisibility(visible = sugestoes.isNotEmpty()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 12.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp, vertical = 5.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Botão para pedir sugestões com IA se quiser mais opções
+        Surface(
+            color = Ouro.copy(alpha = 0.20f),
+            shape = RoundedCornerShape(50),
+            border = BorderStroke(1.dp, Ouro.copy(alpha = 0.50f)),
+            modifier = Modifier.clickable(enabled = !ocupado && !gerandoIA) {
+                aoPedirSugestoesIA()
+            }
         ) {
-            sugestoes.forEach { sugestao ->
-                Surface(
-                    color = Ouro.copy(alpha = 0.14f),
-                    shape = RoundedCornerShape(50),
-                    border = BorderStroke(1.dp, Ouro.copy(alpha = 0.45f)),
-                    modifier = Modifier.clickable(enabled = !ocupado) {
-                        aoEscolher(sugestao)
-                    }
-                ) {
-                    Text(
-                        text = "✨ $sugestao",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+            Row(
+                modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (gerandoIA) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(12.dp),
+                        strokeWidth = 2.dp,
+                        color = Ouro
                     )
+                } else {
+                    Text("✨", fontSize = 12.sp)
                 }
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = if (gerandoIA) "Pensando..." else "Ideias IA",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Ouro,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+
+        sugestoes.forEach { sugestao ->
+            Surface(
+                color = SuperficieAlta,
+                shape = RoundedCornerShape(50),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                modifier = Modifier.clickable(enabled = !ocupado) {
+                    aoEscolher(sugestao)
+                }
+            ) {
+                Text(
+                    text = sugestao,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.90f),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
             }
         }
     }
@@ -1750,6 +1892,90 @@ private fun GerenciadorDialogosJogo(
                                         }
                                     }
                                 }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = onFecharDialogo) { Text("Fechar") }
+                }
+            )
+        }
+        DialogoAberto.Vinculo -> {
+            val vinculo = calcularVinculo(jogo.turno)
+            AlertDialog(
+                onDismissRequest = onFecharDialogo,
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(vinculo.icone, fontSize = 20.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Vínculo & Afinidade")
+                    }
+                },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Surface(
+                            color = Ouro.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, Ouro.copy(alpha = 0.40f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Text(
+                                    text = "NÍVEL ${vinculo.nivel} • ${vinculo.titulo.uppercase()}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Ouro
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                LinearProgressIndicator(
+                                    progress = { vinculo.progresso },
+                                    modifier = Modifier.fillMaxWidth().height(6.dp),
+                                    color = Ouro,
+                                    trackColor = SuperficieAlta
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    text = "${(vinculo.progresso * 100).toInt()}% até a próxima evolução",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextoSuave
+                                )
+                            }
+                        }
+
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                text = "Como ${jogo.personagem.nome} te enxerga:",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            Text(
+                                text = vinculo.descricao,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextoSuave
+                            )
+                        }
+
+                        Surface(
+                            color = SuperficieAlta,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("💡", fontSize = 16.sp)
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = "Dica: Fazer perguntas sobre o passado do personagem ou demonstrar empatia acelera o vínculo.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextoSuave
+                                )
                             }
                         }
                     }

@@ -795,7 +795,7 @@ def resgatar_livens_diarios(jogador=Depends(jogador_atual)):
     ganho, saldo = banco.resgatar_livens_diarios(jogador["id"], bonus=30)
     return ResgateLivenOut(ganho=ganho, livens=saldo, mochis=saldo, ja_resgatado=(ganho == 0))
 
-resgatar_mochi_diario = resgatar_livens_diarios
+resgatar_livens_diarios = resgatar_livens_diarios
 
 
 @app.delete("/conta", status_code=204)
@@ -819,7 +819,7 @@ def _cobrar_livens_do_modelo(jogador, cerebro_dict):
     except banco.ErroNegocio as erro:
         raise HTTPException(erro.status, erro.mensagem)
 
-_cobrar_mochi_do_modelo = _cobrar_livens_do_modelo
+_cobrar_livens_do_modelo = _cobrar_livens_do_modelo
 
 
 @app.post("/jogos", response_model=JogoOut, status_code=201)
@@ -873,13 +873,13 @@ def criar_jogo(dados: NovoJogoIn, jogador=Depends(jogador_atual)):
         )
         acao_inicial = item["abertura"] if item else motor.abertura_de(genero)
         resultado = chamar_ia(jogador["id"], estado, acao_inicial)
-        saldo_mochis = _cobrar_mochi_do_modelo(jogador, estado.get("modelo"))
+        saldo_livens = _cobrar_livens_do_modelo(jogador, estado.get("modelo"))
         morreu = motor.registrar_turno(
             estado, acao_inicial, resultado, _agora_ms(), _agora_ms()
         )
         jogo_id = uuid.uuid4().hex
         banco.criar_jogo(jogo_id, jogador["id"], motor.estado_para_texto(estado), morreu)
-    return montar_saida(jogo_id, estado, morreu, restantes - 1, mochis=saldo_mochis)
+    return montar_saida(jogo_id, estado, morreu, restantes - 1, mochis=saldo_livens)
 
 
 @app.get("/jogos", response_model=list[JogoResumoOut])
@@ -1101,11 +1101,11 @@ def jogar_turno(dados: TurnoIn, jogo_id: IdDoJogo, jogador=Depends(jogador_atual
         # palavras): a IA também devolve a "situacao" (o gesto dele) para o chat.
         enviado_em = _agora_ms()
         resultado = chamar_ia(jogador["id"], estado, acao, escolha=dados.opcao is not None)
-        saldo_mochis = _cobrar_mochi_do_modelo(jogador, modelo_atual)
+        saldo_livens = _cobrar_livens_do_modelo(jogador, modelo_atual)
         morreu = motor.registrar_turno(estado, acao, resultado, enviado_em, _agora_ms())
         estado["ultimo_pedido"] = dados.pedido_id
         banco.atualizar_jogo(jogo_id, jogador["id"], motor.estado_para_texto(estado), morreu)
-    return montar_saida(jogo_id, estado, morreu, restantes - 1, mochis=saldo_mochis)
+    return montar_saida(jogo_id, estado, morreu, restantes - 1, mochis=saldo_livens)
 
 
 # ---------------------------------------------------------------
@@ -1182,7 +1182,7 @@ def regenerar_resposta(jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
             jogador["id"], True, resultado.modelo, resultado.tokens_entrada, resultado.tokens_saida,
             resultado.segundos, resultado.tentativas,
         )
-        saldo_mochis = _cobrar_mochi_do_modelo(jogador, modelo_atual)
+        saldo_livens = _cobrar_livens_do_modelo(jogador, modelo_atual)
         banco.atualizar_jogo(
             jogo_id, jogador["id"], motor.estado_para_texto(estado), bool(jogo["encerrado"])
         )
@@ -1192,7 +1192,7 @@ def regenerar_resposta(jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
         bool(jogo["encerrado"]),
         restantes - 1,
         completo=True,
-        mochis=saldo_mochis,
+        mochis=saldo_livens,
     )
 
 

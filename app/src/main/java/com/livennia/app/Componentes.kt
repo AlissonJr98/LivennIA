@@ -268,8 +268,13 @@ fun parsearNarrativaLivro(
                 append(trecho.removePrefix("*").removeSuffix("*"))
                 pop()
             }
-            trecho.startsWith("\"") || trecho.startsWith("“") -> {
-                pushStyle(SpanStyle(fontWeight = FontWeight.Medium, color = corFala))
+            trecho.startsWith("(") && trecho.endsWith(")") -> {
+                pushStyle(SpanStyle(fontStyle = FontStyle.Italic, color = corAcao))
+                append(trecho)
+                pop()
+            }
+            trecho.startsWith("\"") || trecho.startsWith("“") || trecho.startsWith("—") -> {
+                pushStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = corFala))
                 append(trecho)
                 pop()
             }

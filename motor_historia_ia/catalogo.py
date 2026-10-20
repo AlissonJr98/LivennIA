@@ -736,7 +736,7 @@ CENARIOS = [
 # Motores e Estilos Narrativos LivennIA
 # ---------------------------------------------------------------
 # "modelo" é o nome real do modelo Gemini (o jogador nunca vê isso).
-# "custo_livens" / "custo_mochi" é quantos Livens a jogada consome (0 = grátis;
+# "custo_livens" / "custo_livens" é quantos Livens a jogada consome (0 = grátis;
 # contas premium têm isenção nos modelos de categoria "Premium").
 CEREBROS = [
     {
@@ -747,7 +747,7 @@ CEREBROS = [
         "modelo": "gemini-3.1-flash-lite",
         "premium": False,
         "custo_livens": 0,
-        "custo_mochi": 0,
+        "custo_livens": 0,
         "categoria": "Grátis",
         "temperatura_padrao": 0.75,
         "estilo_prompt": (
@@ -763,7 +763,7 @@ CEREBROS = [
         "modelo": "gemini-3.1-flash-lite",
         "premium": False,
         "custo_livens": 2,
-        "custo_mochi": 2,
+        "custo_livens": 2,
         "categoria": "Premium",
         "temperatura_padrao": 0.85,
         "estilo_prompt": (
@@ -779,7 +779,7 @@ CEREBROS = [
         "modelo": "gemini-3.5-flash-lite",
         "premium": False,
         "custo_livens": 2,
-        "custo_mochi": 2,
+        "custo_livens": 2,
         "categoria": "Premium",
         "temperatura_padrao": 0.85,
         "estilo_prompt": (
@@ -795,7 +795,7 @@ CEREBROS = [
         "modelo": "gemini-3.5-flash-lite",
         "premium": False,
         "custo_livens": 3,
-        "custo_mochi": 3,
+        "custo_livens": 3,
         "categoria": "Premium",
         "temperatura_padrao": 0.92,
         "estilo_prompt": (
@@ -812,7 +812,7 @@ CEREBROS = [
         "modelo": "gemini-3.5-flash-lite",
         "premium": False,
         "custo_livens": 3,
-        "custo_mochi": 3,
+        "custo_livens": 3,
         "categoria": "Premium",
         "temperatura_padrao": 0.88,
         "estilo_prompt": (
@@ -828,7 +828,7 @@ CEREBROS = [
         "modelo": "gemini-3.5-flash-lite",
         "premium": False,
         "custo_livens": 3,
-        "custo_mochi": 3,
+        "custo_livens": 3,
         "categoria": "Premium",
         "temperatura_padrao": 0.95,
         "estilo_prompt": (
@@ -844,7 +844,7 @@ CEREBROS = [
         "modelo": "gemini-3.8-flash",
         "premium": True,
         "custo_livens": 5,
-        "custo_mochi": 5,
+        "custo_livens": 5,
         "categoria": "Flagship",
         "temperatura_padrao": 0.85,
         "estilo_prompt": (
@@ -860,7 +860,7 @@ CEREBROS = [
         "modelo": "gemini-3.8-flash",
         "premium": True,
         "custo_livens": 10,
-        "custo_mochi": 10,
+        "custo_livens": 10,
         "categoria": "Flagship",
         "temperatura_padrao": 0.82,
         "estilo_prompt": (
@@ -876,7 +876,7 @@ CEREBROS = [
         "modelo": "gemini-3.8-flash",
         "premium": True,
         "custo_livens": 10,
-        "custo_mochi": 10,
+        "custo_livens": 10,
         "categoria": "Ultra Flagship",
         "temperatura_padrao": 0.90,
         "estilo_prompt": (
