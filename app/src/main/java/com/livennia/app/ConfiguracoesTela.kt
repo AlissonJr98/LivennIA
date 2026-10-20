@@ -1,5 +1,7 @@
 package com.livennia.app
 
+import androidx.activity.compose.BackHandler
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -59,6 +61,15 @@ import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 
+
+enum class SubTelaAtiva {
+    DiagnosticoRede,
+    Sobre,
+    Pesquisa,
+    SolicitarRecurso,
+    ReportarErro
+}
+
 private enum class DialogoConfig {
     PreferenciasConteudo,
     Idioma,
@@ -80,6 +91,39 @@ private enum class DialogoConfig {
 fun ConfiguracoesTela(vm: AppViewModel) {
     val contexto = LocalContext.current
     var dialogoAberto by remember { mutableStateOf<DialogoConfig?>(null) }
+    var subTelaAtiva by rememberSaveable { mutableStateOf<SubTelaAtiva?>(null) }
+
+    val telaAtiva = subTelaAtiva
+    if (telaAtiva != null) {
+        when (telaAtiva) {
+            SubTelaAtiva.DiagnosticoRede -> SubTelaDiagnosticoRede(
+                vm = vm,
+                onVoltar = { subTelaAtiva = null }
+            )
+            SubTelaAtiva.Sobre -> SubTelaSobre(
+                vm = vm,
+                onVoltar = { subTelaAtiva = null },
+                onAbrirDiagnostico = { subTelaAtiva = SubTelaAtiva.DiagnosticoRede },
+                onApagarConta = { dialogoAberto = DialogoConfig.ApagarConta }
+            )
+            SubTelaAtiva.Pesquisa -> SubTelaPesquisa(
+                vm = vm,
+                onVoltar = { subTelaAtiva = null },
+                onNovaSugestao = { subTelaAtiva = SubTelaAtiva.SolicitarRecurso }
+            )
+            SubTelaAtiva.SolicitarRecurso -> SubTelaSolicitarRecurso(
+                vm = vm,
+                onVoltar = { subTelaAtiva = null }
+            )
+            SubTelaAtiva.ReportarErro -> SubTelaReportarErro(
+                vm = vm,
+                onVoltar = { subTelaAtiva = null }
+            )
+        }
+        return
+    }
+
+    BackHandler { vm.navegarPara(Tela.Personagens) }
 
     // Estados persistidos / locais dos switches
     var notificacoesAtivas by rememberSaveable { mutableStateOf(false) }
@@ -247,17 +291,17 @@ fun ConfiguracoesTela(vm: AppViewModel) {
                         Column {
                             ItemConfigLinha(
                                 titulo = "Reportar erro",
-                                aoClicar = { dialogoAberto = DialogoConfig.ReportarErro }
+                                aoClicar = { subTelaAtiva = SubTelaAtiva.ReportarErro }
                             )
                             DivisorConfig()
                             ItemConfigLinha(
                                 titulo = "Solicitar recurso",
-                                aoClicar = { dialogoAberto = DialogoConfig.SolicitarRecurso }
+                                aoClicar = { subTelaAtiva = SubTelaAtiva.SolicitarRecurso }
                             )
                             DivisorConfig()
                             ItemConfigLinha(
                                 titulo = "Pesquisa",
-                                aoClicar = { dialogoAberto = DialogoConfig.Pesquisa }
+                                aoClicar = { subTelaAtiva = SubTelaAtiva.Pesquisa }
                             )
                             DivisorConfig()
                             ItemConfigLinha(
@@ -289,12 +333,12 @@ fun ConfiguracoesTela(vm: AppViewModel) {
                             DivisorConfig()
                             ItemConfigLinha(
                                 titulo = "Sobre",
-                                aoClicar = { dialogoAberto = DialogoConfig.Sobre }
+                                aoClicar = { subTelaAtiva = SubTelaAtiva.Sobre }
                             )
                             DivisorConfig()
                             ItemConfigLinha(
                                 titulo = "Diagnóstico de rede",
-                                aoClicar = { dialogoAberto = DialogoConfig.DiagnosticoRede }
+                                aoClicar = { subTelaAtiva = SubTelaAtiva.DiagnosticoRede }
                             )
                             DivisorConfig()
                             ItemConfigLinha(
