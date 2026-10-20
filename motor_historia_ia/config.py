@@ -51,7 +51,7 @@ MODELOS = [
     m.strip()
     for m in os.environ.get(
         "LIVENNIA_MODELOS",
-        "gemini-3.1-flash-lite,gemini-3.5-flash-lite,gemini-3.8-flash",
+        "gemini-2.5-flash,gemini-2.5-pro",
     ).split(",")
     if m.strip()
 ]

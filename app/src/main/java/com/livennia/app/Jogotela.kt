@@ -85,7 +85,7 @@ private enum class DialogoAberto {
     Diarios,
     Cartas,
     Savepoints,
-    ModeloTemperatura,
+    ModeloIA,
     Vinculo
 }
 
@@ -173,10 +173,16 @@ fun JogoTela(vm: AppViewModel) {
     var visiveis by remember(narrativaAtual) { mutableIntStateOf(0) }
     LaunchedEffect(narrativaAtual) {
         val ultimo = chat.size - 1
+        visiveis = 0
         while (visiveis < narrativaAtual.length) {
-            delay(16)
-            visiveis = minOf(narrativaAtual.length, visiveis + 2)
-            if (ultimo >= 0) listaChat.scrollToItem(ultimo)
+            delay(14)
+            visiveis = minOf(narrativaAtual.length, visiveis + 3)
+            if (ultimo >= 0) {
+                listaChat.scrollToItem(ultimo, 100000)
+            }
+        }
+        if (ultimo >= 0) {
+            listaChat.animateScrollToItem(ultimo, 100000)
         }
     }
     val terminou = visiveis >= narrativaAtual.length
@@ -202,7 +208,7 @@ fun JogoTela(vm: AppViewModel) {
         // "situacao" dela) e o indicador de "digitando".
         val extras = if (vm.ocupado) (if (vm.acaoPendente != null) 2 else 1) else 0
         val alvo = chat.size + extras - 1
-        if (alvo >= 0) listaChat.animateScrollToItem(alvo)
+        if (alvo >= 0) listaChat.animateScrollToItem(alvo, 100000)
     }
 
     BackHandler { vm.voltarParaPersonagens() }
@@ -387,6 +393,9 @@ fun JogoTela(vm: AppViewModel) {
                         }
                     }
                     item { BlocoDigitando() }
+                }
+                item(key = "fim_chat_espaco") {
+                    Spacer(Modifier.height(20.dp))
                 }
             }
 
@@ -769,10 +778,16 @@ private fun JogoModoHistoria(vm: AppViewModel) {
     var visiveis by remember(narrativaAtual) { mutableIntStateOf(0) }
     LaunchedEffect(narrativaAtual) {
         val ultimo = chat.size - 1
+        visiveis = 0
         while (visiveis < narrativaAtual.length) {
             delay(14)
-            visiveis = minOf(narrativaAtual.length, visiveis + 2)
-            if (ultimo >= 0) listaChat.scrollToItem(ultimo)
+            visiveis = minOf(narrativaAtual.length, visiveis + 3)
+            if (ultimo >= 0) {
+                listaChat.scrollToItem(ultimo, 100000)
+            }
+        }
+        if (ultimo >= 0) {
+            listaChat.animateScrollToItem(ultimo, 100000)
         }
     }
     val terminou = visiveis >= narrativaAtual.length
@@ -785,7 +800,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
     LaunchedEffect(chat.size, vm.ocupado, vm.acaoPendente) {
         val extras = if (vm.ocupado) (if (vm.acaoPendente != null) 2 else 1) else 0
         val alvo = chat.size + extras - 1
-        if (alvo >= 0) listaChat.animateScrollToItem(alvo)
+        if (alvo >= 0) listaChat.animateScrollToItem(alvo, 100000)
     }
 
     BackHandler { vm.voltarParaPersonagens() }
@@ -1046,6 +1061,9 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                         }
                     }
                     item { BlocoDigitando() }
+                }
+                item(key = "fim_chat_espaco") {
+                    Spacer(Modifier.height(20.dp))
                 }
             }
 
@@ -1373,20 +1391,26 @@ private fun BarraFerramentasLiven(
 
         // Seletor de Sabor de Modelo e Temperatura
         val emojiModelo = jogo.modelo?.emoji?.ifBlank { "🤖" } ?: "🤖"
-        val nomeModelo = jogo.modelo?.nome ?: "Modelo"
-        val tempFormatada = String.format(Locale.US, "%.1f", jogo.temperatura)
+        val nomeModelo = jogo.modelo?.nome ?: "Modelo de IA"
         Surface(
             color = SuperficieAlta,
             shape = Cantos.pilula,
             border = BorderStroke(1.dp, Ouro.copy(alpha = 0.30f)),
-            modifier = Modifier.clickable { onAbrirDialogo(DialogoAberto.ModeloTemperatura) }
+            modifier = Modifier.clickable { onAbrirDialogo(DialogoAberto.ModeloIA) }
         ) {
-            Text(
-                text = "$emojiModelo $nomeModelo • $tempFormatada°",
-                style = MaterialTheme.typography.labelSmall,
-                color = Ouro,
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-            )
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(emojiModelo, style = MaterialTheme.typography.labelSmall)
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = nomeModelo,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Ouro,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
     }
 }
@@ -1552,6 +1576,73 @@ private fun FaixaSugestoesAutoResposta(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.90f),
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ItemCardModeloIA(
+    c: CerebroDto,
+    selecionado: Boolean,
+    aoSelecionar: () -> Unit
+) {
+    Surface(
+        color = if (selecionado) Ouro.copy(alpha = 0.18f) else SuperficieAlta,
+        shape = Cantos.cartao,
+        border = BorderStroke(
+            1.dp,
+            if (selecionado) Ouro else Color.White.copy(alpha = 0.08f)
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = c.liberado) { aoSelecionar() }
+    ) {
+        Row(
+            modifier = Modifier.padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(c.emoji.ifBlank { "🤖" }, fontSize = 20.sp)
+            Spacer(Modifier.width(8.dp))
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = c.nome,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = if (selecionado) FontWeight.Bold else FontWeight.Medium,
+                        color = if (selecionado) Ouro else MaterialTheme.colorScheme.onBackground
+                    )
+                }
+                Text(
+                    text = c.descricao,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextoSuave
+                )
+            }
+            Spacer(Modifier.width(6.dp))
+            Surface(
+                color = when {
+                    c.custoLivens == 0 -> Color(0xFF2E7D32).copy(alpha = 0.25f)
+                    c.premium -> Color(0xFFFFB300).copy(alpha = 0.20f)
+                    else -> Color(0xFF1976D2).copy(alpha = 0.25f)
+                },
+                shape = RoundedCornerShape(50)
+            ) {
+                Text(
+                    text = when {
+                        c.custoLivens == 0 -> "Grátis"
+                        c.premium -> "VIP"
+                        else -> "⚡ ${c.custoLivens}"
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = when {
+                        c.custoLivens == 0 -> Color(0xFF81C784)
+                        c.premium -> Ouro
+                        else -> Color(0xFF90CAF9)
+                    },
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                 )
             }
         }
@@ -1985,7 +2076,7 @@ private fun GerenciadorDialogosJogo(
                 }
             )
         }
-        DialogoAberto.ModeloTemperatura -> {
+        DialogoAberto.ModeloIA -> {
             var cerebroIdSelecionado by remember(jogo.modelo?.id) {
                 mutableStateOf(jogo.modelo?.id ?: vm.cerebros.firstOrNull()?.id ?: "")
             }
@@ -1994,68 +2085,84 @@ private fun GerenciadorDialogosJogo(
             }
             AlertDialog(
                 onDismissRequest = onFecharDialogo,
-                title = { Text("🤖 Sabor de IA & Temperatura") },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("🤖", fontSize = 20.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Modelo de IA")
+                    }
+                },
                 text = {
                     Column(
-                        modifier = Modifier.verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
-                            text = "Temperatura criativa: ${String.format(Locale.US, "%.2f", tempSelecionada)}",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = Ouro
-                        )
-                        Slider(
-                            value = tempSelecionada,
-                            onValueChange = { tempSelecionada = it },
-                            valueRange = 0.2f..1.4f
-                        )
-                        Text(
-                            text = "Menor = respostas mais focadas e fiéis; Maior = mais criativas e ousadas.",
+                            text = "Escolha o modelo que dita o tom, profundidade e criatividade da narrativa:",
                             style = MaterialTheme.typography.bodySmall,
                             color = TextoSuave
                         )
-                        Spacer(Modifier.height(4.dp))
-                        vm.cerebros.forEach { c ->
-                            val selecionado = c.id == cerebroIdSelecionado
-                            Surface(
-                                color = if (selecionado) Ouro.copy(alpha = 0.18f) else SuperficieAlta,
-                                shape = Cantos.cartao,
-                                border = BorderStroke(
-                                    1.dp,
-                                    if (selecionado) Ouro else Ouro.copy(alpha = 0.20f)
-                                ),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable(enabled = c.liberado) {
+
+                        val gratis = vm.cerebros.filter { it.custoLivens == 0 && !it.premium }
+                        val energia = vm.cerebros.filter { it.custoLivens > 0 && !it.premium }
+                        val premium = vm.cerebros.filter { it.premium }
+
+                        if (gratis.isNotEmpty()) {
+                            Text(
+                                text = "🎁 GRÁTIS COM ANÚNCIO",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Ouro
+                            )
+                            gratis.forEach { c ->
+                                ItemCardModeloIA(
+                                    c = c,
+                                    selecionado = c.id == cerebroIdSelecionado,
+                                    aoSelecionar = {
                                         cerebroIdSelecionado = c.id
                                         tempSelecionada = c.temperaturaPadrao
                                     }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(10.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(c.emoji.ifBlank { "🤖" }, fontSize = 20.sp)
-                                    Spacer(Modifier.width(8.dp))
-                                    Column(Modifier.weight(1f)) {
-                                        Text(
-                                            text = c.nome,
-                                            style = MaterialTheme.typography.titleSmall,
-                                            color = if (selecionado) Ouro else MaterialTheme.colorScheme.onBackground
-                                        )
-                                        Text(
-                                            text = c.descricao,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = TextoSuave
-                                        )
+                                )
+                            }
+                        }
+
+                        if (energia.isNotEmpty()) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = "⚡ USA ENERGIA (LIVENS)",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF64B5F6)
+                            )
+                            energia.forEach { c ->
+                                ItemCardModeloIA(
+                                    c = c,
+                                    selecionado = c.id == cerebroIdSelecionado,
+                                    aoSelecionar = {
+                                        cerebroIdSelecionado = c.id
+                                        tempSelecionada = c.temperaturaPadrao
                                     }
-                                    Text(
-                                        text = if (c.custoLivens == 0) "Grátis" else "✨ ${c.custoLivens}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = Ouro
-                                    )
-                                }
+                                )
+                            }
+                        }
+
+                        if (premium.isNotEmpty()) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = "👑 EXCLUSIVO PREMIUM",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFFFD54F)
+                            )
+                            premium.forEach { c ->
+                                ItemCardModeloIA(
+                                    c = c,
+                                    selecionado = c.id == cerebroIdSelecionado,
+                                    aoSelecionar = {
+                                        cerebroIdSelecionado = c.id
+                                        tempSelecionada = c.temperaturaPadrao
+                                    }
+                                )
                             }
                         }
                     }
@@ -2069,7 +2176,7 @@ private fun GerenciadorDialogosJogo(
                             )
                             onFecharDialogo()
                         }
-                    ) { Text("Aplicar") }
+                    ) { Text("Confirmar Modelo") }
                 },
                 dismissButton = {
                     TextButton(onClick = onFecharDialogo) { Text("Cancelar") }

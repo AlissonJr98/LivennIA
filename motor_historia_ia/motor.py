@@ -359,7 +359,13 @@ def regras_do_narrador(genero, cenario=None, modo="rpg", cerebro=None):
             if cat_c:
                 estilo = cat_c.get("estilo_prompt")
     if estilo:
-        regras += f"\n\nESTILO NARRATIVO DO MODELO ({cerebro.get('nome', 'IA')}):\n- {estilo}\n"
+        regras += (
+            f"\n\n=================================================================\n"
+            f"DIRETRIZ OBRIGATÓRIA DESTE MODELO DE IA ({cerebro.get('nome', 'IA')}):\n"
+            f"{estilo}\n"
+            f"ATENÇÃO: Você DEVE adotar esse tom e prioridade explicitamente nesta cena!\n"
+            f"=================================================================\n"
+        )
     return regras
 
 

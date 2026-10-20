@@ -741,147 +741,114 @@ CENARIOS = [
 CEREBROS = [
     {
         "id": "livennia-flash",
-        "nome": "Liven Flash (Básico)",
+        "nome": "Liven Flash",
         "emoji": "⚡",
-        "descricao": "Rápido, imersivo e gratuito para diálogos e aventuras ágeis.",
-        "modelo": "gemini-3.1-flash-lite",
+        "descricao": "Rápido, dinâmico e direto ao ponto. Disponível gratuitamente com recompensa de anúncio.",
+        "modelo": "gemini-2.5-flash",
         "premium": False,
         "custo_livens": 0,
-        "custo_livens": 0,
-        "categoria": "Grátis",
-        "temperatura_padrao": 0.75,
+        "categoria": "Grátis com Anúncio",
+        "temperatura_padrao": 0.70,
         "estilo_prompt": (
-            "ESTILO DO MOTOR (LIVEN FLASH): Mantenha um ritmo ágil, claro e envolvente, "
-            "equilibrando ação direta e diálogos naturais sem prolixidade."
+            "DIRETRIZ DE ESTILO (LIVEN FLASH - DIRETO & ÁGIL):\n"
+            "- Ritmo acelerado e direto: priorize acontecimentos e reações imediatas.\n"
+            "- Evite divagações longas ou floreios excessivos; foque no impacto presente da cena."
         ),
     },
     {
         "id": "livennia-spark",
-        "nome": "Liven Spark",
+        "nome": "Liven Spark (Espirituoso)",
         "emoji": "✨",
-        "descricao": "Diálogos rápidos, espirituosos, química verbal e provocações inteligentes.",
-        "modelo": "gemini-3.1-flash-lite",
+        "descricao": "Diálogos afiados, réplicas rápidas, química verbal e provocações inteligentes.",
+        "modelo": "gemini-2.5-flash",
         "premium": False,
         "custo_livens": 2,
-        "custo_livens": 2,
-        "categoria": "Premium",
-        "temperatura_padrao": 0.85,
+        "categoria": "Usa Energia (Livens)",
+        "temperatura_padrao": 0.88,
         "estilo_prompt": (
-            "ESTILO DO MOTOR (LIVEN SPARK): Priorize diálogos espirituosos, química verbal, "
-            "respostas afiadas, humor sutil e ritmo dinâmico entre os personagens."
-        ),
-    },
-    {
-        "id": "livennia-pulse",
-        "nome": "Liven Pulse (Avançado)",
-        "emoji": "🌊",
-        "descricao": "Roleplay versátil, diálogos naturais e profundidade emocional autêntica.",
-        "modelo": "gemini-3.5-flash-lite",
-        "premium": False,
-        "custo_livens": 2,
-        "custo_livens": 2,
-        "categoria": "Premium",
-        "temperatura_padrao": 0.85,
-        "estilo_prompt": (
-            "ESTILO DO MOTOR (LIVEN PULSE): Roleplay versátil e equilibrado, com foco em "
-            "reações emocionais autênticas, linguagem corporal rica e fluidez narrativa."
+            "DIRETRIZ DE ESTILO (LIVEN SPARK - DIÁLOGOS AFIADOS):\n"
+            "- Dê ênfase total à sagacidade verbal, ironia leve e provocações instigantes.\n"
+            "- Faça o personagem responder com personalidade marcante e réplicas memoráveis."
         ),
     },
     {
         "id": "livennia-velvet",
-        "nome": "Liven Velvet",
+        "nome": "Liven Velvet (Romance & Emoção)",
         "emoji": "🌹",
-        "descricao": "Expressivo, dramático, intenso e profundamente romântico.",
-        "modelo": "gemini-3.5-flash-lite",
+        "descricao": "Foco intenso em tensão emocional, romance magnético, olhares e vulnerabilidade.",
+        "modelo": "gemini-2.5-flash",
         "premium": False,
         "custo_livens": 3,
-        "custo_livens": 3,
-        "categoria": "Premium",
-        "temperatura_padrao": 0.92,
+        "categoria": "Usa Energia (Livens)",
+        "temperatura_padrao": 0.95,
         "estilo_prompt": (
-            "ESTILO DO MOTOR (LIVEN VELVET): Escrita intensamente expressiva, dramática e "
-            "romântica. Destaque olhares, batimentos, tensão emocional, subtexto afetivo e "
-            "vulnerabilidade dos personagens."
+            "DIRETRIZ DE ESTILO (LIVEN VELVET - ROMANCE & DRAMA):\n"
+            "- Foque intensamente na linguagem corporal: olhares demorados, respiração, toques sutis e batimentos.\n"
+            "- Explore a vulnerabilidade oculta e a química afetiva entre os personagens."
         ),
     },
     {
         "id": "livennia-amber",
-        "nome": "Liven Amber",
+        "nome": "Liven Amber (Sensorial & Mundo)",
         "emoji": "🔥",
-        "descricao": "Descrições sensoriais ricas, ambientação viva e construção de mundo imersiva.",
-        "modelo": "gemini-3.5-flash-lite",
+        "descricao": "Construção de mundo viva e imersão sensorial com luzes, cheiros, texturas e sons.",
+        "modelo": "gemini-2.5-flash",
         "premium": False,
         "custo_livens": 3,
-        "custo_livens": 3,
-        "categoria": "Premium",
-        "temperatura_padrao": 0.88,
+        "categoria": "Usa Energia (Livens)",
+        "temperatura_padrao": 0.85,
         "estilo_prompt": (
-            "ESTILO DO MOTOR (LIVEN AMBER): Capriche na atmosfera sensorial (sons, texturas, "
-            "luzes, cheiros) e na construção detalhada do cenário e da ambientação."
+            "DIRETRIZ DE ESTILO (LIVEN AMBER - RIQUEZA SENSORIAL):\n"
+            "- Descreva o ambiente com riqueza viva de detalhes sensoriais: iluminação ambiente, aromas, sons distantes e texturas físicas.\n"
+            "- Faça o cenário parecer um local real que respira ao redor da cena."
         ),
     },
     {
         "id": "livennia-eclipse",
-        "nome": "Liven Eclipse",
+        "nome": "Liven Eclipse (Reviravoltas)",
         "emoji": "🔮",
-        "descricao": "Reviravoltas criativas, ousadia provocante e narrativa imprevisível.",
-        "modelo": "gemini-3.5-flash-lite",
+        "descricao": "Narrativa imprevisível, acontecimentos ousados, segredos revelados e reviravoltas.",
+        "modelo": "gemini-2.5-flash",
         "premium": False,
-        "custo_livens": 3,
-        "custo_livens": 3,
-        "categoria": "Premium",
-        "temperatura_padrao": 0.95,
+        "custo_livens": 4,
+        "categoria": "Usa Energia (Livens)",
+        "temperatura_padrao": 1.05,
         "estilo_prompt": (
-            "ESTILO DO MOTOR (LIVEN ECLIPSE): Traga reviravoltas criativas, surpresas na cena, "
-            "carisma ousado e interações cheias de personalidade e tensão."
+            "DIRETRIZ DE ESTILO (LIVEN ECLIPSE - REVIRAVOLTAS OUSADAS):\n"
+            "- Surpreenda o jogador com elementos inesperados, revelações de segredos ou mudanças súbitas na situação.\n"
+            "- Quebre a monotonia com atitudes ousadas e dilemas imediatos."
         ),
     },
     {
         "id": "livennia-prime",
-        "nome": "Liven Prime (Mestre)",
+        "nome": "Liven Prime (Mestre Pro)",
         "emoji": "👑",
-        "descricao": "Raciocínio profundo, tramas complexas e alta inteligência narrativa.",
-        "modelo": "gemini-3.8-flash",
+        "descricao": "Alta inteligência estratégica, psicologia profunda e coerência tática rigorosa.",
+        "modelo": "gemini-2.5-pro",
         "premium": True,
         "custo_livens": 5,
-        "custo_livens": 5,
-        "categoria": "Flagship",
-        "temperatura_padrao": 0.85,
+        "categoria": "Premium",
+        "temperatura_padrao": 0.80,
         "estilo_prompt": (
-            "ESTILO DO MOTOR (LIVEN PRIME): Alta inteligência narrativa, coerência rigorosa "
-            "de longo prazo, psicologia complexa dos personagens e consequências lógicas."
-        ),
-    },
-    {
-        "id": "livennia-oracle",
-        "nome": "Liven Oracle",
-        "emoji": "📜",
-        "descricao": "Prosa literária refinada, contexto amplo e psicologia nuançada.",
-        "modelo": "gemini-3.8-flash",
-        "premium": True,
-        "custo_livens": 10,
-        "custo_livens": 10,
-        "categoria": "Flagship",
-        "temperatura_padrao": 0.82,
-        "estilo_prompt": (
-            "ESTILO DO MOTOR (LIVEN ORACLE): Prosa digna de um romance literário refinado, com "
-            "psicologia profunda, subtexto sofisticado e desenvolvimento memorável."
+            "DIRETRIZ DE ESTILO (LIVEN PRIME - ALTA INTELIGÊNCIA):\n"
+            "- Raciocínio psicológico aprofundado: cada ação tem peso e consequências realistas.\n"
+            "- Diálogos de cinema maduros, sem clichês, com consistência lógica impecável."
         ),
     },
     {
         "id": "livennia-infinity",
-        "nome": "Liven Infinity",
+        "nome": "Liven Infinity (Cinematográfico)",
         "emoji": "🌌",
-        "descricao": "Nosso motor mais poderoso para imersão cinematográfica e cenas inesquecíveis.",
-        "modelo": "gemini-3.8-flash",
+        "descricao": "Experiência de ápice: narrativa literária refinada, imersão total e cadência épica.",
+        "modelo": "gemini-2.5-pro",
         "premium": True,
         "custo_livens": 10,
-        "custo_livens": 10,
-        "categoria": "Ultra Flagship",
+        "categoria": "Premium",
         "temperatura_padrao": 0.90,
         "estilo_prompt": (
-            "ESTILO DO MOTOR (LIVEN INFINITY): Imersão cinematográfica máxima. Combine diálogos "
-            "magnéticos, ações detalhadas entre asteriscos, ritmo perfeito e ganchos irresistíveis."
+            "DIRETRIZ DE ESTILO (LIVEN INFINITY - CINEMATOGRÁFICO MÁXIMO):\n"
+            "- Prosa literária magnífica com enquadramento cinematográfico e profundidade épica.\n"
+            "- Crie uma experiência inesquecível mesclando ação vívida e diálogos poderosos."
         ),
     },
 ]

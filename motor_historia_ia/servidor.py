@@ -792,7 +792,8 @@ def ver_conta(jogador=Depends(jogador_atual)):
 @app.post("/carteira/resgatar-diario", response_model=ResgateLivenOut)
 def resgatar_livens_diarios(jogador=Depends(jogador_atual)):
     """Resgata o bônus diário de +30 Livens."""
-    ganho, saldo = banco.resgatar_livens_diarios(jogador["id"], bonus=30)
+    saldo = banco.resgatar_livens_diarios(jogador["id"], bonus=30)
+    ganho = 30
     return ResgateLivenOut(ganho=ganho, livens=saldo, mochis=saldo, ja_resgatado=(ganho == 0))
 
 resgatar_livens_diarios = resgatar_livens_diarios
