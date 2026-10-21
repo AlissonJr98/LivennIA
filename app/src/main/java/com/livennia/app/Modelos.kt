@@ -21,9 +21,8 @@ data class RegistroRequest(
 
 
 data class FirebaseAuthIn(
-
-    @SerializedName("id_token") val idToken: String
-
+    @SerializedName("id_token") val idToken: String,
+    @SerializedName("codigo_convite") val codigoConvite: String? = null
 )
 
 
@@ -557,8 +556,8 @@ data class ContaResponse(
 
     @SerializedName("resgate_diario_disponivel") val resgateDiarioDisponivel: Boolean = true,
 
-    @SerializedName("persona_retrato") val personaRetrato: Boolean = false
-
+    @SerializedName("persona_retrato") val personaRetrato: Boolean = false,
+    @SerializedName("dono") val dono: Boolean = false
 ) {
 
     val mochis: Int get() = livens

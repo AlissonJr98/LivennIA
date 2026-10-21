@@ -12,11 +12,23 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.platform.LocalContext
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -40,6 +52,36 @@ fun EntradaTela(vm: AppViewModel) {
 
     val codigoValido = codigo.matches(Regex("^LIV-[A-Z0-9]{4}-[A-Z0-9]{4}$"))
     val podeEntrar = !vm.ocupado && codigoValido && apelidoDigitado.trim().length >= 2
+
+    val contexto = LocalContext.current
+    val webClientId = remember {
+        val id = contexto.resources.getIdentifier("default_web_client_id", "string", contexto.packageName)
+        if (id != 0) contexto.getString(id) else null
+    }
+    val gso = remember(webClientId) {
+        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .apply { if (webClientId != null) requestIdToken(webClientId) }
+            .requestEmail()
+            .build()
+    }
+    val googleSignInClient = remember { GoogleSignIn.getClient(contexto, gso) }
+
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val conta = task.getResult(ApiException::class.java)
+            val idToken = conta.idToken
+            if (idToken != null) {
+                val codConvite = if (codigoValido) codigo else null
+                vm.loginComGoogle(idToken, codConvite)
+            } else {
+                vm.definirErro("Não foi possível obter o token do Google.")
+            }
+        } catch (e: ApiException) {
+            vm.definirErro("Login com Google cancelado ou falhou.")
+        }
+    }
+
 
     Column(
         modifier = Modifier
@@ -124,8 +166,64 @@ fun EntradaTela(vm: AppViewModel) {
             Text("Entrar com convite")
         }
 
+        OutlinedButton(
+            onClick = { launcher.launch(googleSignInClient.signInIntent) },
+            enabled = !vm.ocupado,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Entrar com Google")
+        }
+
         TextButton(onClick = { vm.navegarPara(Tela.Login) }) {
             Text("Já tem conta? Entrar / Criar conta")
         }
     }
+
+
+    if (vm.mostrarDialogoConviteGoogle) {
+        var codVincular by rememberSaveable { mutableStateOf(if (codigoValido) codigoDigitado else "") }
+        val codCompleto = "LIV-" + codVincular.let { d ->
+            if (d.length <= 4) d else d.take(4) + "-" + d.drop(4).take(4)
+        }
+
+        AlertDialog(
+            onDismissRequest = { vm.mostrarDialogoConviteGoogle = false },
+            title = { Text("Vincular Convite à Conta Google", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "Para seu primeiro acesso, informe seu código de convite. Ele será vinculado permanentemente à sua conta Google e você não precisará digitá-lo nunca mais!",
+                        color = TextoSuave,
+                        fontSize = 13.sp
+                    )
+                    OutlinedTextField(
+                        value = codVincular,
+                        onValueChange = { codVincular = it.uppercase().filter { c -> c.isLetterOrDigit() }.take(8) },
+                        label = { Text("Código de convite") },
+                        prefix = { Text("LIV-", color = MaterialTheme.colorScheme.primary) },
+                        placeholder = { Text("XXXX-XXXX") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val codigoFinal = if (codVincular.startsWith("LIV-")) codVincular else codCompleto
+                        vm.vincularConviteGoogle(codigoFinal)
+                    },
+                    enabled = !vm.ocupado && codVincular.isNotBlank()
+                ) {
+                    Text("Vincular e Entrar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { vm.mostrarDialogoConviteGoogle = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
 }

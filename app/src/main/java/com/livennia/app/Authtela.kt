@@ -16,7 +16,10 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -162,6 +165,52 @@ fun LoginTela(vm: AppViewModel) {
         TextButton(onClick = { vm.navegarPara(Tela.Entrada) }) {
             Text("Voltar (entrar com convite)")
         }
+    }
+
+    if (vm.mostrarDialogoConviteGoogle) {
+        var codVincular by rememberSaveable { mutableStateOf("") }
+        val codCompleto = "LIV-" + codVincular.let { d ->
+            if (d.length <= 4) d else d.take(4) + "-" + d.drop(4).take(4)
+        }
+
+        AlertDialog(
+            onDismissRequest = { vm.mostrarDialogoConviteGoogle = false },
+            title = { Text("Vincular Convite à Conta Google", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "Para seu primeiro acesso, informe seu código de convite. Ele será vinculado permanentemente à sua conta Google e você não precisará digitá-lo nunca mais!",
+                        color = TextoSuave,
+                        fontSize = 13.sp
+                    )
+                    OutlinedTextField(
+                        value = codVincular,
+                        onValueChange = { codVincular = it.uppercase().filter { c -> c.isLetterOrDigit() }.take(8) },
+                        label = { Text("Código de convite") },
+                        prefix = { Text("LIV-", color = MaterialTheme.colorScheme.primary) },
+                        placeholder = { Text("XXXX-XXXX") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val codigoFinal = if (codVincular.startsWith("LIV-")) codVincular else codCompleto
+                        vm.vincularConviteGoogle(codigoFinal)
+                    },
+                    enabled = !vm.ocupado && codVincular.isNotBlank()
+                ) {
+                    Text("Vincular e Entrar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { vm.mostrarDialogoConviteGoogle = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }
 

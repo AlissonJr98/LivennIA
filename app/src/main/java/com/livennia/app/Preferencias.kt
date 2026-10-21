@@ -23,14 +23,24 @@ class Preferencias(context: Context) {
     val servidorPadrao = "https://says-overview-library-influenced.trycloudflare.com"
 
     var token: String?
-        get() = try { p.getString("token", null) } catch (_: Exception) { null }
+        get() {
+            val salvo = pConfig.getString("token_auth", null)
+            if (!salvo.isNullOrBlank()) return salvo
+            return try { p.getString("token", null) } catch (_: Exception) { null }
+        }
         set(valor) {
+            pConfig.edit().putString("token_auth", valor).commit()
             try { p.edit().putString("token", valor).commit() } catch (_: Exception) {}
         }
 
     var apelido: String
-        get() = try { p.getString("apelido", "") ?: "" } catch (_: Exception) { "" }
+        get() {
+            val salvo = pConfig.getString("apelido_user", null)
+            if (!salvo.isNullOrBlank()) return salvo
+            return try { p.getString("apelido", "") ?: "" } catch (_: Exception) { "" }
+        }
         set(valor) {
+            pConfig.edit().putString("apelido_user", valor).commit()
             try { p.edit().putString("apelido", valor).commit() } catch (_: Exception) {}
         }
 
@@ -49,7 +59,8 @@ class Preferencias(context: Context) {
         }
 
     fun limparSessao() {
-        p.edit().remove("token").remove("apelido").apply()
+        pConfig.edit().remove("token_auth").remove("apelido_user").commit()
+        try { p.edit().remove("token").remove("apelido").commit() } catch (_: Exception) {}
     }
 
     var temaEscuro: Boolean

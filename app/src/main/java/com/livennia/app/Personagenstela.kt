@@ -3247,17 +3247,30 @@ private fun AbaPerfil(vm: AppViewModel) {
 
                 Column(modifier = Modifier.weight(1f)) {
 
-                    Text(
-
-                        text = vm.apelido,
-
-                        style = MaterialTheme.typography.titleLarge,
-
-                        fontWeight = FontWeight.Bold,
-
-                        color = Color.White
-
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = vm.apelido,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        if (vm.conta?.dono == true) {
+                            Spacer(Modifier.width(8.dp))
+                            Surface(
+                                color = Color(0xFFF5C842).copy(alpha = 0.20f),
+                                shape = RoundedCornerShape(6.dp),
+                                border = BorderStroke(1.dp, Color(0xFFF5C842).copy(alpha = 0.6f))
+                            ) {
+                                Text(
+                                    "👑 DONO",
+                                    color = Color(0xFFF5C842),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
 
                     Spacer(Modifier.height(6.dp))
 
@@ -3393,7 +3406,11 @@ private fun AbaPerfil(vm: AppViewModel) {
 
                     DivisorVerticalPerfil()
 
-                    MetricaPerfilItem(valor = (vm.conta?.livens ?: 0).toString(), rotulo = "Livens", corValor = Color(0xFFF5C842))
+                    MetricaPerfilItem(
+                        valor = if (vm.conta?.dono == true) "∞" else (vm.conta?.livens ?: 0).toString(),
+                        rotulo = "Livens",
+                        corValor = Color(0xFFF5C842)
+                    )
 
                     DivisorVerticalPerfil()
 

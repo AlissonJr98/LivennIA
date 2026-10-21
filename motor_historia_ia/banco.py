@@ -150,6 +150,12 @@ def _migrar_colunas(c):
     if "ultimo_resgate_mochi" not in colunas:
         c.execute("ALTER TABLE jogadores ADD COLUMN ultimo_resgate_mochi TEXT")
         logging.info("Banco atualizado: coluna jogadores.ultimo_resgate_mochi criada.")
+    if "dono" not in colunas:
+        c.execute("ALTER TABLE jogadores ADD COLUMN dono INTEGER NOT NULL DEFAULT 0")
+        logging.info("Banco atualizado: coluna jogadores.dono criada.")
+    if "email" not in colunas:
+        c.execute("ALTER TABLE jogadores ADD COLUMN email TEXT")
+        logging.info("Banco atualizado: coluna jogadores.email criada.")
 
 
 # ---------------------------------------------------------------
@@ -206,13 +212,16 @@ def registrar_jogador(codigo, apelido, token_hash):
 def jogador_por_token_hash(token_hash):
     with conexao() as c:
         linha = c.execute(
-            "SELECT id, apelido, banido, premium, mochis, ultimo_resgate_mochi "
+            "SELECT id, apelido, banido, premium, mochis, ultimo_resgate_mochi, dono, email "
             "FROM jogadores WHERE token_hash = ?",
             (token_hash,),
         ).fetchone()
     if not linha:
         return None
     d = dict(linha)
+    if d.get("dono"):
+        d["premium"] = 1
+        d["mochis"] = 999999
     d["livens"] = d.get("mochis", 0)
     return d
 

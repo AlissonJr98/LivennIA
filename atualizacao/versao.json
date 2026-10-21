@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 13,
-  "versaoNome": "1.5.2",
-  "notas": "Geração de retrato por IA para a Minha Persona e Perfil com base nas características personalizadas, e abertura instantânea de histórias já iniciadas.",
+  "versaoCodigo": 14,
+  "versaoNome": "1.5.3",
+  "notas": "Login com Google vinculado permanentemente ao convite, perfil de Dono com Livens ilimitados e sem limites de mensagens ou modelos.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

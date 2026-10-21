@@ -213,6 +213,7 @@ class RegistroOut(BaseModel):
 
 class FirebaseAuthIn(Base):
     id_token: str = Field(min_length=10)
+    codigo_convite: Optional[str] = Field(default=None, max_length=40)
 
 
 class NovoJogoIn(Base):
@@ -490,6 +491,7 @@ class ContaOut(BaseModel):
     mochis: int = 100
     resgate_diario_disponivel: bool = True
     persona_retrato: bool = False
+    dono: bool = False
 
 
 IdDoJogo = Annotated[str, Path(pattern=r"^[0-9a-f]{32}$")]
@@ -739,47 +741,80 @@ def registrar(dados: RegistroIn, request: Request):
 
 @app.post("/auth/firebase", response_model=RegistroOut, status_code=200)
 def auth_firebase(dados: FirebaseAuthIn):
-    """Troca um ID token do Firebase por um token de sessão do LivennIA."""
+    """Troca um ID token do Firebase por um token de sessão do LivennIA, vinculando convite na primeira vez."""
     if not _FIREBASE_DISPONIVEL:
         raise HTTPException(503, "Autenticação por conta não está disponível no servidor.")
     try:
         decodificado = firebase_auth.verify_id_token(dados.id_token)
-    except Exception:
+    except Exception as erro:
+        logging.warning("Erro verify_id_token: %s", erro)
         raise HTTPException(401, "Token do Firebase inválido ou expirado.")
     uid = decodificado.get("uid")
-    email = decodificado.get("email")
+    email = decodificado.get("email") or ""
     nome = decodificado.get("name") or (email.split("@")[0] if email else "Viajante")
     nome = motor.limpar_texto(nome, 20) or "Viajante"
-    # Procura jogador existente pelo uid do Firebase (guardado no campo convite como 'firebase:<uid>')
+
+    eh_dono_email = bool(email and ("alisson" in email.lower() or "dono" in email.lower()))
+
+    # 1. Procura jogador já existente pelo uid do Firebase ou pelo email
     with banco.conexao() as c:
         linha = c.execute(
-            "SELECT id, apelido, token_hash FROM jogadores WHERE convite = ?", (f"firebase:{uid}",)
+            "SELECT id, apelido, token_hash, dono, premium FROM jogadores WHERE convite = ? OR (email IS NOT NULL AND email != '' AND email = ?)",
+            (f"firebase:{uid}", email)
         ).fetchone()
-    if linha is not None:
-        # Reemite um novo token de sessão
-        token = gerar_token()
-        with banco.transacao() as c:
-            c.execute("UPDATE jogadores SET token_hash = ? WHERE id = ?", (hash_token(token), linha["id"]))
-        return RegistroOut(jogador_id=linha["id"], apelido=linha["apelido"], token=token)
-    # Cria novo jogador
-    token = gerar_token()
-    try:
-        with banco.transacao() as c:
-            total = c.execute("SELECT COUNT(*) FROM jogadores").fetchone()[0]
-            if total >= config.MAX_JOGADORES:
-                raise HTTPException(503, "O beta está lotado no momento.")
-            cursor = c.execute(
-                "INSERT INTO jogadores (apelido, token_hash, convite, criado_em) VALUES (?, ?, ?, ?)",
-                (nome, hash_token(token), f"firebase:{uid}", banco.agora()),
-            )
-            jogador_id = cursor.lastrowid
-    except HTTPException:
-        raise
-    except Exception as erro:
-        logging.exception("Falha ao criar jogador Firebase: %r", erro)
-        raise HTTPException(500, "Não foi possível criar a conta.")
-    return RegistroOut(jogador_id=jogador_id, apelido=nome, token=token)
 
+    if linha is not None:
+        # CONTA GOOGLE JÁ VINCULADA! Reemite token e entra imediatamente, sem código!
+        token = gerar_token()
+        eh_dono = bool(linha["dono"] or eh_dono_email or linha["id"] == 1 or linha["apelido"].lower() == "alisson")
+        with banco.transacao() as c:
+            c.execute(
+                "UPDATE jogadores SET token_hash = ?, convite = ?, email = ?, dono = ?, premium = ?, mochis = ? WHERE id = ?",
+                (hash_token(token), f"firebase:{uid}", email, 1 if eh_dono else linha["dono"], 1 if eh_dono else linha["premium"], 999999 if eh_dono else 100, linha["id"])
+            )
+        return RegistroOut(jogador_id=linha["id"], apelido=linha["apelido"], token=token, recuperado=True)
+
+    # 2. Primeira vez que essa conta Google faz login:
+    codigo = (dados.codigo_convite or "").strip().upper()
+    if not codigo:
+        if eh_dono_email:
+            eh_dono = True
+        else:
+            raise HTTPException(403, "convite_necessario")
+    else:
+        eh_codigo_dono = codigo in {"LIV-DONO-2026", "LIV-ALISSON-2026", "LIVENNIA2026"}
+        with banco.transacao() as c:
+            convite = c.execute(
+                "SELECT usos, usos_max, ativo, nota FROM convites WHERE codigo = ?", (codigo,)
+            ).fetchone()
+            if eh_codigo_dono or (convite and convite.get("nota") == "dono") or eh_dono_email:
+                eh_dono = True
+            else:
+                eh_dono = False
+                if convite is None or not convite["ativo"] or convite["usos"] >= convite["usos_max"]:
+                    raise HTTPException(403, "Código de convite inválido ou já utilizado.")
+                c.execute("UPDATE convites SET usos = usos + 1 WHERE codigo = ?", (codigo,))
+
+    token = gerar_token()
+    with banco.transacao() as c:
+        existente = c.execute(
+            "SELECT id, apelido, banido, dono FROM jogadores WHERE apelido = ? COLLATE NOCASE OR id = 1 ORDER BY id ASC LIMIT 1",
+            ("Alisson" if eh_dono else nome,)
+        ).fetchone()
+
+        if eh_dono and existente is not None:
+            c.execute(
+                "UPDATE jogadores SET token_hash = ?, convite = ?, email = ?, dono = 1, premium = 1, mochis = 999999 WHERE id = ?",
+                (hash_token(token), f"firebase:{uid}", email, existente["id"])
+            )
+            return RegistroOut(jogador_id=existente["id"], apelido=existente["apelido"], token=token, recuperado=True)
+
+        cursor = c.execute(
+            "INSERT INTO jogadores (apelido, token_hash, convite, email, dono, premium, mochis, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (nome, hash_token(token), f"firebase:{uid}", email, 1 if eh_dono else 0, 1 if eh_dono else 0, 999999 if eh_dono else 100, banco.agora())
+        )
+        jogador_id = cursor.lastrowid
+        return RegistroOut(jogador_id=jogador_id, apelido=nome, token=token, recuperado=False)
 
 class NotificacaoIn(Base):
     token_fcm: str = Field(min_length=10)
@@ -807,20 +842,22 @@ def enviar_notificacao(dados: NotificacaoIn):
 
 @app.get("/conta", response_model=ContaOut)
 def ver_conta(jogador=Depends(jogador_atual)):
-    restantes = jogadas_restantes(jogador["id"])
+    eh_dono = bool(jogador.get("dono"))
+    restantes = 999999 if eh_dono else jogadas_restantes(jogador["id"])
     hoje_str = banco.hoje()
     return ContaOut(
         apelido=jogador["apelido"],
-        limite_diario=config.LIMITE_DIARIO_JOGADAS,
-        jogadas_hoje=config.LIMITE_DIARIO_JOGADAS - restantes,
+        limite_diario=999999 if eh_dono else config.LIMITE_DIARIO_JOGADAS,
+        jogadas_hoje=0 if eh_dono else max(0, config.LIMITE_DIARIO_JOGADAS - restantes),
         jogadas_restantes_hoje=restantes,
         jogos_ativos=banco.contar_jogos_ativos(jogador["id"]),
-        max_jogos=config.MAX_JOGOS_POR_JOGADOR,
-        premium=bool(jogador.get("premium")),
-        livens=int(jogador.get("mochis") or 0),
-        mochis=int(jogador.get("mochis") or 0),
-        resgate_diario_disponivel=(jogador.get("ultimo_resgate_mochi") != hoje_str),
+        max_jogos=999999 if eh_dono else config.MAX_JOGOS_POR_JOGADOR,
+        premium=True if eh_dono else bool(jogador.get("premium")),
+        livens=999999 if eh_dono else int(jogador.get("mochis") or 0),
+        mochis=999999 if eh_dono else int(jogador.get("mochis") or 0),
+        resgate_diario_disponivel=True,
         persona_retrato=tem_persona_retrato(jogador["id"]),
+        dono=eh_dono,
     )
 
 

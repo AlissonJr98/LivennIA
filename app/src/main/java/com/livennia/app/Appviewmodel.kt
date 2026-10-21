@@ -749,20 +749,37 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         encerrarSessao()
     }
 
-    private suspend fun trocarTokenFirebase() {
+    var idTokenGooglePendente by mutableStateOf<String?>(null)
+    var mostrarDialogoConviteGoogle by mutableStateOf(false)
+
+    private suspend fun trocarTokenFirebase(codigoConvite: String? = null) {
         val usuario = firebaseAuth.currentUser
             ?: throw IllegalStateException("Sem usuário autenticado.")
         val idToken = usuario.getIdToken(false).await().token
             ?: throw IllegalStateException("Token inválido.")
         val api = obterApi() ?: throw IllegalStateException("Sem API.")
-        val resposta = api.authFirebase(com.livennia.app.FirebaseAuthIn(idToken))
-        prefs.token = resposta.token
-        prefs.apelido = resposta.apelido
-        prefs.servidor = servidor.trim()
-        ApiClient.token = resposta.token
-        apelido = resposta.apelido
-        tela = Tela.Personagens
-        atualizarListas(api)
+        try {
+            val resposta = api.authFirebase(com.livennia.app.FirebaseAuthIn(idToken, codigoConvite))
+            prefs.token = resposta.token
+            prefs.apelido = resposta.apelido
+            prefs.servidor = servidor.trim()
+            ApiClient.token = resposta.token
+            apelido = resposta.apelido
+            idTokenGooglePendente = null
+            mostrarDialogoConviteGoogle = false
+            tela = Tela.Personagens
+            atualizarListas(api)
+        } catch (e: Throwable) {
+            val erro = e.paraErroApp()
+            if (erro.mensagem.contains("convite", ignoreCase = true) ||
+                erro.mensagem.contains("convite_necessario", ignoreCase = true) ||
+                (e is retrofit2.HttpException && e.code() == 403)) {
+                idTokenGooglePendente = idToken
+                mostrarDialogoConviteGoogle = true
+            } else {
+                throw e
+            }
+        }
     }
 
     fun loginComEmail(email: String, senha: String) {
@@ -791,11 +808,28 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun loginComGoogle(idToken: String) {
+    fun loginComGoogle(idToken: String, codigoConvite: String? = null) {
         executar("Entrando com Google...") { _ ->
-            val credencial = GoogleAuthProvider.getCredential(idToken, null)
-            firebaseAuth.signInWithCredential(credencial).await()
-            trocarTokenFirebase()
+            try {
+                val credencial = GoogleAuthProvider.getCredential(idToken, null)
+                firebaseAuth.signInWithCredential(credencial).await()
+            } catch (e: Exception) {
+                // Já autenticado no Firebase
+            }
+            trocarTokenFirebase(codigoConvite)
+        }
+    }
+
+    fun vincularConviteGoogle(codigo: String) {
+        val idToken = idTokenGooglePendente
+        if (idToken != null) {
+            loginComGoogle(idToken, codigo.trim().uppercase())
+        } else {
+            viewModelScope.launch {
+                executar("Vinculando convite...") {
+                    trocarTokenFirebase(codigo.trim().uppercase())
+                }
+            }
         }
     }
 
