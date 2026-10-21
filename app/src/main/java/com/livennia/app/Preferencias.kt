@@ -20,7 +20,7 @@ class Preferencias(context: Context) {
     private val pConfig = context.getSharedPreferences("livennia_config", Context.MODE_PRIVATE)
 
     // IP padrão do PC na rede local (para o app no celular alcançar o servidor).
-    val servidorPadrao = "https://says-overview-library-influenced.trycloudflare.com"
+    val servidorPadrao = "https://functionality-jumping-hood-man.trycloudflare.com"
 
     var token: String?
         get() {

@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 15,
-  "versaoNome": "1.5.4",
-  "notas": "Seletor nativo do Google (Credential Manager) com exibição de todas as contas do aparelho e vinculação do convite.",
+  "versaoCodigo": 16,
+  "versaoNome": "1.5.5",
+  "notas": "Servidor Cloudflare conectado por padrão para acesso externo, login com Google nativo e vínculo de convite.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }
