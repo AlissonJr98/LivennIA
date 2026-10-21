@@ -51,8 +51,12 @@ data class CenarioDto(
     val tags: List<String> = emptyList(),
     val sinopse: String = "",
     val abertura: String = "",
-    // true quando a arte de capa já foi gerada e está salva no servidor.
-    val capa: Boolean = false
+    val capa: Boolean = false,
+    val criadoPorUsuario: Boolean = false,
+    val autorNome: String = "LivennIA Studios",
+    val autorAvatar: String = "",
+    val chats: Int = 0,
+    val saves: Int = 0
 )
 
 // Motores de IA LivennIA com custo em Livens e categoria.
