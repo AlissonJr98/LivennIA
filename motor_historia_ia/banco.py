@@ -173,11 +173,13 @@ def registrar_jogador(codigo, apelido, token_hash):
     """
     with transacao() as c:
         convite = c.execute(
-            "SELECT usos, usos_max, ativo FROM convites WHERE codigo = ?", (codigo,)
+            "SELECT usos, usos_max, ativo, nota FROM convites WHERE codigo = ?", (codigo,)
         ).fetchone()
         if convite is None or not convite["ativo"] or convite["usos"] >= convite["usos_max"]:
             # Mesma mensagem para qualquer problema, para não ajudar quem está chutando códigos.
             raise ErroNegocio(403, "Código de convite inválido ou já utilizado.")
+
+        eh_admin = convite["nota"] == "dono" or codigo in {"LIV-DONO-2026", "LIVENNIA2026", "LIV-ALISSON-2026", "LIV-CAMILA-ADMIN"}
 
         # A conta mais recente com esse apelido (é a que o jogador estava usando).
         existente = c.execute(
@@ -192,10 +194,16 @@ def registrar_jogador(codigo, apelido, token_hash):
 
         if existente is not None:
             # Recuperação: renova o token e mantém tudo que já era da conta.
-            c.execute(
-                "UPDATE jogadores SET token_hash = ? WHERE id = ?",
-                (token_hash, existente["id"]),
-            )
+            if eh_admin:
+                c.execute(
+                    "UPDATE jogadores SET token_hash = ?, dono = 1, premium = 1, mochis = 999999 WHERE id = ?",
+                    (token_hash, existente["id"]),
+                )
+            else:
+                c.execute(
+                    "UPDATE jogadores SET token_hash = ? WHERE id = ?",
+                    (token_hash, existente["id"]),
+                )
             return existente["id"], True
 
         total = c.execute("SELECT COUNT(*) FROM jogadores").fetchone()[0]
@@ -203,8 +211,8 @@ def registrar_jogador(codigo, apelido, token_hash):
             raise ErroNegocio(503, "O beta está lotado no momento.")
 
         cursor = c.execute(
-            "INSERT INTO jogadores (apelido, token_hash, convite, criado_em) VALUES (?, ?, ?, ?)",
-            (apelido, token_hash, codigo, agora()),
+            "INSERT INTO jogadores (apelido, token_hash, convite, dono, premium, mochis, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (apelido, token_hash, codigo, 1 if eh_admin else 0, 1 if eh_admin else 0, 999999 if eh_admin else 100, agora()),
         )
         return cursor.lastrowid, False
 
