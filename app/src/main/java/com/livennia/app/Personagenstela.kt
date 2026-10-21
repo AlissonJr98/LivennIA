@@ -1335,7 +1335,7 @@ private fun AbaPerfil(vm: AppViewModel) {
                     border = BorderStroke(1.dp, Color(0xFFF5C842).copy(alpha = 0.4f)),
                     modifier = Modifier
                         .weight(1f)
-                        .clickable { mostrarDialogoVip = true }
+                        .clickable { vm.navegarPara(Tela.Assinatura("Ultra")) }
                 ) {
                     Row(
                         modifier = Modifier.padding(14.dp),
@@ -1367,7 +1367,7 @@ private fun AbaPerfil(vm: AppViewModel) {
                     border = BorderStroke(1.dp, Color(0xFF8EAFCE).copy(alpha = 0.35f)),
                     modifier = Modifier
                         .weight(1f)
-                        .clickable { mostrarDialogoVip = true }
+                        .clickable { vm.navegarPara(Tela.Assinatura("Plus")) }
                 ) {
                     Row(
                         modifier = Modifier.padding(14.dp),

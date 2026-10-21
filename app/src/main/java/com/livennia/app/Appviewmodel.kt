@@ -24,6 +24,7 @@ sealed class Tela {
     object NovaAventura : Tela()
     object Jogo : Tela()
     object Feedback : Tela()
+    data class Assinatura(val planoInicial: String = "Ultra") : Tela()
 }
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {

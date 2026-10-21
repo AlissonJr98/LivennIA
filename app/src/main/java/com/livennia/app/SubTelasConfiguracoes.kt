@@ -936,7 +936,36 @@ fun SubTelaPesquisa(
                     }
                 }
             } else if (abaSelecionada == "Roadmap") {
-                // TAB 2: ROADMAP ESTILO KANBAN COM COLUNAS
+                // TAB 2: ROADMAP ESTILO KANBAN COM VOTAÇÃO DEMOCRÁTICA
+                val itensPlanejados = remember {
+                    mutableStateListOf(
+                        KanbanPlanejadoItem(
+                            id = "p1",
+                            titulo = "Diálogos em grupo com múltiplos avatares simultâneos",
+                            descricao = "Salas interativas com até 4 personagens de IA conversando e reagindo entre si às suas ações.",
+                            previsao = "Dez 2026"
+                        ),
+                        KanbanPlanejadoItem(
+                            id = "p2",
+                            titulo = "Exportação de aventuras em Livro Digital (PDF com ilustrações)",
+                            descricao = "Gere um livro ilustrado com a capa, história e decisões da sua campanha para guardar ou imprimir.",
+                            previsao = "Jan 2027"
+                        ),
+                        KanbanPlanejadoItem(
+                            id = "p3",
+                            titulo = "Criador de mundos e regras de campanha customizadas",
+                            descricao = "Defina suas próprias fichas, sistemas de dados (d20) e leis do universo para suas campanhas.",
+                            previsao = "Fev 2027"
+                        ),
+                        KanbanPlanejadoItem(
+                            id = "p4",
+                            titulo = "Mapas táticos interativos e exploração de masmorras",
+                            descricao = "Visualização de salas, tesouros e encontros desenhados dinamicamente pela IA.",
+                            previsao = "Mar 2027"
+                        )
+                    )
+                }
+
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -945,48 +974,63 @@ fun SubTelaPesquisa(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text(
-                        text = "Rota de Lançamentos do LivennIA",
+                        text = "Rota Democrática do LivennIA",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = TextoClaro
                     )
                     Text(
-                        text = "Acompanhe o que está no planejamento, em desenvolvimento e já disponível.",
+                        text = "Você decide o futuro do app! No Planejado, vote se quer ou não o recurso. Os votos começam zerados para a comunidade decidir.",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextoSecundario
                     )
 
-                    // Coluna 1: Planejado
-                    ColunaRoadmapKanban(
-                        titulo = "Planejado",
-                        iconeCor = RoxoPlanejado,
-                        itens = listOf(
-                            KanbanItem("Diálogos em grupo com múltiplos avatares simultâneos", "16.9K votos", "Dez 2026"),
-                            KanbanItem("Exportação de aventuras em PDF com ilustrações", "7.4K votos", "Janeiro 2027"),
-                            KanbanItem("Criador de mundos e regras de campanha customizadas", "5.1K votos", "Fevereiro 2027")
-                        )
+                    // Coluna 1: Planejado (Votação Democrática)
+                    ColunaRoadmapPlanejadoDemocratico(
+                        itens = itensPlanejados,
+                        onVotar = { item, quero ->
+                            if (quero) {
+                                if (item.meuVoto == "QUERO") {
+                                    item.meuVoto = null
+                                    item.votosQuero--
+                                } else {
+                                    if (item.meuVoto == "NAO_QUERO") item.votosNaoQuero--
+                                    item.meuVoto = "QUERO"
+                                    item.votosQuero++
+                                }
+                            } else {
+                                if (item.meuVoto == "NAO_QUERO") {
+                                    item.meuVoto = null
+                                    item.votosNaoQuero--
+                                } else {
+                                    if (item.meuVoto == "QUERO") item.votosQuero--
+                                    item.meuVoto = "NAO_QUERO"
+                                    item.votosNaoQuero++
+                                }
+                            }
+                        }
                     )
 
-                    // Coluna 2: Em Desenvolvimento
+                    // Coluna 2: Em Desenvolvimento (Registros zerados)
                     ColunaRoadmapKanban(
                         titulo = "Em Desenvolvimento",
                         iconeCor = DouradoLivenn,
                         itens = listOf(
-                            KanbanItem("Alternador de tom narrativo sem restrições no chat", "56.8K votos", "Em testes"),
-                            KanbanItem("Vozes e sotaques personalizados para cada NPC", "12.8K votos", "Sprint atual"),
-                            KanbanItem("Memória de longo prazo nas histórias de campanha", "25.1K votos", "Otimização de tokens")
+                            KanbanItem("Alternador de tom narrativo sem restrições no chat", "0 votos", "Em testes"),
+                            KanbanItem("Vozes e sotaques personalizados para cada NPC", "0 votos", "Sprint atual"),
+                            KanbanItem("Memória de longo prazo nas histórias de campanha", "0 votos", "Otimização de tokens")
                         )
                     )
 
-                    // Coluna 3: Concluído Recentemente
+                    // Coluna 3: Concluído Recentemente (Registros zerados)
                     ColunaRoadmapKanban(
                         titulo = "Já no App!",
                         iconeCor = VerdeEstavel,
                         itens = listOf(
-                            KanbanItem("Rolagem fluida do chat com margem inferior", "6.1K votos", "v1.3.4"),
-                            KanbanItem("Modelos de IA diferenciados com estilos reais", "9.8K votos", "v1.3.4"),
-                            KanbanItem("Abertura direta na aba Explorar", "4.3K votos", "v1.3.4"),
-                            KanbanItem("Pôsteres e badges imersivas nos cenários", "8.2K votos", "v1.3.3")
+                            KanbanItem("Central de Comunidade com Reações e Fórum", "0 votos", "v1.4.1"),
+                            KanbanItem("Tela de Perfil com Estatísticas e Planos VIP", "0 votos", "v1.4.0"),
+                            KanbanItem("Rolagem fluida do chat com margem inferior", "0 votos", "v1.3.4"),
+                            KanbanItem("Modelos de IA diferenciados com estilos reais", "0 votos", "v1.3.4")
                         )
                     )
                 }
@@ -1711,6 +1755,202 @@ private fun ChipReacaoPequeno(
     }
 }
 
+data class KanbanItem(val titulo: String, val votos: String, val data: String)
+
+data class KanbanPlanejadoItem(
+    val id: String,
+    val titulo: String,
+    val descricao: String,
+    val previsao: String,
+    var votosQuero: Int = 0,
+    var votosNaoQuero: Int = 0,
+    var meuVoto: String? = null
+)
+
+@Composable
+private fun ColunaRoadmapPlanejadoDemocratico(
+    itens: List<KanbanPlanejadoItem>,
+    onVotar: (KanbanPlanejadoItem, Boolean) -> Unit
+) {
+    Surface(
+        color = CardObsidian,
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, CardObsidianBorda),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .background(RoxoPlanejado, CircleShape)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("🎯 Planejado (Votação da Comunidade)", fontWeight = FontWeight.Bold, color = TextoClaro, fontSize = 14.sp)
+                }
+                Surface(
+                    color = Color.White.copy(alpha = 0.06f),
+                    shape = RoundedCornerShape(50)
+                ) {
+                    Text(
+                        itens.size.toString(),
+                        color = TextoSecundario,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Vote nas propostas abaixo para definir a prioridade da equipe:",
+                color = TextoMudo,
+                fontSize = 11.sp
+            )
+            Spacer(Modifier.height(10.dp))
+
+            itens.forEach { item ->
+                val totalVotos = item.votosQuero + item.votosNaoQuero
+                val pctAprovacao = if (totalVotos > 0) ((item.votosQuero.toFloat() / totalVotos) * 100).toInt() else 0
+
+                Surface(
+                    color = Color.White.copy(alpha = 0.03f),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 5.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = item.titulo,
+                                color = TextoClaro,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Surface(
+                                color = RoxoPlanejado.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = item.previsao,
+                                    color = Color(0xFFD1C4E9),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = item.descricao,
+                            color = TextoSecundario,
+                            fontSize = 11.sp,
+                            lineHeight = 15.sp
+                        )
+
+                        Spacer(Modifier.height(8.dp))
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.04f))
+                        Spacer(Modifier.height(8.dp))
+
+                        // Status da votação democrática
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (totalVotos == 0) "Aguardando votos da comunidade" else "$pctAprovacao% querem essa novidade ($totalVotos votos)",
+                                color = if (totalVotos == 0) TextoMudo else DouradoLivenn,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+
+                        Spacer(Modifier.height(6.dp))
+
+                        // Botões de Votação Democrática: Quero 👍 / Não vejo necessidade 👎
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            val votouQuero = item.meuVoto == "QUERO"
+                            Surface(
+                                color = if (votouQuero) Color(0xFF4CAF50).copy(alpha = 0.2f) else Color.White.copy(alpha = 0.04f),
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (votouQuero) Color(0xFF4CAF50) else Color.White.copy(alpha = 0.08f)
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { onVotar(item, true) }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Text("👍", fontSize = 12.sp)
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        text = "Quero (${item.votosQuero})",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (votouQuero) Color(0xFF81C784) else TextoClaro
+                                    )
+                                }
+                            }
+
+                            val votouNaoQuero = item.meuVoto == "NAO_QUERO"
+                            Surface(
+                                color = if (votouNaoQuero) Color(0xFFFF5252).copy(alpha = 0.2f) else Color.White.copy(alpha = 0.04f),
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (votouNaoQuero) Color(0xFFFF5252) else Color.White.copy(alpha = 0.08f)
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { onVotar(item, false) }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Text("👎", fontSize = 12.sp)
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        text = "Dispensar (${item.votosNaoQuero})",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (votouNaoQuero) Color(0xFFFF8A80) else TextoSecundario
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun ColunaRoadmapKanban(
     titulo: String,
@@ -1780,8 +2020,6 @@ private fun ColunaRoadmapKanban(
         }
     }
 }
-
-data class KanbanItem(val titulo: String, val votos: String, val data: String)
 
 @Composable
 private fun CardChangelogCompleto(
