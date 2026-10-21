@@ -342,16 +342,16 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         if (modo != null) {
             modoCriacao = if (modo == "historia") "historia" else "rpg"
         }
-        if (cenario.genero.isNotBlank()) generoSelecionado = cenario.genero
+        if (cenario.generoSeguro.isNotBlank()) generoSelecionado = cenario.generoSeguro
         navegarPara(Tela.NovaAventura)
     }
 
     // Entra direto no chat da IA continuando a história / sinopse do cenário
     fun iniciarHistoriaDireta(cenario: CenarioDto, modo: String = "historia") {
         cenarioSelecionado = cenario
-        modoCriacao = if (modo == "rpg" || cenario.modoJogo == "rpg") "rpg" else "historia"
-        if (cenario.genero.isNotBlank()) generoSelecionado = cenario.genero
-        premissa = cenario.sinopse
+        modoCriacao = if (modo == "rpg" || cenario.modoSeguro == "rpg") "rpg" else "historia"
+        if (cenario.generoSeguro.isNotBlank()) generoSelecionado = cenario.generoSeguro
+        premissa = cenario.sinopseSegura
         criarPersonagem(cenario.nome)
     }
 

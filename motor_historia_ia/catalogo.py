@@ -889,12 +889,18 @@ def cenario_publico(item):
     return {
         "id": item["id"],
         "nome": item["nome"],
-        "subtitulo": item["subtitulo"],
-        "emoji": item["emoji"],
-        "genero": item["genero"],
-        "tags": list(item["tags"]),
-        "sinopse": item["sinopse"],
+        "subtitulo": item.get("subtitulo", ""),
+        "emoji": item.get("emoji", "📖"),
+        "genero": item.get("genero", "Aventura"),
+        "tags": list(item.get("tags", [])),
+        "sinopse": item.get("sinopse", ""),
         "abertura": item.get("abertura", ""),
+        "criadoPorUsuario": item.get("criadoPorUsuario", False),
+        "autorNome": item.get("autorNome", "LivennIA Studios"),
+        "autorAvatar": item.get("autorAvatar", "🤖"),
+        "chats": item.get("chats", 0),
+        "saves": item.get("saves", 0),
+        "modoJogo": item.get("modo", "historia"),
     }
 
 

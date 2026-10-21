@@ -376,7 +376,7 @@ fun PersonagensTela(vm: AppViewModel) {
 
                 cenarioPreviaDetalhes = null
 
-                val modo = cenario.modoJogo.ifBlank { "historia" }
+                val modo = cenario.modoSeguro
 
                 vm.iniciarHistoriaDireta(cenario, modo)
 
@@ -1122,7 +1122,7 @@ private fun AbaExplorar(
 
         vm.generos.forEach { nomes.add(it.nome) }
 
-        todosOsCenarios.forEach { if (it.genero.isNotBlank()) nomes.add(it.genero) }
+        todosOsCenarios.forEach { if (it.generoSeguro.isNotBlank()) nomes.add(it.generoSeguro) }
 
         nomes.toList()
 
@@ -1148,19 +1148,19 @@ private fun AbaExplorar(
 
             }
 
-            val bateEstilo = estiloFiltro == "Todos" || c.genero.equals(estiloFiltro, ignoreCase = true)
+            val bateEstilo = estiloFiltro == "Todos" || c.generoSeguro.equals(estiloFiltro, ignoreCase = true)
 
             val bateBusca = termo.isEmpty() ||
 
                 c.nome.lowercase().contains(termo) ||
 
-                c.subtitulo.lowercase().contains(termo) ||
+                c.subtituloSeguro.lowercase().contains(termo) ||
 
-                c.sinopse.lowercase().contains(termo) ||
+                c.sinopseSegura.lowercase().contains(termo) ||
 
-                c.genero.lowercase().contains(termo) ||
+                c.generoSeguro.lowercase().contains(termo) ||
 
-                c.tags.any { it.lowercase().contains(termo) }
+                c.tagsSeguras.any { it.lowercase().contains(termo) }
 
             bateOrigem && bateEstilo && bateBusca
 
@@ -1178,15 +1178,15 @@ private fun AbaExplorar(
 
             when (filtroGeneroRanking) {
 
-                "Feminino" -> c.tags.any { it.contains("Feminino", ignoreCase = true) } || c.nome.contains("a", ignoreCase = true)
+                "Feminino" -> c.tagsSeguras.any { it.contains("Feminino", ignoreCase = true) } || c.nome.contains("a", ignoreCase = true)
 
-                "Masculino" -> c.tags.any { it.contains("Masculino", ignoreCase = true) } || c.nome.contains("o", ignoreCase = true)
+                "Masculino" -> c.tagsSeguras.any { it.contains("Masculino", ignoreCase = true) } || c.nome.contains("o", ignoreCase = true)
 
                 else -> true
 
             }
 
-        }.sortedByDescending { it.chats + (it.saves * 50) + (it.id.hashCode().absoluteValue % 10000) }
+        }.sortedByDescending { it.chats + (it.saves * 50) }
 
     }
 
@@ -1583,7 +1583,7 @@ private fun AbaExplorar(
                             .fillMaxWidth()
 
                             .clickable {
-                                val modo = cenario.modoJogo.ifBlank { "historia" }
+                                val modo = cenario.modoSeguro
                                 vm.escolherCenario(cenario, modo)
                                 vm.criarPersonagem(cenario.nome)
                             }
@@ -1648,7 +1648,7 @@ private fun AbaExplorar(
 
                                     temCapa = cenario.capa,
 
-                                    emoji = cenario.emoji,
+                                    emoji = cenario.emojiSeguro,
 
                                     nome = cenario.nome,
 
@@ -1728,7 +1728,7 @@ private fun AbaExplorar(
 
                                     Text(
 
-                                        text = if (cenario.modoJogo == "rpg") "• ⚔️ RPG" else "• 📜 Leitura",
+                                        text = if (cenario.modoSeguro == "rpg") "• ⚔️ RPG" else "• 📜 Leitura",
 
                                         color = Color(0xFF7C4DFF),
 
@@ -1742,7 +1742,7 @@ private fun AbaExplorar(
 
                                         Spacer(Modifier.width(4.dp))
 
-                                        Text("• Por ${cenario.autorNome}", color = TextoSuave, fontSize = 10.sp, maxLines = 1)
+                                        Text("• Por ${cenario.autorNomeSeguro}", color = TextoSuave, fontSize = 10.sp, maxLines = 1)
 
                                     }
 
@@ -1754,7 +1754,7 @@ private fun AbaExplorar(
 
                                 Text(
 
-                                    text = cenario.sinopse,
+                                    text = cenario.sinopseSegura,
 
                                     color = TextoSuave,
 
@@ -2125,7 +2125,7 @@ private fun AbaExplorar(
                         habilitado = !vm.ocupado,
 
                         onAbrir = {
-                            val modo = cenario.modoJogo.ifBlank { "historia" }
+                            val modo = cenario.modoSeguro
                             vm.iniciarHistoriaDireta(cenario, modo)
                         },
 
@@ -2229,7 +2229,7 @@ private fun CardCenario(
 
             temCapa = cenario.capa,
 
-            emoji = cenario.emoji,
+            emoji = cenario.emojiSeguro,
 
             nome = cenario.nome,
 
@@ -2261,7 +2261,7 @@ private fun CardCenario(
 
             Text(
 
-                text = if (cenario.criadoPorUsuario) "👥 ${cenario.autorNome}" else "🤖 ${cenario.genero}",
+                text = if (cenario.criadoPorUsuario) "👥 ${cenario.autorNomeSeguro}" else "🤖 ${cenario.generoSeguro}",
 
                 color = Color.White.copy(alpha = 0.95f),
 
@@ -2311,7 +2311,7 @@ private fun CardCenario(
 
                 ) {
 
-                    Text(if (cenario.modoJogo == "rpg") "⚔️" else "📜", style = MaterialTheme.typography.labelSmall)
+                    Text(if (cenario.modoSeguro == "rpg") "⚔️" else "📜", style = MaterialTheme.typography.labelSmall)
 
                     Spacer(Modifier.width(3.dp))
 
@@ -2407,7 +2407,7 @@ private fun CardCenario(
 
             Text(
 
-                "${cenario.emoji} ${cenario.nome}",
+                "${cenario.emojiSeguro} ${cenario.nome}",
 
                 color = Color.White,
 
@@ -2421,11 +2421,11 @@ private fun CardCenario(
 
             )
 
-            if (cenario.subtitulo.isNotBlank()) {
+            if (cenario.subtituloSeguro.isNotBlank()) {
 
                 Text(
 
-                    cenario.subtitulo,
+                    cenario.subtituloSeguro,
 
                     color = Ouro,
 
@@ -2443,7 +2443,7 @@ private fun CardCenario(
 
             Text(
 
-                cenario.sinopse,
+                cenario.sinopseSegura,
 
                 color = Color.White.copy(alpha = 0.82f),
 
@@ -2455,7 +2455,7 @@ private fun CardCenario(
 
             )
 
-            if (cenario.tags.isNotEmpty()) {
+            if (cenario.tagsSeguras.isNotEmpty()) {
 
                 FlowRow(
 
@@ -2465,7 +2465,7 @@ private fun CardCenario(
 
                 ) {
 
-                    cenario.tags.take(2).forEach { tag -> ChipSobreArte(tag) }
+                    cenario.tagsSeguras.take(2).forEach { tag -> ChipSobreArte(tag) }
 
                 }
 
@@ -2551,7 +2551,7 @@ private fun DialogoPreviaCenario(
 
                         temCapa = cenario.capa,
 
-                        emoji = cenario.emoji,
+                        emoji = cenario.emojiSeguro,
 
                         nome = cenario.nome,
 
@@ -2643,7 +2643,7 @@ private fun DialogoPreviaCenario(
 
                     ) {
 
-                        ChipTag(cenario.genero, destaque = true)
+                        ChipTag(cenario.generoSeguro, destaque = true)
 
                         Surface(
 
@@ -2653,20 +2653,12 @@ private fun DialogoPreviaCenario(
 
                         ) {
 
-                            val contagem = ((cenario.id.hashCode().absoluteValue % 900) + 120) / 100f
-
                             Text(
-
-                                text = "🔥 " + String.format(java.util.Locale.US, "%.1fk", contagem) + " histórias",
-
+                                text = if (cenario.chats > 0) "🔥 ${cenario.chats} conversas" else "✨ Nova história",
                                 color = Ouro,
-
                                 style = MaterialTheme.typography.labelSmall,
-
                                 fontWeight = FontWeight.SemiBold,
-
                                 modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
-
                             )
 
                         }
@@ -2691,7 +2683,7 @@ private fun DialogoPreviaCenario(
 
                         Text(
 
-                            "${cenario.emoji} ${cenario.nome}",
+                            "${cenario.emojiSeguro} ${cenario.nome}",
 
                             style = MaterialTheme.typography.headlineSmall,
 
@@ -2701,11 +2693,11 @@ private fun DialogoPreviaCenario(
 
                         )
 
-                        if (cenario.subtitulo.isNotBlank()) {
+                        if (cenario.subtituloSeguro.isNotBlank()) {
 
                             Text(
 
-                                cenario.subtitulo,
+                                cenario.subtituloSeguro,
 
                                 color = Ouro,
 
@@ -2723,7 +2715,7 @@ private fun DialogoPreviaCenario(
 
                     // Primeira Mensagem / Cena de Abertura (Estilo Balão do Personagem)
 
-                    if (cenario.abertura.isNotBlank()) {
+                    if (cenario.aberturaSegura.isNotBlank()) {
 
                         Surface(
 
@@ -2767,7 +2759,7 @@ private fun DialogoPreviaCenario(
 
                                 Text(
 
-                                    "“${cenario.abertura}”",
+                                    "“${cenario.aberturaSegura}”",
 
                                     style = MaterialTheme.typography.bodyMedium.copy(
 
@@ -2807,7 +2799,7 @@ private fun DialogoPreviaCenario(
 
                         Text(
 
-                            cenario.sinopse,
+                            cenario.sinopseSegura,
 
                             style = MaterialTheme.typography.bodyMedium,
 
@@ -2823,7 +2815,7 @@ private fun DialogoPreviaCenario(
 
                     // Tags
 
-                    if (cenario.tags.isNotEmpty()) {
+                    if (cenario.tagsSeguras.isNotEmpty()) {
 
                         FlowRow(
 
@@ -2833,7 +2825,7 @@ private fun DialogoPreviaCenario(
 
                         ) {
 
-                            cenario.tags.forEach { tag -> ChipTag(tag) }
+                            cenario.tagsSeguras.forEach { tag -> ChipTag(tag) }
 
                         }
 

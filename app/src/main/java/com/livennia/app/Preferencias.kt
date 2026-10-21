@@ -17,26 +17,35 @@ class Preferencias(context: Context) {
         EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
     )
+    private val pConfig = context.getSharedPreferences("livennia_config", Context.MODE_PRIVATE)
 
     // IP padrão do PC na rede local (para o app no celular alcançar o servidor).
     val servidorPadrao = "https://says-overview-library-influenced.trycloudflare.com"
 
     var token: String?
-        get() = p.getString("token", null)
+        get() = try { p.getString("token", null) } catch (_: Exception) { null }
         set(valor) {
-            p.edit().putString("token", valor).apply()
+            try { p.edit().putString("token", valor).commit() } catch (_: Exception) {}
         }
 
     var apelido: String
-        get() = p.getString("apelido", "") ?: ""
+        get() = try { p.getString("apelido", "") ?: "" } catch (_: Exception) { "" }
         set(valor) {
-            p.edit().putString("apelido", valor).apply()
+            try { p.edit().putString("apelido", valor).commit() } catch (_: Exception) {}
         }
 
     var servidor: String
-        get() = p.getString("servidor", servidorPadrao) ?: servidorPadrao
+        get() {
+            val salvo = pConfig.getString("servidor_custom", null)
+            if (!salvo.isNullOrBlank()) return salvo
+            val legacy = try { p.getString("servidor", null) } catch (_: Exception) { null }
+            if (!legacy.isNullOrBlank()) return legacy
+            return servidorPadrao
+        }
         set(valor) {
-            p.edit().putString("servidor", valor).apply()
+            val limpo = valor.trim().trimEnd('/')
+            pConfig.edit().putString("servidor_custom", limpo).commit()
+            try { p.edit().putString("servidor", limpo).commit() } catch (_: Exception) {}
         }
 
     fun limparSessao() {

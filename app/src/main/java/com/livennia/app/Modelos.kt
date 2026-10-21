@@ -87,38 +87,32 @@ data class NovoJogoRequest(
 // O "prompt secreto" de cada cenário fica só no servidor: aqui chega o que aparece.
 
 data class CenarioDto(
-
     val id: String,
-
     val nome: String,
-
-    val subtitulo: String = "",
-
-    val emoji: String = "",
-
-    val genero: String = "Aventura",
-
-    val tags: List<String> = emptyList(),
-
-    val sinopse: String = "",
-
-    val abertura: String = "",
-
+    val subtitulo: String? = "",
+    val emoji: String? = "",
+    val genero: String? = "Aventura",
+    val tags: List<String>? = emptyList(),
+    val sinopse: String? = "",
+    val abertura: String? = "",
     val capa: Boolean = false,
-
     val criadoPorUsuario: Boolean = false,
-
-    val autorNome: String = "LivennIA Studios",
-
-    val autorAvatar: String = "",
-
+    val autorNome: String? = "LivennIA Studios",
+    val autorAvatar: String? = "",
     val chats: Int = 0,
-
     val saves: Int = 0,
-
-    val modoJogo: String = "historia" // "historia" (só leitura / interativa) ou "rpg" (combates e dados)
-
-)
+    val modoJogo: String? = "historia" // "historia" (só leitura / interativa) ou "rpg" (combates e dados)
+) {
+    val modoSeguro: String get() = modoJogo?.takeIf { it.isNotBlank() } ?: "historia"
+    val autorNomeSeguro: String get() = autorNome?.takeIf { it.isNotBlank() } ?: "LivennIA Studios"
+    val autorAvatarSeguro: String get() = autorAvatar?.takeIf { it.isNotBlank() } ?: "👤"
+    val subtituloSeguro: String get() = subtitulo ?: ""
+    val sinopseSegura: String get() = sinopse ?: ""
+    val aberturaSegura: String get() = abertura ?: ""
+    val emojiSeguro: String get() = emoji?.takeIf { it.isNotBlank() } ?: "📖"
+    val generoSeguro: String get() = genero?.takeIf { it.isNotBlank() } ?: "Aventura"
+    val tagsSeguras: List<String> get() = tags ?: emptyList()
+}
 
 
 

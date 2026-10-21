@@ -184,7 +184,7 @@ fun NovaAventuraTela(vm: AppViewModel) {
                             CapaCenario(
                                 cenarioId = cenario.id,
                                 temCapa = cenario.capa,
-                                emoji = cenario.emoji,
+                                emoji = cenario.emojiSeguro,
                                 nome = cenario.nome,
                                 versao = vm.capaVersao,
                                 modifier = Modifier.size(72.dp),
@@ -193,20 +193,20 @@ fun NovaAventuraTela(vm: AppViewModel) {
                             Spacer(Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    "${cenario.emoji} ${cenario.nome}",
+                                    "${cenario.emojiSeguro} ${cenario.nome}",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
-                                if (cenario.subtitulo.isNotBlank()) {
+                                if (cenario.subtituloSeguro.isNotBlank()) {
                                     Text(
-                                        cenario.subtitulo,
+                                        cenario.subtituloSeguro,
                                         color = TextoSuave,
                                         style = MaterialTheme.typography.labelSmall
                                     )
                                 }
                                 Spacer(Modifier.height(4.dp))
                                 Text(
-                                    cenario.sinopse,
+                                    cenario.sinopseSegura,
                                     color = TextoSuave,
                                     style = MaterialTheme.typography.labelSmall,
                                     maxLines = 2,

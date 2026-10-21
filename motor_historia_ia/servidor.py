@@ -406,14 +406,20 @@ class CenarioOut(BaseModel):
     """Um cenário da vitrine: o que o app mostra (o prompt secreto fica no servidor)."""
     id: str
     nome: str
-    subtitulo: str
-    emoji: str
-    genero: str
-    tags: list[str]
-    sinopse: str
+    subtitulo: str = ""
+    emoji: str = "📖"
+    genero: str = "Aventura"
+    tags: list[str] = []
+    sinopse: str = ""
     abertura: str = ""
     # True quando a arte de capa já foi gerada e está salva no servidor.
     capa: bool = False
+    criadoPorUsuario: bool = False
+    autorNome: str = "LivennIA Studios"
+    autorAvatar: str = "🤖"
+    chats: int = 0
+    saves: int = 0
+    modoJogo: str = "historia"
 
 
 class CerebroOut(BaseModel):

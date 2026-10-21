@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 11,
-  "versaoNome": "1.5.0",
-  "notas": "Novo chat imersivo com arte de fundo e balões narrativos, Criador da Minha Persona completo para interagir com a IA em todos os chats e modos, nova Carteira LivennIA com pacotes de Livens e melhorias de estabilidade.",
+  "versaoCodigo": 12,
+  "versaoNome": "1.5.1",
+  "notas": "Correção de persistência do endereço do servidor (salvo em disco com commit imediato) e correção de estabilidade ao abrir histórias do Explorar (proteção contra nulos).",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

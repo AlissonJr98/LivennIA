@@ -1245,7 +1245,7 @@ fun DetalhesPersonagemModal(
                         CapaCenario(
                             cenarioId = cenario.id,
                             temCapa = cenario.capa,
-                            emoji = cenario.emoji,
+                            emoji = cenario.emojiSeguro,
                             nome = cenario.nome,
                             versao = versaoCapa,
                             modifier = Modifier.fillMaxSize()
@@ -1286,12 +1286,12 @@ fun DetalhesPersonagemModal(
 
                             // Selo do Modo Decidido pelo Criador
                             Surface(
-                                color = if (cenario.modoJogo == "rpg") Color(0xFF651FFF).copy(alpha = 0.85f) else RoxoPrimario.copy(alpha = 0.85f),
+                                color = if (cenario.modoSeguro == "rpg") Color(0xFF651FFF).copy(alpha = 0.85f) else RoxoPrimario.copy(alpha = 0.85f),
                                 shape = RoundedCornerShape(50),
                                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
                             ) {
                                 Text(
-                                    text = if (cenario.modoJogo == "rpg") "⚔️ Modo RPG" else "📜 Modo Leitura",
+                                    text = if (cenario.modoSeguro == "rpg") "⚔️ Modo RPG" else "📜 Modo Leitura",
                                     color = Color.White,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
@@ -1314,7 +1314,7 @@ fun DetalhesPersonagemModal(
                             )
                             Spacer(Modifier.height(3.dp))
                             Text(
-                                text = "${cenario.saves} salvamentos • ${cenario.chats} conversas • ${cenario.genero}",
+                                text = "${cenario.saves} salvamentos • ${cenario.chats} conversas • ${cenario.generoSeguro}",
                                 color = TextoSecundario,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium
@@ -1342,7 +1342,7 @@ fun DetalhesPersonagemModal(
                                     .background(RoxoPrimario.copy(alpha = 0.18f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(if (cenario.criadoPorUsuario) cenario.autorAvatar.ifBlank { "👤" } else "🤖", fontSize = 20.sp)
+                                Text(if (cenario.criadoPorUsuario) cenario.autorAvatarSeguro else "🤖", fontSize = 20.sp)
                             }
 
                             Spacer(Modifier.width(12.dp))
@@ -1350,7 +1350,7 @@ fun DetalhesPersonagemModal(
                             Column(modifier = Modifier.weight(1f)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
-                                        text = if (cenario.criadoPorUsuario) cenario.autorNome else "LivennIA Studios",
+                                        text = if (cenario.criadoPorUsuario) cenario.autorNomeSeguro else "LivennIA Studios",
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 14.sp,
                                         color = TextoClaro
@@ -1380,20 +1380,20 @@ fun DetalhesPersonagemModal(
                     // Sinopse e Gancho de Abertura
                     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                         Text(
-                            text = "\"${cenario.subtitulo.ifBlank { cenario.nome }}\"",
+                            text = "\"${cenario.subtituloSeguro.ifBlank { cenario.nome }}\"",
                             fontWeight = FontWeight.Bold,
                             color = TextoClaro,
                             fontSize = 15.sp
                         )
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            text = cenario.sinopse,
+                            text = cenario.sinopseSegura,
                             color = TextoSecundario,
                             fontSize = 13.sp,
                             lineHeight = 19.sp
                         )
 
-                        if (cenario.abertura.isNotBlank()) {
+                        if (cenario.aberturaSegura.isNotBlank()) {
                             Spacer(Modifier.height(12.dp))
                             Surface(
                                 color = RoxoPrimario.copy(alpha = 0.08f),
@@ -1410,7 +1410,7 @@ fun DetalhesPersonagemModal(
                                     )
                                     Spacer(Modifier.height(4.dp))
                                     Text(
-                                        text = "“${cenario.abertura}”",
+                                        text = "“${cenario.aberturaSegura}”",
                                         color = Color.White.copy(alpha = 0.92f),
                                         fontSize = 13.sp,
                                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
@@ -1442,7 +1442,7 @@ fun DetalhesPersonagemModal(
                             Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White)
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                text = if (cenario.modoJogo == "rpg") "Continuar no Modo RPG" else "Continuar História",
+                                text = if (cenario.modoSeguro == "rpg") "Continuar no Modo RPG" else "Continuar História",
                                 color = Color.White,
                                 fontWeight = FontWeight.ExtraBold,
                                 fontSize = 15.sp
@@ -1612,13 +1612,13 @@ fun DetalhesPersonagemModal(
                             .background(RoxoPrimario.copy(alpha = 0.20f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(if (cenario.criadoPorUsuario) cenario.autorAvatar.ifBlank { "👤" } else "🤖", fontSize = 32.sp)
+                        Text(if (cenario.criadoPorUsuario) cenario.autorAvatarSeguro else "🤖", fontSize = 32.sp)
                     }
 
                     Spacer(Modifier.height(12.dp))
 
                     Text(
-                        text = if (cenario.criadoPorUsuario) cenario.autorNome else "LivennIA Studios",
+                        text = if (cenario.criadoPorUsuario) cenario.autorNomeSeguro else "LivennIA Studios",
                         fontWeight = FontWeight.Bold,
                         fontSize = 17.sp,
                         color = Color.White
@@ -1634,7 +1634,7 @@ fun DetalhesPersonagemModal(
 
                     Text(
                         text = if (cenario.criadoPorUsuario)
-                            "Este autor publicou histórias originais no LivennIA. Ao continuar uma narrativa criada por ele, você joga exatamente no formato configurado (${if (cenario.modoJogo == "rpg") "RPG de Aventura" else "História Narrativa"})."
+                            "Este autor publicou histórias originais no LivennIA. Ao continuar uma narrativa criada por ele, você joga exatamente no formato configurado (${if (cenario.modoSeguro == "rpg") "RPG de Aventura" else "História Narrativa"})."
                         else
                             "História oficial gerada pelos motores centrais do LivennIA.",
                         color = TextoSecundario,
