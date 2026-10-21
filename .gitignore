@@ -44,3 +44,5 @@ motor_historia_ia/dados/*
 !motor_historia_ia/dados/capas/
 !motor_historia_ia/dados/capas/**
 motor_historia_ia/saves/
+cloudflared.exe
+

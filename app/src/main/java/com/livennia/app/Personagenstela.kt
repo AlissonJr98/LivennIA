@@ -378,9 +378,7 @@ fun PersonagensTela(vm: AppViewModel) {
 
                 val modo = cenario.modoJogo.ifBlank { "historia" }
 
-                vm.escolherCenario(cenario, modo)
-
-                vm.criarPersonagem(cenario.nome)
+                vm.iniciarHistoriaDireta(cenario, modo)
 
             }
 
@@ -2088,14 +2086,20 @@ private fun AbaExplorar(
 
                             ) {
 
-                                Text("Nenhum personagem encontrado para esse filtro.", color = TextoSuave)
-
-                                Spacer(Modifier.height(6.dp))
-
-                                TextButton(onClick = { busca = ""; estiloFiltro = "Todos"; filtroOrigem = "Todos" }) {
-
-                                    Text("Limpar filtros")
-
+                                if (filtroOrigem == "Usuarios") {
+                                    Text("Nenhuma história da comunidade criada ainda.", color = Color.White, fontWeight = FontWeight.Bold)
+                                    Spacer(Modifier.height(4.dp))
+                                    Text("As histórias criadas pelos usuários aparecerão aqui assim que forem publicadas.", color = TextoSuave, fontSize = 12.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                                    Spacer(Modifier.height(8.dp))
+                                    Button(onClick = onAbrirCriacao, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6C5CE7))) {
+                                        Text("Criar Nova História", color = Color.White)
+                                    }
+                                } else {
+                                    Text("Nenhum personagem encontrado para esse filtro.", color = TextoSuave)
+                                    Spacer(Modifier.height(6.dp))
+                                    TextButton(onClick = { busca = ""; estiloFiltro = "Todos"; filtroOrigem = "Todos" }) {
+                                        Text("Limpar filtros")
+                                    }
                                 }
 
                             }
@@ -2122,8 +2126,7 @@ private fun AbaExplorar(
 
                         onAbrir = {
                             val modo = cenario.modoJogo.ifBlank { "historia" }
-                            vm.escolherCenario(cenario, modo)
-                            vm.criarPersonagem(cenario.nome)
+                            vm.iniciarHistoriaDireta(cenario, modo)
                         },
 
                         onAbrirInfo = { onAbrirDetalhes(cenario) },

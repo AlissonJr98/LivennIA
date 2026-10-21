@@ -16,6 +16,7 @@ from logging.handlers import RotatingFileHandler
 from typing import Annotated, Literal, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Path, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict, Field
@@ -78,6 +79,13 @@ app = FastAPI(
     redoc_url=None,
     openapi_url=None if config.PRODUCAO else "/openapi.json",
 )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    import logging
+    logging.error("VALIDATION 422 na rota %s: %s", request.url.path, exc.errors())
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
+
 
 # Não ligamos CORS de propósito: o app Android não precisa, e assim nenhum site
 # qualquer consegue usar esta API pelo navegador de outra pessoa.
@@ -200,23 +208,23 @@ class FirebaseAuthIn(Base):
 
 
 class NovoJogoIn(Base):
-    nome_personagem: str = Field(default="Viajante", min_length=1, max_length=30)
-    modo: Literal["rpg", "historia"] = Field(default="rpg")
-    genero: str = Field(default="Aventura", max_length=30)
-    premissa: Optional[str] = Field(default=None, max_length=200)
+    nome_personagem: str = Field(default="Viajante", min_length=1, max_length=100)
+    modo: str = Field(default="rpg", max_length=30)
+    genero: str = Field(default="Aventura", max_length=100)
+    premissa: Optional[str] = Field(default=None, max_length=3000)
     # Ficha do personagem (usada na história e para montar o retrato por IA).
-    aparencia: Optional[str] = Field(default=None, max_length=200)
-    descricao: Optional[str] = Field(default=None, max_length=300)
-    idade: Optional[str] = Field(default=None, max_length=20)
-    interesses: Optional[str] = Field(default=None, max_length=200)
-    aversoes: Optional[str] = Field(default=None, max_length=200)
-    tags: Optional[list[str]] = Field(default=None, max_length=8)
+    aparencia: Optional[str] = Field(default=None, max_length=3000)
+    descricao: Optional[str] = Field(default=None, max_length=5000)
+    idade: Optional[str] = Field(default=None, max_length=100)
+    interesses: Optional[str] = Field(default=None, max_length=3000)
+    aversoes: Optional[str] = Field(default=None, max_length=3000)
+    tags: Optional[list[str]] = Field(default=None, max_length=50)
     # Vitrine: se vier um cenário oficial, o servidor injeta o prompt secreto dele
     # e ignora o gênero informado (cada cenário tem o seu).
-    cenario_id: Optional[str] = Field(default=None, max_length=40)
+    cenario_id: Optional[str] = Field(default=None, max_length=100)
     # Cérebro de IA escolhido (veja catalogo.CEREBROS). Sem escolha, usa o padrão.
-    modelo_id: Optional[str] = Field(default=None, max_length=40)
-    temperatura: Optional[float] = Field(default=None, ge=0.2, le=1.4)
+    modelo_id: Optional[str] = Field(default=None, max_length=100)
+    temperatura: Optional[float] = Field(default=None, ge=0.0, le=2.0)
 
 
 class TurnoIn(Base):
@@ -838,8 +846,17 @@ def criar_jogo(dados: NovoJogoIn, jogador=Depends(jogador_atual)):
         item = None
         if dados.cenario_id:
             item = catalogo.cenario(dados.cenario_id)
+            # Cenários criados por usuários ou comunidade usam a sinopse e premissa enviadas
             if item is None:
-                raise HTTPException(422, "Cenário desconhecido.")
+                item = {
+                    "id": dados.cenario_id,
+                    "nome": dados.nome_personagem,
+                    "genero": dados.genero or "Aventura",
+                    "sinopse": dados.premissa or "",
+                    "abertura": dados.premissa or motor.abertura_de(dados.genero or "Aventura"),
+                    "prompt_secreto": "",
+                    "emoji": "📖"
+                }
         cerebro = None
         if dados.modelo_id:
             cerebro = catalogo.cerebro(dados.modelo_id)

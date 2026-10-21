@@ -346,6 +346,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         navegarPara(Tela.NovaAventura)
     }
 
+    // Entra direto no chat da IA continuando a história / sinopse do cenário
+    fun iniciarHistoriaDireta(cenario: CenarioDto, modo: String = "historia") {
+        cenarioSelecionado = cenario
+        modoCriacao = if (modo == "rpg" || cenario.modoJogo == "rpg") "rpg" else "historia"
+        if (cenario.genero.isNotBlank()) generoSelecionado = cenario.genero
+        premissa = cenario.sinopse
+        criarPersonagem(cenario.nome)
+    }
+
     // Botão "+": aventura livre, sem cenário oficial.
     fun comecarAventuraLivre(modo: String? = null) {
         cenarioSelecionado = null
@@ -751,18 +760,20 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun criarPersonagem(nome: String) {
-        val nomeLimpo = personaNome.trim().takeIf { it.isNotEmpty() } ?: nome.trim().take(30).ifEmpty { "Viajante" }
+        val nomeLimpo = (personaNome.trim().takeIf { it.isNotEmpty() } ?: nome.trim()).take(30).ifEmpty { "Viajante" }
         val cenario = cenarioSelecionado
-        val genero = cenario?.genero?.takeIf { it.isNotBlank() } ?: personaGenero.ifBlank { generoSelecionado }
-        val premissaLimpa = premissa.trim().takeIf { it.isNotEmpty() }
-        val fichaAparencia = personaAparencia.trim().ifEmpty { aparencia.trim() }.takeIf { it.isNotEmpty() }
-        val fichaDescricao = personaDescricao.trim().ifEmpty { descricao.trim() }.takeIf { it.isNotEmpty() }
-        val fichaIdade = personaIdade.trim().ifEmpty { idade.trim() }.takeIf { it.isNotEmpty() }
-        val fichaInteresses = personaInteresses.trim().ifEmpty { interesses.trim() }.takeIf { it.isNotEmpty() }
-        val fichaAversoes = personaAversoes.trim().ifEmpty { aversoes.trim() }.takeIf { it.isNotEmpty() }
-        val listaTags = if (personaTags.isNotBlank()) personaTags.split(",").map { it.trim() }.filter { it.isNotEmpty() } else null
+        val genero = cenario?.genero?.takeIf { it.isNotBlank() } ?: generoSelecionado.ifBlank { "Aventura" }
+        val premissaLimpa = premissa.trim().take(500).takeIf { it.isNotEmpty() } ?: cenario?.sinopse?.take(500)
+        val fichaAparencia = personaAparencia.trim().ifEmpty { aparencia.trim() }.take(500).takeIf { it.isNotEmpty() }
+        val prefixoGenero = if (personaGenero.isNotBlank()) "Gênero: ${personaGenero.trim()}. " else ""
+        val corpoDescricao = personaDescricao.trim().ifEmpty { descricao.trim() }
+        val fichaDescricao = (prefixoGenero + corpoDescricao).take(800).takeIf { it.isNotEmpty() }
+        val fichaIdade = personaIdade.trim().ifEmpty { idade.trim() }.take(20).takeIf { it.isNotEmpty() }
+        val fichaInteresses = personaInteresses.trim().ifEmpty { interesses.trim() }.take(500).takeIf { it.isNotEmpty() }
+        val fichaAversoes = personaAversoes.trim().ifEmpty { aversoes.trim() }.take(500).takeIf { it.isNotEmpty() }
+        val listaTags = if (personaTags.isNotBlank()) personaTags.split(",").map { it.trim() }.filter { it.isNotEmpty() }.take(8) else null
         val cerebro = cerebroSelecionado
-        val modo = modoCriacao
+        val modo = if (modoCriacao == "historia") "historia" else "rpg"
         executar("O narrador está escrevendo o início da sua história...") { api ->
             val resposta = api.criarJogo(
                 NovoJogoRequest(

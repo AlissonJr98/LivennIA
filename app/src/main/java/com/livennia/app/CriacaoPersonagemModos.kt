@@ -93,76 +93,8 @@ private val TextoMudo = Color(0xFF6E7082)
 // 1. REPOSITÓRIO DINÂMICO DE PERSONAGENS DA COMUNIDADE (ZERADOS)
 // -------------------------------------------------------------
 object RepositorioPersonagensComunidade {
-    val criacoes = mutableStateListOf(
-        CenarioDto(
-            id = "user_sheila",
-            nome = "Sheila Al-Rashid",
-            subtitulo = "Herdeira e Negócios no Deserto",
-            emoji = "💼",
-            genero = "Drama Moderno",
-            tags = listOf("Romance", "Mistério", "Poder"),
-            sinopse = "Você é conselheiro de uma influente família do Oriente Médio. Sheila administra negócios com frieza calculada, mas guarda segredos que só compartilha com você.",
-            abertura = "O relatório estratégico está concluído? Meu tempo é o bem mais valioso desta torre, então seja direto.",
-            capa = false,
-            criadoPorUsuario = true,
-            autorNome = "Victor M.",
-            autorAvatar = "👨‍💼",
-            chats = 0,
-            saves = 0,
-            modoJogo = "historia"
-        ),
-        CenarioDto(
-            id = "user_nana",
-            nome = "Nana K.",
-            subtitulo = "Acústico de Sábado",
-            emoji = "☕",
-            genero = "Cotidiano",
-            tags = listOf("Música", "Amizade", "Slice of Life"),
-            sinopse = "Em um café aconchegante de fim de noite, você e seus amigos conversam até que a vocalista da banda local se aproxima da sua mesa com um olhar curioso.",
-            abertura = "Oi... desculpa incomodar, mas você não é a pessoa que toca violão naquele estúdio da esquina?",
-            capa = false,
-            criadoPorUsuario = true,
-            autorNome = "Clara Luz",
-            autorAvatar = "👩‍🎨",
-            chats = 0,
-            saves = 0,
-            modoJogo = "historia"
-        ),
-        CenarioDto(
-            id = "user_idol_mansion",
-            nome = "Mansão dos Ídolos",
-            subtitulo = "Bastidores e Competição",
-            emoji = "🎤",
-            genero = "Romance & Competição",
-            tags = listOf("Bastidores", "Rivalidade", "Música"),
-            sinopse = "Convivência intensa, treinos exaustivos e rivalidades veladas no maior reality show musical da temporada. Cada olhar em frente ou longe das câmeras conta.",
-            abertura = "A luz vermelha da câmera principal acabou de acender. Respire fundo e mostre a que veio.",
-            capa = false,
-            criadoPorUsuario = true,
-            autorNome = "Íris R.",
-            autorAvatar = "✨",
-            chats = 0,
-            saves = 0,
-            modoJogo = "historia"
-        ),
-        CenarioDto(
-            id = "user_mamae",
-            nome = "Dona Helena",
-            subtitulo = "O Refúgio da Família",
-            emoji = "🌸",
-            genero = "Vida Familiar",
-            tags = listOf("Acolhimento", "Família", "Afeto"),
-            sinopse = "Após anos de correria na cidade grande, você retorna para a casa onde cresceu. Dona Helena te recebe com o aroma de café fresco e a calma de um abraço protetor.",
-            abertura = "Que alegria você ter chegado são e salvo! Deixe essas malas e venha se sentar comigo na cozinha.",
-            capa = false,
-            criadoPorUsuario = true,
-            autorNome = "Beatriz C.",
-            autorAvatar = "🌷",
-            chats = 0,
-            saves = 0,
-            modoJogo = "historia"
-        )
-    )
+    // Lista de histórias criadas por usuários reais (inicia vazia até alguém publicar)
+    val criacoes = mutableStateListOf<CenarioDto>()
 
     fun adicionar(cenario: CenarioDto) {
         criacoes.add(0, cenario)
