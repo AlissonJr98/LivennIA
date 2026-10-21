@@ -111,6 +111,9 @@ interface LivennIAApi {
     @POST("jogos/{id}/retrato")
     suspend fun gerarRetrato(@Path("id") id: String): RetratoResponse
 
+    @POST("conta/persona/retrato")
+    suspend fun gerarRetratoPersona(@Body dados: PersonaRetratoRequest): RetratoResponse
+
     @POST("jogos/{id}/avatar")
     suspend fun sortearAvatar(@Path("id") id: String): AvatarResponse
 

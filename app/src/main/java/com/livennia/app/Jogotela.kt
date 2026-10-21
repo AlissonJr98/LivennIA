@@ -1450,7 +1450,16 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(vm.personaAvatar.ifBlank { "👤" }, fontSize = 12.sp)
+                                if (vm.personaTemRetrato) {
+                                    RetratoPersona(
+                                        temRetrato = true,
+                                        tamanho = 18,
+                                        versao = vm.personaRetratoVersao,
+                                        recorte = CircleShape
+                                    )
+                                } else {
+                                    Text(vm.personaAvatar.ifBlank { "👤" }, fontSize = 12.sp)
+                                }
                                 Spacer(Modifier.width(5.dp))
                                 Text(
                                     text = vm.personaNome.ifBlank { vm.apelido.ifBlank { "Minha Persona" } },

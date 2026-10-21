@@ -148,6 +148,17 @@ data class CerebroDto(
 
 
 
+data class PersonaRetratoRequest(
+    val nome: String,
+    val genero: String,
+    val aparencia: String,
+    val descricao: String,
+    val idade: String,
+    val interesses: String = "",
+    val aversoes: String = "",
+    val tags: List<String> = emptyList()
+)
+
 data class CapaResponse(val capa: Boolean = true)
 
 
@@ -544,7 +555,9 @@ data class ContaResponse(
 
     @SerializedName("livens", alternate = ["mochis"]) val livens: Int = 100,
 
-    @SerializedName("resgate_diario_disponivel") val resgateDiarioDisponivel: Boolean = true
+    @SerializedName("resgate_diario_disponivel") val resgateDiarioDisponivel: Boolean = true,
+
+    @SerializedName("persona_retrato") val personaRetrato: Boolean = false
 
 ) {
 

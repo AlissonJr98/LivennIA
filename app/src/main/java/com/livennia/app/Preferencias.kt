@@ -144,4 +144,8 @@ class Preferencias(context: Context) {
     var personaAvatar: String
         get() = p.getString("persona_avatar", "👤") ?: "👤"
         set(valor) { p.edit().putString("persona_avatar", valor).apply() }
+
+    var personaTemRetrato: Boolean
+        get() = pConfig.getBoolean("persona_tem_retrato", false)
+        set(valor) { pConfig.edit().putBoolean("persona_tem_retrato", valor).commit() }
 }

@@ -110,6 +110,14 @@ def caminho_retrato(jogo_id):
     return os.path.join(config.PASTA_RETRATOS, f"{jogo_id}.png")
 
 
+def caminho_persona_retrato(jogador_id):
+    return os.path.join(config.PASTA_RETRATOS, f"persona_{jogador_id}.png")
+
+
+def tem_persona_retrato(jogador_id):
+    return os.path.exists(caminho_persona_retrato(jogador_id))
+
+
 def tem_retrato(jogo_id):
     try:
         return os.path.exists(caminho_retrato(jogo_id))
@@ -398,6 +406,17 @@ class RetratoOut(BaseModel):
     retrato: bool = True
 
 
+class PersonaRetratoIn(BaseModel):
+    nome: str = ""
+    genero: str = "Aventura"
+    aparencia: str = ""
+    descricao: str = ""
+    idade: str = ""
+    interesses: str = ""
+    aversoes: str = ""
+    tags: list[str] = []
+
+
 class AvatarOut(BaseModel):
     avatar_seed: int
 
@@ -470,6 +489,7 @@ class ContaOut(BaseModel):
     livens: int = 100
     mochis: int = 100
     resgate_diario_disponivel: bool = True
+    persona_retrato: bool = False
 
 
 IdDoJogo = Annotated[str, Path(pattern=r"^[0-9a-f]{32}$")]
@@ -800,6 +820,7 @@ def ver_conta(jogador=Depends(jogador_atual)):
         livens=int(jogador.get("mochis") or 0),
         mochis=int(jogador.get("mochis") or 0),
         resgate_diario_disponivel=(jogador.get("ultimo_resgate_mochi") != hoje_str),
+        persona_retrato=tem_persona_retrato(jogador["id"]),
     )
 
 
@@ -1027,6 +1048,58 @@ def ver_retrato(jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
         caminho, media_type=tipo_de_imagem(caminho), headers={"Cache-Control": "public, max-age=86400"}
     )
 
+@app.post("/conta/persona/retrato", response_model=RetratoOut)
+def gerar_retrato_da_persona(dados: PersonaRetratoIn, jogador=Depends(jogador_atual)):
+    """Gera o retrato de IA da persona do usuário com base nas suas características."""
+    if not limite_retrato.permitir(f"persona_retrato:{jogador['id']}"):
+        raise HTTPException(429, "Calma! Aguarde um pouco para gerar outro retrato.")
+    consumir_retrato_do_dia()
+    estado_persona = {
+        "personagem": {"nome": dados.nome or jogador.get("apelido", "Viajante")},
+        "genero": dados.genero or "Aventura",
+        "ficha": {
+            "aparencia": dados.aparencia,
+            "descricao": dados.descricao,
+            "idade": dados.idade,
+            "interesses": dados.interesses,
+            "aversoes": dados.aversoes,
+            "tags": dados.tags,
+        }
+    }
+    try:
+        imagem = motor.gerar_retrato(estado_persona)
+    except motor.ErroIA as erro:
+        logging.warning("Falha ao gerar retrato da persona: %s", erro)
+        raise HTTPException(
+            503, "Não foi possível gerar a imagem da persona agora. Tente de novo em instantes."
+        )
+    os.makedirs(config.PASTA_RETRATOS, exist_ok=True)
+    caminho = caminho_persona_retrato(jogador["id"])
+    with open(caminho, "wb") as arquivo:
+        arquivo.write(imagem)
+    return RetratoOut(retrato=True)
+
+
+@app.get("/conta/persona/retrato")
+def ver_retrato_da_persona(token: Optional[str] = None, credenciais: Optional[HTTPAuthorizationCredentials] = Depends(esquema_bearer)):
+    """Devolve a imagem de perfil da persona gerada por IA."""
+    jogador = None
+    if credenciais and credenciais.credentials:
+        jogador = banco.jogador_por_token_hash(hash_token(credenciais.credentials))
+    elif token:
+        jogador = banco.jogador_por_token_hash(hash_token(token))
+    
+    if jogador is None:
+        raise HTTPException(401, "Não autenticado.")
+
+    caminho = caminho_persona_retrato(jogador["id"])
+    if not os.path.exists(caminho):
+        raise HTTPException(404, "Esta persona ainda não possui retrato gerado.")
+    return FileResponse(
+        caminho, media_type=tipo_de_imagem(caminho), headers={"Cache-Control": "no-cache"}
+    )
+
+
 
 @app.post("/catalogo/{cenario_id}/capa", response_model=CapaOut)
 def gerar_capa_do_cenario(cenario_id: IdDoCenario, jogador=Depends(jogador_atual)):
@@ -1076,6 +1149,58 @@ def ver_capa(cenario_id: IdDoCenario, jogador=Depends(jogador_atual)):
     return FileResponse(
         caminho, media_type=tipo_de_imagem(caminho), headers={"Cache-Control": "public, max-age=86400"}
     )
+
+@app.post("/conta/persona/retrato", response_model=RetratoOut)
+def gerar_retrato_da_persona(dados: PersonaRetratoIn, jogador=Depends(jogador_atual)):
+    """Gera o retrato de IA da persona do usuário com base nas suas características."""
+    if not limite_retrato.permitir(f"persona_retrato:{jogador['id']}"):
+        raise HTTPException(429, "Calma! Aguarde um pouco para gerar outro retrato.")
+    consumir_retrato_do_dia()
+    estado_persona = {
+        "personagem": {"nome": dados.nome or jogador.get("apelido", "Viajante")},
+        "genero": dados.genero or "Aventura",
+        "ficha": {
+            "aparencia": dados.aparencia,
+            "descricao": dados.descricao,
+            "idade": dados.idade,
+            "interesses": dados.interesses,
+            "aversoes": dados.aversoes,
+            "tags": dados.tags,
+        }
+    }
+    try:
+        imagem = motor.gerar_retrato(estado_persona)
+    except motor.ErroIA as erro:
+        logging.warning("Falha ao gerar retrato da persona: %s", erro)
+        raise HTTPException(
+            503, "Não foi possível gerar a imagem da persona agora. Tente de novo em instantes."
+        )
+    os.makedirs(config.PASTA_RETRATOS, exist_ok=True)
+    caminho = caminho_persona_retrato(jogador["id"])
+    with open(caminho, "wb") as arquivo:
+        arquivo.write(imagem)
+    return RetratoOut(retrato=True)
+
+
+@app.get("/conta/persona/retrato")
+def ver_retrato_da_persona(token: Optional[str] = None, credenciais: Optional[HTTPAuthorizationCredentials] = Depends(esquema_bearer)):
+    """Devolve a imagem de perfil da persona gerada por IA."""
+    jogador = None
+    if credenciais and credenciais.credentials:
+        jogador = banco.jogador_por_token_hash(hash_token(credenciais.credentials))
+    elif token:
+        jogador = banco.jogador_por_token_hash(hash_token(token))
+    
+    if jogador is None:
+        raise HTTPException(401, "Não autenticado.")
+
+    caminho = caminho_persona_retrato(jogador["id"])
+    if not os.path.exists(caminho):
+        raise HTTPException(404, "Esta persona ainda não possui retrato gerado.")
+    return FileResponse(
+        caminho, media_type=tipo_de_imagem(caminho), headers={"Cache-Control": "no-cache"}
+    )
+
 
 
 @app.post("/jogos/{jogo_id}/turno", response_model=JogoOut)

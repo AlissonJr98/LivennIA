@@ -128,16 +128,57 @@ fun ModalMinhaPersona(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Surface(
-                            color = CardObsidian,
-                            shape = CircleShape,
-                            border = BorderStroke(2.dp, RoxoPrimario.copy(alpha = 0.6f)),
-                            modifier = Modifier.size(88.dp)
+                        RetratoPersona(
+                            temRetrato = vm.personaTemRetrato,
+                            emojiOuPadrao = avatar,
+                            tamanho = 96,
+                            versao = vm.personaRetratoVersao,
+                            recorte = CircleShape
+                        )
+
+                        Spacer(Modifier.height(8.dp))
+
+                        // Botão para gerar a imagem da Persona via IA
+                        Button(
+                            onClick = {
+                                if (aparencia.isBlank() && descricao.isBlank()) {
+                                    Toast.makeText(contexto, "Preencha a aparência ou descrição abaixo para guiar a IA!", Toast.LENGTH_SHORT).show()
+                                }
+                                vm.gerarRetratoPersona(
+                                    nome = nome,
+                                    genero = genero,
+                                    aparencia = aparencia,
+                                    descricao = descricao,
+                                    idade = idade,
+                                    interesses = interesses,
+                                    aversoes = aversoes,
+                                    tags = tags,
+                                    onSucesso = {
+                                        Toast.makeText(contexto, "✨ Ilustração gerada com sucesso!", Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+                            },
+                            enabled = !vm.ocupado,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = RoxoPrimario)
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(avatar, fontSize = 42.sp)
-                            }
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                if (vm.personaTemRetrato) "Regerar Retrato com IA" else "Gerar Retrato com IA",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
                         }
+
+                        Text(
+                            "Gera uma ilustração oficial baseada na aparência física e características abaixo.",
+                            color = TextoMudo,
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
 
                         Spacer(Modifier.height(10.dp))
 

@@ -257,6 +257,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var personaAvatar by mutableStateOf(prefs.personaAvatar)
         private set
+    val personaTemRetrato: Boolean get() = prefs.personaTemRetrato
 
     fun salvarMinhaPersona(
         nome: String,
@@ -299,6 +300,45 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         prefs.personaTags = t
         prefs.personaAvatar = av
     }
+
+    var personaRetratoVersao by mutableStateOf(0)
+        private set
+
+    fun urlPersonaRetrato(versao: Int = personaRetratoVersao): String =
+        "${normalizarServidor(servidor)}/conta/persona/retrato?v=$versao"
+
+    fun gerarRetratoPersona(
+        nome: String,
+        genero: String,
+        aparencia: String,
+        descricao: String,
+        idade: String,
+        interesses: String = "",
+        aversoes: String = "",
+        tags: String = "",
+        onSucesso: () -> Unit = {}
+    ) {
+        salvarMinhaPersona(nome, genero, descricao, idade, aparencia, interesses, aversoes, tags, personaAvatar)
+        executar("Gerando a imagem da sua persona...") { api ->
+            val listaTags = if (tags.isNotBlank()) tags.split(",").map { it.trim() }.filter { it.isNotEmpty() } else emptyList()
+            api.gerarRetratoPersona(
+                PersonaRetratoRequest(
+                    nome = nome.ifBlank { apelido },
+                    genero = genero,
+                    aparencia = aparencia,
+                    descricao = descricao,
+                    idade = idade,
+                    interesses = interesses,
+                    aversoes = aversoes,
+                    tags = listaTags
+                )
+            )
+            prefs.personaTemRetrato = true
+            personaRetratoVersao++
+            onSucesso()
+        }
+    }
+
 
     fun limparFicha() {
         aparencia = ""
@@ -349,6 +389,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     // Entra direto no chat da IA continuando a história / sinopse do cenário
     fun iniciarHistoriaDireta(cenario: CenarioDto, modo: String = "historia") {
         cenarioSelecionado = cenario
+        // Se o jogador já tem uma aventura desse cenário aberta, retoma imediatamente!
+        val jogoExistente = jogos.firstOrNull {
+            (it.cenarioNome == cenario.nome || it.cenarioNome == cenario.id) && !it.encerrado
+        }
+        if (jogoExistente != null) {
+            abrirJogo(jogoExistente.jogoId)
+            return
+        }
         modoCriacao = if (modo == "rpg" || cenario.modoSeguro == "rpg") "rpg" else "historia"
         if (cenario.generoSeguro.isNotBlank()) generoSelecionado = cenario.generoSeguro
         premissa = cenario.sinopseSegura
@@ -600,7 +648,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun atualizarListas(api: LivennIAApi) {
-        conta = api.conta()
+        val c = api.conta()
+        conta = c
+        if (c.personaRetrato) {
+            prefs.personaTemRetrato = true
+        }
         jogos = api.jogos()
     }
 

@@ -3205,14 +3205,12 @@ private fun AbaPerfil(vm: AppViewModel) {
 
                 ) {
 
-                    AvatarPersonagem(
-
-                        seed = vm.apelido.hashCode(),
-
-                        nome = vm.apelido,
-
-                        tamanho = 72
-
+                    RetratoPersona(
+                        temRetrato = vm.personaTemRetrato,
+                        emojiOuPadrao = vm.personaAvatar.ifBlank { "👤" },
+                        tamanho = 72,
+                        versao = vm.personaRetratoVersao,
+                        recorte = CircleShape
                     )
 
                     Surface(

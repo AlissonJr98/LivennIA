@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 12,
-  "versaoNome": "1.5.1",
-  "notas": "Correção de persistência do endereço do servidor (salvo em disco com commit imediato) e correção de estabilidade ao abrir histórias do Explorar (proteção contra nulos).",
+  "versaoCodigo": 13,
+  "versaoNome": "1.5.2",
+  "notas": "Geração de retrato por IA para a Minha Persona e Perfil com base nas características personalizadas, e abertura instantânea de histórias já iniciadas.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

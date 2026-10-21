@@ -1,5 +1,7 @@
 package com.livennia.app
 
+import androidx.compose.foundation.BorderStroke
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -485,6 +487,49 @@ fun RetratoPersonagem(
         AvatarPersonagem(seed = seed, nome = nome, tamanho = tamanho, modifier = modifier)
     }
 }
+
+// Retrato da Persona do usuário: gerado por IA conforme suas características
+@Composable
+fun RetratoPersona(
+    temRetrato: Boolean,
+    emojiOuPadrao: String = "👤",
+    tamanho: Int = 72,
+    versao: Int = 0,
+    modifier: Modifier = Modifier,
+    recorte: Shape = CircleShape
+) {
+    val url = remember(temRetrato, versao) {
+        if (!temRetrato) null
+        else ApiClient.baseUrlAtual()?.let { base -> "${base}conta/persona/retrato?v=$versao" }
+    }
+    if (url != null) {
+        val cabecalho = remember { ApiClient.cabecalhoAutorizacao() }
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(url)
+                .apply { if (cabecalho != null) addHeader("Authorization", cabecalho) }
+                .crossfade(true)
+                .build(),
+            contentDescription = "Retrato da Persona",
+            contentScale = ContentScale.Crop,
+            modifier = modifier
+                .size(tamanho.dp)
+                .clip(recorte)
+        )
+    } else {
+        Surface(
+            color = Color(0xFF13141F),
+            shape = recorte,
+            border = BorderStroke(1.dp, Color(0xFF232538)),
+            modifier = modifier.size(tamanho.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(emojiOuPadrao.ifBlank { "👤" }, fontSize = (tamanho * 0.45).sp)
+            }
+        }
+    }
+}
+
 
 // Capa de um cenário da vitrine: usa a arte gerada por IA quando existe; senão,
 // desenha um fundo com o emoji (não depende de rede nem de cota de imagem).
