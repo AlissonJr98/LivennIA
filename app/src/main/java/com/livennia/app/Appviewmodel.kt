@@ -642,7 +642,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     // ---- Ações das telas ----
     fun alterarServidor(texto: String) {
-        servidor = texto
+        val limpo = texto.trim()
+        servidor = limpo
+        prefs.servidor = limpo
     }
 
     fun limparErro() {

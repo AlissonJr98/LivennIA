@@ -53,6 +53,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -130,6 +131,7 @@ fun SubTelaDiagnosticoRede(
     }
     var internetOk by remember { mutableStateOf(false) }
     var servidorOk by remember { mutableStateOf(false) }
+    var dialogoEditarServidor by remember { mutableStateOf(false) }
 
     fun executarDiagnostico() {
         if (testando) return
@@ -305,23 +307,69 @@ fun SubTelaDiagnosticoRede(
                                 )
                             }
                             HorizontalDivider(color = Color.White.copy(alpha = 0.04f))
-                            Text(
-                                text = "🔒 Conexão preservada: ${vm.servidor}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = TextoMudo,
-                                fontSize = 11.sp
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "🌐 Servidor: ${vm.servidor}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextoMudo,
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TextButton(onClick = { dialogoEditarServidor = true }) {
+                                    Text("Alterar", color = DouradoLivenn, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 20.dp)
-                    .navigationBarsPadding()
-            ) {
+        if (dialogoEditarServidor) {
+            var novoUrl by remember { mutableStateOf(vm.servidor) }
+            AlertDialog(
+                onDismissRequest = { dialogoEditarServidor = false },
+                title = { Text("Configurar Servidor", color = Color.White, fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Informe a URL ou IP do servidor LivennIA:", color = TextoSecundario, fontSize = 13.sp)
+                        OutlinedTextField(
+                            value = novoUrl,
+                            onValueChange = { novoUrl = it },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            vm.alterarServidor(novoUrl.trim())
+                            dialogoEditarServidor = false
+                            executarDiagnostico()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = DouradoBotao)
+                    ) {
+                        Text("Salvar", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { dialogoEditarServidor = false }) {
+                        Text("Cancelar", color = TextoSecundario)
+                    }
+                }
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 20.dp)
+                .navigationBarsPadding()
+        ) {
                 Button(
                     onClick = { executarDiagnostico() },
                     enabled = !testando,

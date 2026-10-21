@@ -19,7 +19,7 @@ class Preferencias(context: Context) {
     )
 
     // IP padrão do PC na rede local (para o app no celular alcançar o servidor).
-    val servidorPadrao = "192.168.15.20:8000"
+    val servidorPadrao = "https://says-overview-library-influenced.trycloudflare.com"
 
     var token: String?
         get() = p.getString("token", null)
