@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -48,15 +49,11 @@ import com.google.android.gms.common.api.ApiException
 fun LoginTela(vm: AppViewModel) {
     var email by rememberSaveable { mutableStateOf("") }
     var senha by rememberSaveable { mutableStateOf("") }
+    val escopo = rememberCoroutineScope()
     val contexto = LocalContext.current
-
-    val webClientId = remember {
-        val id = contexto.resources.getIdentifier("default_web_client_id", "string", contexto.packageName)
-        if (id != 0) contexto.getString(id) else null
-    }
-    val gso = remember(webClientId) {
+    val gso = remember {
         GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .apply { if (webClientId != null) requestIdToken(webClientId) }
+            .requestIdToken(GoogleAuthHelper.WEB_CLIENT_ID)
             .requestEmail()
             .build()
     }
@@ -68,9 +65,11 @@ fun LoginTela(vm: AppViewModel) {
             val conta = task.getResult(ApiException::class.java)
             val idToken = conta.idToken
             if (idToken != null) vm.loginComGoogle(idToken)
-            else vm.definirErro("Não foi possível obter o token do Google.")
+            else vm.definirErro("Não foi possível obter o token da conta selecionada.")
         } catch (e: ApiException) {
-            vm.definirErro("Login com Google cancelado ou falhou.")
+            if (e.statusCode != 12501 && e.statusCode != 16) {
+                vm.definirErro("Login cancelado ou erro (${e.statusCode}).")
+            }
         }
     }
 
@@ -126,7 +125,23 @@ fun LoginTela(vm: AppViewModel) {
         }
 
         OutlinedButton(
-            onClick = { launcher.launch(googleSignInClient.signInIntent) },
+            onClick = {
+                GoogleAuthHelper.iniciarLogin(
+                    contexto = contexto,
+                    escopo = escopo,
+                    vm = vm,
+                    codigoConvite = null,
+                    onFallbackLegacy = {
+                        googleSignInClient.signOut().addOnCompleteListener {
+                            try {
+                                launcher.launch(googleSignInClient.signInIntent)
+                            } catch (e: Exception) {
+                                vm.definirErro("Não foi possível abrir o seletor Google: ${e.message}")
+                            }
+                        }
+                    }
+                )
+            },
             enabled = !vm.ocupado,
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -169,9 +184,6 @@ fun LoginTela(vm: AppViewModel) {
 
     if (vm.mostrarDialogoConviteGoogle) {
         var codVincular by rememberSaveable { mutableStateOf("") }
-        val codCompleto = "LIV-" + codVincular.let { d ->
-            if (d.length <= 4) d else d.take(4) + "-" + d.drop(4).take(4)
-        }
 
         AlertDialog(
             onDismissRequest = { vm.mostrarDialogoConviteGoogle = false },
@@ -179,16 +191,15 @@ fun LoginTela(vm: AppViewModel) {
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        "Para seu primeiro acesso, informe seu código de convite. Ele será vinculado permanentemente à sua conta Google e você não precisará digitá-lo nunca mais!",
+                        "Para seu primeiro acesso com esta conta Google, informe o código de convite. Ele será vinculado permanentemente ao seu perfil!",
                         color = TextoSuave,
                         fontSize = 13.sp
                     )
                     OutlinedTextField(
                         value = codVincular,
-                        onValueChange = { codVincular = it.uppercase().filter { c -> c.isLetterOrDigit() }.take(8) },
+                        onValueChange = { codVincular = it.uppercase().trim().take(25) },
                         label = { Text("Código de convite") },
-                        prefix = { Text("LIV-", color = MaterialTheme.colorScheme.primary) },
-                        placeholder = { Text("XXXX-XXXX") },
+                        placeholder = { Text("Ex: LIV-DONO-2026") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -197,7 +208,11 @@ fun LoginTela(vm: AppViewModel) {
             confirmButton = {
                 Button(
                     onClick = {
-                        val codigoFinal = if (codVincular.startsWith("LIV-")) codVincular else codCompleto
+                        val codigoFinal = if (!codVincular.startsWith("LIV-") && !codVincular.contains("-") && codVincular.length == 8) {
+                            "LIV-" + codVincular.take(4) + "-" + codVincular.drop(4)
+                        } else {
+                            codVincular
+                        }
                         vm.vincularConviteGoogle(codigoFinal)
                     },
                     enabled = !vm.ocupado && codVincular.isNotBlank()
