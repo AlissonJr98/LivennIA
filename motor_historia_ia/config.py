@@ -51,12 +51,12 @@ MODELOS = [
     m.strip()
     for m in os.environ.get(
         "LIVENNIA_MODELOS",
-        "gemini-2.5-flash,gemini-2.5-pro",
+        "gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-flash-lite-latest,gemini-3.8-flash",
     ).split(",")
     if m.strip()
 ]
 MAX_TENTATIVAS = 3              # no servidor falhamos mais rápido; o app pode tentar de novo
-TEMPO_LIMITE_SEG = 25           # cancela uma chamada que demorar mais que isso
+TEMPO_LIMITE_SEG = 40           # cancela uma chamada que demorar mais que isso
 ESPERA_BASE_SEG = 1             # espera entre tentativas: 1s, 2s, 4s... (máx. 8s)
 CODIGOS_TEMPORARIOS = {429, 500, 503, 504}
 MAX_TOKENS_RESPOSTA = 1500
