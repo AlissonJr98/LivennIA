@@ -755,7 +755,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun trocarTokenFirebase(codigoConvite: String? = null) {
         val usuario = firebaseAuth.currentUser
             ?: throw IllegalStateException("Sem usuário autenticado.")
-        val idToken = usuario.getIdToken(false).await().token
+        val idToken = usuario.getIdToken(true).await().token
             ?: throw IllegalStateException("Token inválido.")
         val api = obterApi() ?: throw IllegalStateException("Sem API.")
         try {
@@ -810,12 +810,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loginComGoogle(idToken: String, codigoConvite: String? = null) {
         executar("Entrando com Google...") { _ ->
-            try {
-                val credencial = GoogleAuthProvider.getCredential(idToken, null)
-                firebaseAuth.signInWithCredential(credencial).await()
-            } catch (e: Exception) {
-                // Já autenticado no Firebase
-            }
+            val credencial = GoogleAuthProvider.getCredential(idToken, null)
+            firebaseAuth.signInWithCredential(credencial).await()
             trocarTokenFirebase(codigoConvite)
         }
     }
