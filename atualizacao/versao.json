@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 9,
-  "versaoNome": "1.4.0",
-  "notas": "Nova Tela de Perfil moderna com estatisticas, planos VIP, atalhos rapidos e caixa surpresa de aventuras; Novo Forum Interativo de Feedback (icone da estrela) com votacao de ideias da comunidade, quadro Roadmap (Kanban) e notas de versao com reacoes de emojis; Inicializacao direta no Explorar e melhorias gerais de estabilidade.",
+  "versaoCodigo": 10,
+  "versaoNome": "1.4.1",
+  "notas": "Central da Comunidade interativa com reacoes dinâmicas (Amei, Like, Fogo e Apoio), gestao do autor para editar e apagar suas proprias propostas e comentarios, barra de navegacao superior fluida sem quebras de linha em Atualizacoes e melhorias de estabilidade.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }
