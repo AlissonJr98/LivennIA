@@ -3967,95 +3967,14 @@ private fun AbaPerfil(vm: AppViewModel) {
 
 
     if (mostrarDialogoCarteira) {
-
-        AlertDialog(
-
-            onDismissRequest = { mostrarDialogoCarteira = false },
-
-            title = { Text("Carteira de Livens", color = Color.White, fontWeight = FontWeight.Bold) },
-
-            text = {
-
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-
-                    Text(
-
-                        text = "Saldo atual: ✨ ${vm.conta?.livens ?: 0} Livens",
-
-                        fontSize = 18.sp,
-
-                        fontWeight = FontWeight.Bold,
-
-                        color = Color(0xFFF5C842)
-
-                    )
-
-                    Text(
-
-                        text = "Os Livens são usados para turnos narrativos nos modelos especiais como Liven Spark, Velvet, Amber e Eclipse.",
-
-                        color = Color(0xFF8E8E93),
-
-                        fontSize = 13.sp
-
-                    )
-
-                    if (vm.conta?.resgateDiarioDisponivel == true) {
-
-                        Button(
-
-                            onClick = {
-
-                                vm.resgatarLivensDiarios()
-
-                                mostrarDialogoCarteira = false
-
-                            },
-
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5C842)),
-
-                            modifier = Modifier.fillMaxWidth()
-
-                        ) {
-
-                            Text("🎁 Resgatar Bônus Diário (+30)", color = Color.Black, fontWeight = FontWeight.Bold)
-
-                        }
-
-                    } else {
-
-                        Text(
-
-                            text = "✓ Bônus diário de hoje já resgatado! Volte amanhã para mais.",
-
-                            color = Color(0xFF4CAF50),
-
-                            fontSize = 12.sp,
-
-                            fontWeight = FontWeight.SemiBold
-
-                        )
-
-                    }
-
-                }
-
-            },
-
-            confirmButton = {
-
-                TextButton(onClick = { mostrarDialogoCarteira = false }) {
-
-                    Text("Fechar", color = Color(0xFFF5C842))
-
-                }
-
-            },
-
-            containerColor = Color(0xFF161618)
-
+        ModalCarteiraLivenn(
+            vm = vm,
+            onFechar = { mostrarDialogoCarteira = false },
+            onAbrirAssinatura = {
+                mostrarDialogoCarteira = false
+                mostrarDialogoVip = true
+            }
         )
-
     }
 
 
@@ -4111,41 +4030,10 @@ private fun AbaPerfil(vm: AppViewModel) {
 
 
     if (mostrarDialogoPersona) {
-
-        AlertDialog(
-
-            onDismissRequest = { mostrarDialogoPersona = false },
-
-            title = { Text("Persona do Jogador", color = Color.White, fontWeight = FontWeight.Bold) },
-
-            text = {
-
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-
-                    Text("Personalize como os personagens de IA percebem seu protagonista em todas as histórias:", color = Color(0xFF8E8E93), fontSize = 13.sp)
-
-                    Text("• Nome Ativo: ${vm.apelido}", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-
-                    Text("• Estilo de Narrativa Padrão: ${if (vm.modoLeitura == AppViewModel.ModoLeitura.HISTORIA) "História Contínua" else "RPG Dinâmico"}", color = Color.White, fontSize = 13.sp)
-
-                }
-
-            },
-
-            confirmButton = {
-
-                TextButton(onClick = { mostrarDialogoPersona = false }) {
-
-                    Text("OK", color = Color(0xFFF5C842))
-
-                }
-
-            },
-
-            containerColor = Color(0xFF161618)
-
+        ModalMinhaPersona(
+            vm = vm,
+            onFechar = { mostrarDialogoPersona = false }
         )
-
     }
 
 

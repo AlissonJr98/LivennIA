@@ -29,6 +29,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -36,6 +37,9 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.ui.graphics.RectangleShape
+import android.widget.Toast
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -213,11 +217,45 @@ fun JogoTela(vm: AppViewModel) {
 
     BackHandler { vm.voltarParaPersonagens() }
 
+    var mostrarPersonaModal by remember { mutableStateOf(false) }
+
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(brush = Brush.verticalGradient(colors = listOf(GradienteTopo, Fundo)))
+        modifier = Modifier.fillMaxSize()
     ) {
+        // Arte de Fundo Imersiva Full-Bleed do Cenário (RPG)
+        val cenarioId = jogo.cenario?.id
+        if (!cenarioId.isNullOrBlank()) {
+            CapaCenario(
+                cenarioId = cenarioId,
+                temCapa = jogo.cenario?.capa == true,
+                emoji = jogo.cenario?.emoji ?: "⚔️",
+                nome = jogo.cenario?.nome ?: jogo.personagem.nome,
+                versao = vm.capaVersao,
+                modifier = Modifier.fillMaxSize(),
+                recorte = RectangleShape
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(brush = Brush.verticalGradient(colors = listOf(GradienteTopo, Fundo)))
+            )
+        }
+
+        // Película escura suave em degradê
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.70f),
+                            Color.Black.copy(alpha = 0.50f),
+                            Color.Black.copy(alpha = 0.90f)
+                        )
+                    )
+                )
+        )
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -311,6 +349,69 @@ fun JogoTela(vm: AppViewModel) {
                             contentDescription = "Denunciar",
                             tint = TextoSuave,
                             modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
+            // Card Flutuante de Introdução do Cenário (Imagem 1 e 5)
+            if (jogo.cenario != null) {
+                Surface(
+                    color = Color(0xFF13141F).copy(alpha = 0.88f),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = jogo.cenario?.nome ?: jogo.personagem.nome,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color.White,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = "@${jogo.cenario?.autorNome ?: "LivennIA"}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color(0xFFF5C842),
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+
+                            Surface(
+                                color = Color.White.copy(alpha = 0.12f),
+                                shape = RoundedCornerShape(50),
+                                modifier = Modifier.clickable {
+                                    Toast.makeText(contexto, "História salva nos seus favoritos!", Toast.LENGTH_SHORT).show()
+                                }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("+ Salvar", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
+                        Spacer(Modifier.height(6.dp))
+
+                        Text(
+                            text = "Intro. ${jogo.cenario?.sinopse?.ifBlank { null } ?: jogo.cena.narrativa}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.85f),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            lineHeight = 16.sp
                         )
                     }
                 }
@@ -601,6 +702,13 @@ fun JogoTela(vm: AppViewModel) {
         onFecharEdicao = { indiceEdicao = null }
     )
 
+    if (mostrarPersonaModal) {
+        ModalMinhaPersona(
+            vm = vm,
+            onFechar = { mostrarPersonaModal = false }
+        )
+    }
+
     SnackbarHost(hostState = snackbarHostState)
     Confetti(explosao = jogo.turno == 1)
 }
@@ -808,12 +916,45 @@ private fun JogoModoHistoria(vm: AppViewModel) {
     val corFala = MaterialTheme.colorScheme.onBackground
     val corAcao = TextoSuave.copy(alpha = 0.90f)
     val corNormal = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.93f)
+    var mostrarPersonaModal by remember { mutableStateOf(false) }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(brush = Brush.verticalGradient(colors = listOf(GradienteTopo, Fundo)))
+        modifier = Modifier.fillMaxSize()
     ) {
+        // Arte de Fundo Imersiva Full-Bleed do Cenário (Imagens 1 e 5)
+        val cenarioId = jogo.cenario?.id
+        if (!cenarioId.isNullOrBlank()) {
+            CapaCenario(
+                cenarioId = cenarioId,
+                temCapa = jogo.cenario?.capa == true,
+                emoji = jogo.cenario?.emoji ?: "📖",
+                nome = jogo.cenario?.nome ?: jogo.personagem.nome,
+                versao = vm.capaVersao,
+                modifier = Modifier.fillMaxSize(),
+                recorte = RectangleShape
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(brush = Brush.verticalGradient(colors = listOf(GradienteTopo, Fundo)))
+            )
+        }
+
+        // Película escura suave em degradê para legibilidade perfeita
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.70f),
+                            Color.Black.copy(alpha = 0.50f),
+                            Color.Black.copy(alpha = 0.90f)
+                        )
+                    )
+                )
+        )
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -984,23 +1125,57 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             }
                         }
 
-                        // Bloco literário da IA / Personagem
+                        // Bloco literário da IA / Personagem com visual translúcido e botões de áudio e imagem
                         Surface(
-                            color = SuperficieAlta.copy(alpha = 0.88f),
+                            color = Color(0xFF13141F).copy(alpha = 0.90f),
                             shape = RoundedCornerShape(
                                 topStart = 6.dp,
                                 topEnd = 20.dp,
                                 bottomStart = 20.dp,
                                 bottomEnd = 20.dp
                             ),
-                            border = BorderStroke(1.dp, Ouro.copy(alpha = 0.18f)),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable(enabled = ehUltimo && !terminou) {
                                     visiveis = narrativaAtual.length
                                 }
                         ) {
-                            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                                // Ações rápidas na bolha: Áudio e Ilustração de Cena
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    IconButton(
+                                        onClick = {
+                                            tts?.stop()
+                                            tts?.speak(msg.narrativa, TextToSpeech.QUEUE_FLUSH, null, "fala_$indice")
+                                        },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.VolumeUp,
+                                            contentDescription = "Ouvir",
+                                            tint = Color.White.copy(alpha = 0.75f),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            Toast.makeText(contexto, "Gerando ilustração da cena com IA...", Toast.LENGTH_SHORT).show()
+                                        },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Image,
+                                            contentDescription = "Cena",
+                                            tint = Color.White.copy(alpha = 0.75f),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
                                 Text(
                                     text = parsearNarrativaLivro(
                                         texto = textoMostrado,
@@ -1221,7 +1396,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.Bottom
                     ) {
                         OutlinedTextField(
@@ -1229,13 +1404,13 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             onValueChange = { acaoLivre = it.take(300) },
                             modifier = Modifier.weight(1f),
                             placeholder = {
-                                Text("Escreva sua fala ou *ação*...")
+                                Text("Enviar uma mensagem...", color = Color.White.copy(alpha = 0.45f))
                             },
                             maxLines = 4,
                             enabled = !vm.ocupado,
                             shape = RoundedCornerShape(20.dp)
                         )
-                        Spacer(Modifier.width(4.dp))
+                        Spacer(Modifier.width(6.dp))
                         IconButton(
                             onClick = {
                                 val t = acaoLivre.trim()
@@ -1250,8 +1425,77 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             Icon(
                                 Icons.AutoMirrored.Filled.Send,
                                 contentDescription = "Enviar",
-                                tint = Ouro
+                                tint = Color(0xFF7C4DFF)
                             )
+                        }
+                    }
+
+                    // Pílulas Rápidas no Rodapé (Persona Ativa, Modelo IA, Menu) - Imagens 1 e 5
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Pílula 1: Minha Persona (Ao tocar abre o modal para editar)
+                        Surface(
+                            color = Color.White.copy(alpha = 0.08f),
+                            shape = RoundedCornerShape(50),
+                            border = BorderStroke(1.dp, Color(0xFF7C4DFF).copy(alpha = 0.4f)),
+                            modifier = Modifier.clickable { mostrarPersonaModal = true }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(vm.personaAvatar.ifBlank { "👤" }, fontSize = 12.sp)
+                                Spacer(Modifier.width(5.dp))
+                                Text(
+                                    text = vm.personaNome.ifBlank { vm.apelido.ifBlank { "Minha Persona" } },
+                                    color = Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+
+                        // Pílula 2: Motor de IA / Cérebro Ativo
+                        Surface(
+                            color = Color.White.copy(alpha = 0.08f),
+                            shape = RoundedCornerShape(50),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                            modifier = Modifier.clickable { dialogo = DialogoAberto.ModeloIA }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("🧠", fontSize = 12.sp)
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = vm.cerebroSelecionado ?: "Livenn Flash",
+                                    color = Color.White.copy(alpha = 0.85f),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+
+                        // Pílula 3: Menu de Opções (Savepoint, Diário, Ações)
+                        Surface(
+                            color = Color.White.copy(alpha = 0.08f),
+                            shape = CircleShape,
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clickable { dialogo = DialogoAberto.Savepoints }
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("≡", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }

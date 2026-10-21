@@ -238,6 +238,68 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         aversoes = texto.take(200)
     }
 
+    // ---- Minha Persona (Protagonista do Jogador para todas as histórias e chats) ----
+    var personaNome by mutableStateOf(prefs.personaNome)
+        private set
+    var personaGenero by mutableStateOf(prefs.personaGenero)
+        private set
+    var personaDescricao by mutableStateOf(prefs.personaDescricao)
+        private set
+    var personaIdade by mutableStateOf(prefs.personaIdade)
+        private set
+    var personaAparencia by mutableStateOf(prefs.personaAparencia)
+        private set
+    var personaInteresses by mutableStateOf(prefs.personaInteresses)
+        private set
+    var personaAversoes by mutableStateOf(prefs.personaAversoes)
+        private set
+    var personaTags by mutableStateOf(prefs.personaTags)
+        private set
+    var personaAvatar by mutableStateOf(prefs.personaAvatar)
+        private set
+
+    fun salvarMinhaPersona(
+        nome: String,
+        genero: String,
+        descricao: String,
+        idade: String,
+        aparencia: String,
+        interesses: String,
+        aversoes: String,
+        tags: String,
+        avatar: String
+    ) {
+        val n = nome.trim().take(40)
+        val g = genero.trim().ifBlank { "Masculino" }
+        val d = descricao.trim().take(300)
+        val i = idade.trim().take(20)
+        val a = aparencia.trim().take(250)
+        val inte = interesses.trim().take(200)
+        val ave = aversoes.trim().take(200)
+        val t = tags.trim().take(150)
+        val av = avatar.trim().ifBlank { "👤" }
+
+        personaNome = n
+        personaGenero = g
+        personaDescricao = d
+        personaIdade = i
+        personaAparencia = a
+        personaInteresses = inte
+        personaAversoes = ave
+        personaTags = t
+        personaAvatar = av
+
+        prefs.personaNome = n
+        prefs.personaGenero = g
+        prefs.personaDescricao = d
+        prefs.personaIdade = i
+        prefs.personaAparencia = a
+        prefs.personaInteresses = inte
+        prefs.personaAversoes = ave
+        prefs.personaTags = t
+        prefs.personaAvatar = av
+    }
+
     fun limparFicha() {
         aparencia = ""
         descricao = ""
@@ -689,15 +751,16 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun criarPersonagem(nome: String) {
-        val nomeLimpo = nome.trim().take(30).ifEmpty { "Viajante" }
+        val nomeLimpo = personaNome.trim().takeIf { it.isNotEmpty() } ?: nome.trim().take(30).ifEmpty { "Viajante" }
         val cenario = cenarioSelecionado
-        val genero = cenario?.genero?.takeIf { it.isNotBlank() } ?: generoSelecionado
+        val genero = cenario?.genero?.takeIf { it.isNotBlank() } ?: personaGenero.ifBlank { generoSelecionado }
         val premissaLimpa = premissa.trim().takeIf { it.isNotEmpty() }
-        val fichaAparencia = aparencia.trim().takeIf { it.isNotEmpty() }
-        val fichaDescricao = descricao.trim().takeIf { it.isNotEmpty() }
-        val fichaIdade = idade.trim().takeIf { it.isNotEmpty() }
-        val fichaInteresses = interesses.trim().takeIf { it.isNotEmpty() }
-        val fichaAversoes = aversoes.trim().takeIf { it.isNotEmpty() }
+        val fichaAparencia = personaAparencia.trim().ifEmpty { aparencia.trim() }.takeIf { it.isNotEmpty() }
+        val fichaDescricao = personaDescricao.trim().ifEmpty { descricao.trim() }.takeIf { it.isNotEmpty() }
+        val fichaIdade = personaIdade.trim().ifEmpty { idade.trim() }.takeIf { it.isNotEmpty() }
+        val fichaInteresses = personaInteresses.trim().ifEmpty { interesses.trim() }.takeIf { it.isNotEmpty() }
+        val fichaAversoes = personaAversoes.trim().ifEmpty { aversoes.trim() }.takeIf { it.isNotEmpty() }
+        val listaTags = if (personaTags.isNotBlank()) personaTags.split(",").map { it.trim() }.filter { it.isNotEmpty() } else null
         val cerebro = cerebroSelecionado
         val modo = modoCriacao
         executar("O narrador está escrevendo o início da sua história...") { api ->
@@ -712,6 +775,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     idade = fichaIdade,
                     interesses = fichaInteresses,
                     aversoes = fichaAversoes,
+                    tags = listaTags,
                     cenarioId = cenario?.id,
                     modeloId = cerebro
                 )

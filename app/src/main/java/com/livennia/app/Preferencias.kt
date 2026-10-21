@@ -98,4 +98,41 @@ class Preferencias(context: Context) {
         set(valor) {
             p.edit().putBoolean("filtro_palavras_sensiveis", valor).apply()
         }
+
+    // ---- Minha Persona (Perfil do Protagonista que interage com a IA) ----
+    var personaNome: String
+        get() = p.getString("persona_nome", "") ?: ""
+        set(valor) { p.edit().putString("persona_nome", valor).apply() }
+
+    var personaGenero: String
+        get() = p.getString("persona_genero", "Masculino") ?: "Masculino"
+        set(valor) { p.edit().putString("persona_genero", valor).apply() }
+
+    var personaDescricao: String
+        get() = p.getString("persona_descricao", "") ?: ""
+        set(valor) { p.edit().putString("persona_descricao", valor).apply() }
+
+    var personaIdade: String
+        get() = p.getString("persona_idade", "") ?: ""
+        set(valor) { p.edit().putString("persona_idade", valor).apply() }
+
+    var personaAparencia: String
+        get() = p.getString("persona_aparencia", "") ?: ""
+        set(valor) { p.edit().putString("persona_aparencia", valor).apply() }
+
+    var personaInteresses: String
+        get() = p.getString("persona_interesses", "") ?: ""
+        set(valor) { p.edit().putString("persona_interesses", valor).apply() }
+
+    var personaAversoes: String
+        get() = p.getString("persona_aversoes", "") ?: ""
+        set(valor) { p.edit().putString("persona_aversoes", valor).apply() }
+
+    var personaTags: String
+        get() = p.getString("persona_tags", "") ?: ""
+        set(valor) { p.edit().putString("persona_tags", valor).apply() }
+
+    var personaAvatar: String
+        get() = p.getString("persona_avatar", "👤") ?: "👤"
+        set(valor) { p.edit().putString("persona_avatar", valor).apply() }
 }
