@@ -368,13 +368,17 @@ fun PersonagensTela(vm: AppViewModel) {
 
             versaoCapa = vm.capaVersao,
 
+            apelidoUsuario = vm.apelido,
+
             onFechar = { cenarioPreviaDetalhes = null },
 
             onIniciarChat = {
 
                 cenarioPreviaDetalhes = null
 
-                vm.escolherCenario(cenario, "historia")
+                val modo = cenario.modoJogo.ifBlank { "historia" }
+
+                vm.escolherCenario(cenario, modo)
 
                 vm.criarPersonagem(cenario.nome)
 
@@ -1298,7 +1302,7 @@ private fun AbaExplorar(
 
             Surface(
 
-                color = Color(0xFFFFEB3B),
+                color = Color(0xFF7C4DFF),
 
                 shape = RoundedCornerShape(50),
 
@@ -1308,17 +1312,17 @@ private fun AbaExplorar(
 
                 Row(
 
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
 
                     verticalAlignment = Alignment.CenterVertically
 
                 ) {
 
-                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
 
                     Spacer(Modifier.width(4.dp))
 
-                    Text("Criar", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text("Criar", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
 
                 }
 
@@ -1382,7 +1386,7 @@ private fun AbaExplorar(
 
                             Text(
 
-                                "Eles te chamaram de perdedor",
+                                "🏆 Ranking da Comunidade",
 
                                 style = MaterialTheme.typography.titleMedium,
 
@@ -1396,7 +1400,7 @@ private fun AbaExplorar(
 
                             Text(
 
-                                "Mate um, tome seu poder. Permanentemente.",
+                                "Histórias mais exploradas pelos viajantes do LivennIA.",
 
                                 style = MaterialTheme.typography.bodySmall,
 
@@ -1580,7 +1584,11 @@ private fun AbaExplorar(
 
                             .fillMaxWidth()
 
-                            .clickable { onAbrirDetalhes(cenario) }
+                            .clickable {
+                                val modo = cenario.modoJogo.ifBlank { "historia" }
+                                vm.escolherCenario(cenario, modo)
+                                vm.criarPersonagem(cenario.nome)
+                            }
 
                     ) {
 
@@ -1692,7 +1700,7 @@ private fun AbaExplorar(
 
                                     Text(
 
-                                        "${if (cenario.saves > 0) cenario.saves else ((cenario.id.hashCode().absoluteValue % 200) + 45)}",
+                                        "${cenario.saves}",
 
                                         color = TextoSuave,
 
@@ -1706,11 +1714,9 @@ private fun AbaExplorar(
 
                                     Spacer(Modifier.width(3.dp))
 
-                                    val contagemChats = if (cenario.chats > 0) cenario.chats / 1000f else ((cenario.id.hashCode().absoluteValue % 500) + 120) / 10f
-
                                     Text(
 
-                                        String.format(java.util.Locale.US, "%.1fK", contagemChats),
+                                        "${cenario.chats}",
 
                                         color = Ouro,
 
@@ -1722,7 +1728,21 @@ private fun AbaExplorar(
 
                                     Spacer(Modifier.width(6.dp))
 
+                                    Text(
+
+                                        text = if (cenario.modoJogo == "rpg") "• ⚔️ RPG" else "• 📜 Leitura",
+
+                                        color = Color(0xFF7C4DFF),
+
+                                        fontSize = 10.sp,
+
+                                        fontWeight = FontWeight.SemiBold
+
+                                    )
+
                                     if (cenario.criadoPorUsuario) {
+
+                                        Spacer(Modifier.width(4.dp))
 
                                         Text("• Por ${cenario.autorNome}", color = TextoSuave, fontSize = 10.sp, maxLines = 1)
 
@@ -1814,7 +1834,7 @@ private fun AbaExplorar(
 
                             Text(
 
-                                "Eles te chamaram de perdedor",
+                                "🌌 Universos & Narrativas",
 
                                 style = MaterialTheme.typography.titleMedium,
 
@@ -1828,7 +1848,7 @@ private fun AbaExplorar(
 
                             Text(
 
-                                "Mate um, tome seu poder. Permanentemente.",
+                                "Histórias vivas criadas pela comunidade e pelos estúdios LivennIA.",
 
                                 style = MaterialTheme.typography.bodySmall,
 
@@ -2100,7 +2120,13 @@ private fun AbaExplorar(
 
                         habilitado = !vm.ocupado,
 
-                        onAbrir = { onAbrirDetalhes(cenario) },
+                        onAbrir = {
+                            val modo = cenario.modoJogo.ifBlank { "historia" }
+                            vm.escolherCenario(cenario, modo)
+                            vm.criarPersonagem(cenario.nome)
+                        },
+
+                        onAbrirInfo = { onAbrirDetalhes(cenario) },
 
                         onGerarCapa = { vm.gerarCapaDoCenario(cenario.id) }
 
@@ -2171,6 +2197,8 @@ private fun CardCenario(
     habilitado: Boolean,
 
     onAbrir: () -> Unit,
+
+    onAbrirInfo: () -> Unit = {},
 
     onGerarCapa: () -> Unit
 
@@ -2248,61 +2276,79 @@ private fun CardCenario(
 
 
 
-        // Badge flutuante de engajamento no canto superior direito
+        // Badges no canto superior direito (Formato/Engajamento Real + Botão Info do Perfil)
 
-        Surface(
-
-            color = Color.Black.copy(alpha = 0.65f),
-
-            shape = Cantos.pilula,
+        Row(
 
             modifier = Modifier
 
                 .align(Alignment.TopEnd)
 
-                .padding(8.dp)
+                .padding(8.dp),
+
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+
+            verticalAlignment = Alignment.CenterVertically
 
         ) {
 
-            Row(
+            Surface(
 
-                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                color = Color.Black.copy(alpha = 0.70f),
 
-                verticalAlignment = Alignment.CenterVertically
+                shape = Cantos.pilula
 
             ) {
 
-                Text(if (cenario.criadoPorUsuario) "👤" else "💬", style = MaterialTheme.typography.labelSmall)
+                Row(
 
-                Spacer(Modifier.width(3.dp))
+                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
 
-                val contagem = if (cenario.criadoPorUsuario && cenario.saves > 0) {
+                    verticalAlignment = Alignment.CenterVertically
 
-                    "${cenario.saves}"
+                ) {
 
-                } else if (cenario.chats > 0) {
+                    Text(if (cenario.modoJogo == "rpg") "⚔️" else "📜", style = MaterialTheme.typography.labelSmall)
 
-                    "${cenario.chats}"
+                    Spacer(Modifier.width(3.dp))
 
-                } else {
+                    Text(
 
-                    val k = ((cenario.id.hashCode().absoluteValue % 900) + 120) / 100f
+                        text = "${cenario.chats}",
 
-                    String.format(java.util.Locale.US, "%.1fk", k)
+                        color = Ouro,
+
+                        style = MaterialTheme.typography.labelSmall,
+
+                        fontWeight = FontWeight.Bold
+
+                    )
 
                 }
 
-                Text(
+            }
 
-                    text = contagem,
 
-                    color = Ouro,
 
-                    style = MaterialTheme.typography.labelSmall,
+            Surface(
 
-                    fontWeight = FontWeight.Bold
+                color = Color.Black.copy(alpha = 0.70f),
 
-                )
+                shape = CircleShape,
+
+                modifier = Modifier
+
+                    .size(24.dp)
+
+                    .clickable { onAbrirInfo() }
+
+            ) {
+
+                Box(contentAlignment = Alignment.Center) {
+
+                    Text("ℹ️", fontSize = 11.sp)
+
+                }
 
             }
 
