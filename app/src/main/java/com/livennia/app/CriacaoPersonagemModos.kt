@@ -899,26 +899,54 @@ fun ModalModoRapido(
                         }
                     }
 
-                    // Estilo de Arte
-                    Column {
-                        Text("Estilo Visual", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
-                        Spacer(Modifier.height(6.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            estilos.forEach { est ->
-                                val sel = est == estiloImagem
+                    // Estilo de Arte & Prévia Visual da IA
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Estilo Visual da IA", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
+                            Text("Exemplos com IA", color = TextoMudo, fontSize = 11.sp)
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            ESTILOS_IMAGEM_PERSONA.forEach { est ->
+                                val sel = est.id == estiloImagem
                                 Surface(
-                                    color = if (sel) RoxoPrimario.copy(alpha = 0.20f) else CardObsidian,
-                                    shape = RoundedCornerShape(10.dp),
-                                    border = BorderStroke(1.dp, if (sel) RoxoPrimario else CardObsidianBorda),
-                                    modifier = Modifier.clickable { estiloImagem = est }
+                                    color = if (sel) RoxoPrimario.copy(alpha = 0.22f) else CardObsidian,
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(if (sel) 1.5.dp else 1.dp, if (sel) RoxoPrimario else CardObsidianBorda),
+                                    modifier = Modifier
+                                        .width(130.dp)
+                                        .clickable { estiloImagem = est.id }
                                 ) {
-                                    Text(
-                                        est,
-                                        color = if (sel) Color.White else TextoSecundario,
-                                        fontSize = 12.sp,
-                                        fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
-                                    )
+                                    Column(
+                                        modifier = Modifier.padding(8.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        PreviaEstiloImagem(
+                                            estiloId = est.id,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(90.dp),
+                                            recorte = RoundedCornerShape(8.dp)
+                                        )
+                                        Spacer(Modifier.height(6.dp))
+                                        Text(
+                                            est.nome,
+                                            fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
+                                            fontSize = 11.sp,
+                                            color = if (sel) Color.White else TextoClaro,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
                                 }
                             }
                         }

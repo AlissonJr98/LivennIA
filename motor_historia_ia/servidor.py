@@ -414,45 +414,62 @@ class RetratoOut(BaseModel):
     retrato: bool = True
 
 
-class PersonaIn(Base):
-    nome: str = Field(default="Viajante", min_length=1, max_length=40)
-    genero: str = Field(default="Feminino", max_length=20)
-    idade: Optional[str] = Field(default="", max_length=20)
-    personalidade: Optional[str] = Field(default="", max_length=1000)
-    interesses: Optional[str] = Field(default="", max_length=500)
-    aparencia: Optional[str] = Field(default="", max_length=1000)
-    medos: Optional[str] = Field(default="", max_length=500)
-    detalhes_imagem: Optional[str] = Field(default="", max_length=500)
-    estilo_imagem: Optional[str] = Field(default="semi_realistic", max_length=50)
-    avatar_emoji: Optional[str] = Field(default="👤", max_length=10)
+class PersonaIn(BaseModel):
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
+    nome: str = Field(default="Viajante", min_length=1, max_length=100)
+    genero: str = Field(default="Feminino", max_length=50)
+    idade: Optional[str] = Field(default="", max_length=50)
+    personalidade: Optional[str] = Field(default="", max_length=2000)
+    descricao: Optional[str] = Field(default="", max_length=2000)
+    interesses: Optional[str] = Field(default="", max_length=1000)
+    aparencia: Optional[str] = Field(default="", max_length=2000)
+    medos: Optional[str] = Field(default="", max_length=1000)
+    aversoes: Optional[str] = Field(default="", max_length=1000)
+    tags: Optional[list[str]] = Field(default_factory=list)
+    detalhes_imagem: Optional[str] = Field(default="", max_length=1000)
+    estilo_imagem: Optional[str] = Field(default="semi_realistic", max_length=100)
+    avatar_emoji: Optional[str] = Field(default="👤", max_length=20)
     padrao: Optional[bool] = False
 
 
-class PersonaOut(Base):
+class PersonaOut(BaseModel):
     id: int
+    jogador_id: Optional[str] = ""
     nome: str
     genero: str
     idade: Optional[str] = ""
     personalidade: Optional[str] = ""
+    descricao: Optional[str] = ""
     interesses: Optional[str] = ""
     aparencia: Optional[str] = ""
     medos: Optional[str] = ""
+    aversoes: Optional[str] = ""
+    tags: list[str] = []
     detalhes_imagem: Optional[str] = ""
     estilo_imagem: Optional[str] = "semi_realistic"
     avatar_emoji: Optional[str] = "👤"
-    retrato_versao: int = 0
+    retrato_versao: int = 1
+    versao_retrato: int = 1
     padrao: bool = False
     tem_retrato: bool = False
+    criado_em: Optional[str] = ""
+    atualizado_em: Optional[str] = ""
+
 
 class PersonaRetratoIn(BaseModel):
-    nome: str = ""
-    genero: str = "Aventura"
-    aparencia: str = ""
-    descricao: str = ""
-    idade: str = ""
-    interesses: str = ""
-    aversoes: str = ""
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
+    nome: Optional[str] = ""
+    genero: Optional[str] = "Feminino"
+    aparencia: Optional[str] = ""
+    descricao: Optional[str] = ""
+    personalidade: Optional[str] = ""
+    idade: Optional[str] = ""
+    interesses: Optional[str] = ""
+    aversoes: Optional[str] = ""
+    medos: Optional[str] = ""
     tags: list[str] = []
+    estilo_imagem: Optional[str] = "semi_realistic"
+    detalhes_imagem: Optional[str] = ""
 
 
 class AvatarOut(BaseModel):
@@ -1718,26 +1735,41 @@ def listar_minhas_personas(jogador=Depends(jogador_atual)):
 @app.post("/personas", response_model=PersonaOut, status_code=201)
 def criar_persona(dados: PersonaIn, jogador=Depends(jogador_atual)):
     """Cria uma nova persona respeitando o limite do plano (grátis: 3, premium: 20)."""
+    dados_dict = dados.model_dump()
+    if not dados_dict.get("personalidade") and dados_dict.get("descricao"):
+        dados_dict["personalidade"] = dados_dict["descricao"]
+    if not dados_dict.get("medos") and dados_dict.get("aversoes"):
+        dados_dict["medos"] = dados_dict["aversoes"]
     try:
-        p_id = banco.salvar_persona(jogador["id"], dados.model_dump())
+        p_id = banco.salvar_persona(jogador["id"], dados_dict)
     except banco.ErroNegocio as erro:
         raise HTTPException(erro.status, erro.mensagem)
     p = banco.obter_persona(jogador["id"], p_id)
+    pers = p["personalidade"] or ""
+    med = p["medos"] or ""
+    v_ret = p["retrato_versao"] if p["retrato_versao"] else 1
     return PersonaOut(
         id=p["id"],
+        jogador_id=str(jogador["id"]),
         nome=p["nome"],
         genero=p["genero"],
         idade=p["idade"] or "",
-        personalidade=p["personalidade"] or "",
+        personalidade=pers,
+        descricao=pers,
         interesses=p["interesses"] or "",
         aparencia=p["aparencia"] or "",
-        medos=p["medos"] or "",
+        medos=med,
+        aversoes=med,
+        tags=dados.tags or [],
         detalhes_imagem=p["detalhes_imagem"] or "",
         estilo_imagem=p["estilo_imagem"] or "semi_realistic",
         avatar_emoji=p["avatar_emoji"] or "👤",
-        retrato_versao=p["retrato_versao"],
+        retrato_versao=v_ret,
+        versao_retrato=v_ret,
         padrao=bool(p["padrao"]),
-        tem_retrato=False
+        tem_retrato=tem_persona_retrato(jogador["id"], p["id"]),
+        criado_em=p.get("criado_em") or "",
+        atualizado_em=p.get("atualizado_em") or ""
     )
 
 
@@ -1747,23 +1779,38 @@ def atualizar_persona(persona_id: int, dados: PersonaIn, jogador=Depends(jogador
     existente = banco.obter_persona(jogador["id"], persona_id)
     if not existente:
         raise HTTPException(404, "Persona não encontrada.")
-    banco.salvar_persona(jogador["id"], dados.model_dump(), persona_id)
+    dados_dict = dados.model_dump()
+    if not dados_dict.get("personalidade") and dados_dict.get("descricao"):
+        dados_dict["personalidade"] = dados_dict["descricao"]
+    if not dados_dict.get("medos") and dados_dict.get("aversoes"):
+        dados_dict["medos"] = dados_dict["aversoes"]
+    banco.salvar_persona(jogador["id"], dados_dict, persona_id)
     p = banco.obter_persona(jogador["id"], persona_id)
+    pers = p["personalidade"] or ""
+    med = p["medos"] or ""
+    v_ret = p["retrato_versao"] if p["retrato_versao"] else 1
     return PersonaOut(
         id=p["id"],
+        jogador_id=str(jogador["id"]),
         nome=p["nome"],
         genero=p["genero"],
         idade=p["idade"] or "",
-        personalidade=p["personalidade"] or "",
+        personalidade=pers,
+        descricao=pers,
         interesses=p["interesses"] or "",
         aparencia=p["aparencia"] or "",
-        medos=p["medos"] or "",
+        medos=med,
+        aversoes=med,
+        tags=dados.tags or [],
         detalhes_imagem=p["detalhes_imagem"] or "",
         estilo_imagem=p["estilo_imagem"] or "semi_realistic",
         avatar_emoji=p["avatar_emoji"] or "👤",
-        retrato_versao=p["retrato_versao"],
+        retrato_versao=v_ret,
+        versao_retrato=v_ret,
         padrao=bool(p["padrao"]),
-        tem_retrato=tem_persona_retrato(jogador["id"], p["id"])
+        tem_retrato=tem_persona_retrato(jogador["id"], p["id"]),
+        criado_em=p.get("criado_em") or "",
+        atualizado_em=p.get("atualizado_em") or ""
     )
 
 
@@ -1782,14 +1829,40 @@ def deletar_minha_persona(persona_id: int, jogador=Depends(jogador_atual)):
             pass
 
 
-@app.post("/personas/{persona_id}/padrao", status_code=200)
+@app.post("/personas/{persona_id}/padrao", response_model=PersonaOut)
 def marcar_como_padrao(persona_id: int, jogador=Depends(jogador_atual)):
     """Define a persona indicada como a persona padrão do jogador."""
     existente = banco.obter_persona(jogador["id"], persona_id)
     if not existente:
         raise HTTPException(404, "Persona não encontrada.")
     banco.definir_persona_padrao(jogador["id"], persona_id)
-    return {"ok": True}
+    p = banco.obter_persona(jogador["id"], persona_id)
+    pers = p["personalidade"] or ""
+    med = p["medos"] or ""
+    v_ret = p["retrato_versao"] if p["retrato_versao"] else 1
+    return PersonaOut(
+        id=p["id"],
+        jogador_id=str(jogador["id"]),
+        nome=p["nome"],
+        genero=p["genero"],
+        idade=p["idade"] or "",
+        personalidade=pers,
+        descricao=pers,
+        interesses=p["interesses"] or "",
+        aparencia=p["aparencia"] or "",
+        medos=med,
+        aversoes=med,
+        tags=[],
+        detalhes_imagem=p["detalhes_imagem"] or "",
+        estilo_imagem=p["estilo_imagem"] or "semi_realistic",
+        avatar_emoji=p["avatar_emoji"] or "👤",
+        retrato_versao=v_ret,
+        versao_retrato=v_ret,
+        padrao=True,
+        tem_retrato=tem_persona_retrato(jogador["id"], p["id"]),
+        criado_em=p.get("criado_em") or "",
+        atualizado_em=p.get("atualizado_em") or ""
+    )
 
 
 @app.post("/personas/{persona_id}/retrato", response_model=RetratoOut)
@@ -1850,6 +1923,22 @@ def ver_retrato_persona_id(persona_id: int, token: Optional[str] = None, credenc
         if os.path.exists(caminho_geral):
             return FileResponse(caminho_geral, media_type=tipo_de_imagem(caminho_geral), headers={"Cache-Control": "no-cache"})
         raise HTTPException(404, "Esta persona ainda não possui retrato gerado.")
+
+
+@app.get("/estilos-imagem/{estilo_id}/exemplo")
+def ver_exemplo_estilo_imagem(estilo_id: str):
+    """Devolve a imagem de exemplo oficial de um estilo de IA (para prévia visual)."""
+    estilo_limpo = estilo_id.strip().lower()
+    pasta = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dados", "estilos_exemplos")
+    caminho = os.path.join(pasta, f"{estilo_limpo}.jpg")
+    if os.path.exists(caminho):
+        return FileResponse(caminho, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
+    # Procura qualquer exemplo disponível como fallback temporário
+    if os.path.exists(pasta):
+        for f in os.listdir(pasta):
+            if f.endswith(".jpg"):
+                return FileResponse(os.path.join(pasta, f), media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
+    raise HTTPException(404, "Exemplo não encontrado.")
     return FileResponse(
         caminho, media_type=tipo_de_imagem(caminho), headers={"Cache-Control": "no-cache"}
     )

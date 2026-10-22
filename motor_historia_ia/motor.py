@@ -1416,16 +1416,14 @@ def _retrato_pollinations(prompt, traduzir=True, largura=None, altura=None):
     """
     if traduzir:
         prompt = _traduzir_prompt_retrato(prompt)
-    parametros = urllib.parse.urlencode(
-        {
-            "width": largura or config.POLLINATIONS_LARGURA,
-            "height": altura or config.POLLINATIONS_ALTURA,
-            "model": config.POLLINATIONS_MODELO,
-            "nologo": "true",
-            # Semente nova a cada pedido: "gerar de novo" traz um retrato diferente.
-            "seed": random.randint(1, 2_000_000_000),
-        }
-    )
+    params = {
+        "width": largura or config.POLLINATIONS_LARGURA,
+        "height": altura or config.POLLINATIONS_ALTURA,
+        "seed": random.randint(1, 2_000_000_000),
+    }
+    if config.POLLINATIONS_MODELO:
+        params["model"] = config.POLLINATIONS_MODELO
+    parametros = urllib.parse.urlencode(params)
     url = f"{config.POLLINATIONS_URL}/{urllib.parse.quote(prompt[:1400])}?{parametros}"
     pedido = urllib.request.Request(url, headers={"User-Agent": "LivennIA/1.0"})
     try:

@@ -166,10 +166,12 @@ data class PersonaIn(
     val nome: String,
     val genero: String = "Feminino",
     val aparencia: String = "",
-    val descricao: String = "", // Personalidade ("Extrovertido, tímido...")
+    @SerializedName("personalidade") val personalidade: String = "",
+    @SerializedName("descricao") val descricao: String = "",
     val idade: String = "",
     val interesses: String = "",
-    val aversoes: String = "",
+    @SerializedName("medos") val medos: String = "",
+    @SerializedName("aversoes") val aversoes: String = "",
     val tags: List<String> = emptyList(),
     @SerializedName("estilo_imagem") val estiloImagem: String = "semi_realistic",
     @SerializedName("detalhes_imagem") val detalhesImagem: String = "",
@@ -182,16 +184,16 @@ data class PersonaResponse(
     val nome: String = "",
     val genero: String = "",
     val aparencia: String = "",
-    val descricao: String = "", // Personalidade
+    @SerializedName("personalidade", alternate = ["descricao"]) val descricao: String = "", // Personalidade
     val idade: String = "",
     val interesses: String = "",
-    val aversoes: String = "",
+    @SerializedName("medos", alternate = ["aversoes"]) val aversoes: String = "",
     val tags: List<String> = emptyList(),
     @SerializedName("estilo_imagem") val estiloImagem: String = "semi_realistic",
     @SerializedName("detalhes_imagem") val detalhesImagem: String = "",
     val padrao: Boolean = false,
     @SerializedName("tem_retrato") val temRetrato: Boolean = false,
-    @SerializedName("versao_retrato") val versaoRetrato: Int = 1,
+    @SerializedName("versao_retrato", alternate = ["retrato_versao"]) val versaoRetrato: Int = 1,
     @SerializedName("criado_em") val criadoEm: String = "",
     @SerializedName("atualizado_em") val atualizadoEm: String = ""
 )

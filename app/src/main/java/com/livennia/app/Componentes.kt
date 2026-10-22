@@ -534,6 +534,41 @@ fun RetratoPersona(
     }
 }
 
+// Imagem de exemplo visual do estilo de arte da IA (como o estilo se parece)
+@Composable
+fun PreviaEstiloImagem(
+    estiloId: String,
+    modifier: Modifier = Modifier,
+    recorte: Shape = RoundedCornerShape(10.dp)
+) {
+    val url = remember(estiloId) {
+        ApiClient.baseUrlAtual()?.let { base ->
+            "${base}estilos-imagem/$estiloId/exemplo"
+        }
+    }
+    if (url != null) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(url)
+                .crossfade(true)
+                .build(),
+            contentDescription = "Exemplo do estilo $estiloId",
+            contentScale = ContentScale.Crop,
+            modifier = modifier.clip(recorte)
+        )
+    } else {
+        Surface(
+            color = Color(0xFF1B1D2A),
+            shape = recorte,
+            modifier = modifier
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text("🎨", fontSize = 16.sp)
+            }
+        }
+    }
+}
+
 
 // Capa de um cenário da vitrine: usa a arte gerada por IA quando existe; senão,
 // desenha um fundo com o emoji (não depende de rede nem de cota de imagem).

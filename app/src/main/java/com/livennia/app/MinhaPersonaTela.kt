@@ -528,9 +528,11 @@ private fun FormularioPersona(
                                 nome = nome,
                                 genero = genero,
                                 aparencia = aparencia,
+                                personalidade = descricao,
                                 descricao = descricao,
                                 idade = idade,
                                 interesses = interesses,
+                                medos = aversoes,
                                 aversoes = aversoes,
                                 tags = listaTags,
                                 estiloImagem = estiloImagem,
@@ -803,21 +805,81 @@ private fun FormularioPersona(
                 }
             }
 
-            // 7. ESTILO DA IMAGEM (Requisito 2: estilos conforme anexo)
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "Estilo Visual da Imagem",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 13.sp,
-                    color = TextoClaro
-                )
+            // 7. ESTILO DA IMAGEM COM PRÉVIA VISUAL REAL
+            var estiloParaAmpliar by remember { mutableStateOf<EstiloImagemInfo?>(null) }
+            if (estiloParaAmpliar != null) {
+                Dialog(onDismissRequest = { estiloParaAmpliar = null }) {
+                    Surface(
+                        color = CardObsidian,
+                        shape = RoundedCornerShape(20.dp),
+                        border = BorderStroke(1.dp, CardObsidianBorda),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            PreviaEstiloImagem(
+                                estiloId = estiloParaAmpliar!!.id,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(260.dp),
+                                recorte = RoundedCornerShape(14.dp)
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                "${estiloParaAmpliar!!.icone} ${estiloParaAmpliar!!.nome}",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = TextoClaro
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                estiloParaAmpliar!!.descricao,
+                                color = TextoSecundario,
+                                fontSize = 12.sp,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                            Spacer(Modifier.height(14.dp))
+                            Button(
+                                onClick = {
+                                    estiloImagem = estiloParaAmpliar!!.id
+                                    estiloParaAmpliar = null
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = RoxoPrimario),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Selecionar este Estilo", color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
 
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Estilo Visual da Imagem",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 13.sp,
+                        color = TextoClaro
+                    )
+                    Text("Toque na imagem para ampliar", color = TextoMudo, fontSize = 11.sp)
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     ESTILOS_IMAGEM_PERSONA.forEach { estilo ->
                         val sel = estilo.id == estiloImagem
                         Surface(
                             color = if (sel) RoxoPrimario.copy(alpha = 0.2f) else CardObsidian,
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(14.dp),
                             border = BorderStroke(if (sel) 1.5.dp else 1.dp, if (sel) RoxoPrimario else CardObsidianBorda),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -827,25 +889,40 @@ private fun FormularioPersona(
                                 modifier = Modifier.padding(10.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(estilo.icone, fontSize = 20.sp)
-                                Spacer(Modifier.width(10.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        estilo.nome,
-                                        fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
-                                        fontSize = 13.sp,
-                                        color = if (sel) Color.White else TextoClaro
+                                Box(
+                                    modifier = Modifier
+                                        .size(60.dp)
+                                        .clickable { estiloParaAmpliar = estilo }
+                                ) {
+                                    PreviaEstiloImagem(
+                                        estiloId = estilo.id,
+                                        modifier = Modifier.fillMaxSize(),
+                                        recorte = RoundedCornerShape(10.dp)
                                     )
+                                }
+                                Spacer(Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(estilo.icone, fontSize = 14.sp)
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(
+                                            estilo.nome,
+                                            fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
+                                            fontSize = 13.sp,
+                                            color = if (sel) Color.White else TextoClaro
+                                        )
+                                    }
+                                    Spacer(Modifier.height(2.dp))
                                     Text(
                                         estilo.descricao,
                                         fontSize = 11.sp,
                                         color = TextoSecundario,
-                                        maxLines = 1,
+                                        maxLines = 2,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                 }
                                 if (sel) {
-                                    Icon(Icons.Default.Check, contentDescription = null, tint = RoxoPrimario, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Default.Check, contentDescription = null, tint = RoxoPrimario, modifier = Modifier.size(20.dp))
                                 }
                             }
                         }
@@ -900,9 +977,11 @@ private fun FormularioPersona(
                         nome = nome,
                         genero = genero,
                         aparencia = aparencia,
+                        personalidade = descricao,
                         descricao = descricao,
                         idade = idade,
                         interesses = interesses,
+                        medos = aversoes,
                         aversoes = aversoes,
                         tags = listaTags,
                         estiloImagem = estiloImagem,
