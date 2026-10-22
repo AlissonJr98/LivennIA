@@ -238,6 +238,8 @@ class NovoJogoIn(Base):
     # Vitrine: se vier um cenário oficial, o servidor injeta o prompt secreto dele
     # e ignora o gênero informado (cada cenário tem o seu).
     cenario_id: Optional[str] = Field(default=None, max_length=100)
+    cenario_nome: Optional[str] = Field(default=None, max_length=100)
+    cenario_prologo: Optional[str] = Field(default=None, max_length=3000)
     # Cérebro de IA escolhido (veja catalogo.CEREBROS). Sem escolha, usa o padrão.
     modelo_id: Optional[str] = Field(default=None, max_length=100)
     temperatura: Optional[float] = Field(default=None, ge=0.0, le=2.0)
@@ -962,18 +964,28 @@ def criar_jogo(dados: NovoJogoIn, jogador=Depends(jogador_atual)):
         # Vitrine: se o jogador tocou num card da aba Explorar, o cenário oficial traz
         # o gênero, a abertura e o PROMPT SECRETO do personagem.
         item = None
-        if dados.cenario_id:
-            item = catalogo.cenario(dados.cenario_id)
+        if dados.cenario_id or dados.cenario_nome:
+            if dados.cenario_id:
+                item = catalogo.cenario(dados.cenario_id)
             # Cenários criados por usuários ou comunidade usam a sinopse e premissa enviadas
-            if item is None:
+            if item is None and (dados.cenario_nome or dados.cenario_id):
+                nome_bot = dados.cenario_nome or dados.cenario_id
+                prologo_bot = dados.cenario_prologo or dados.premissa or ""
+                prompt_bot = (
+                    f"IDENTIDADE DO BOT NESTA HISTÓRIA:\n"
+                    f"- VOCÊ É E INTERPRETA O PERSONAGEM: {nome_bot}\n"
+                    f"- SEU PRÓLOGO / QUEM VOCÊ É:\n{prologo_bot}\n"
+                    f"- Você fala, pensa e age como {nome_bot}. Mantenha fidelidade a essa persona em todos os diálogos e ações.\n"
+                    f"- O usuário é a Persona do jogador interagindo diretamente com você."
+                )
                 item = {
-                    "id": dados.cenario_id,
-                    "nome": dados.nome_personagem,
+                    "id": dados.cenario_id or f"cenario_custom_{int(time.time())}",
+                    "nome": nome_bot,
                     "genero": dados.genero or "Aventura",
-                    "sinopse": dados.premissa or "",
-                    "abertura": dados.premissa or motor.abertura_de(dados.genero or "Aventura"),
-                    "prompt_secreto": "",
-                    "emoji": "📖"
+                    "sinopse": prologo_bot,
+                    "abertura": dados.premissa or f"*{nome_bot} olha em sua direção e se aproxima.*",
+                    "prompt_secreto": prompt_bot,
+                    "emoji": "🎭"
                 }
         cerebro = None
         if dados.modelo_id:

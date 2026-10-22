@@ -71,6 +71,10 @@ data class NovoJogoRequest(
 
     @SerializedName("cenario_id") val cenarioId: String? = null,
 
+    @SerializedName("cenario_nome") val cenarioNome: String? = null,
+
+    @SerializedName("cenario_prologo") val cenarioPrologo: String? = null,
+
     // "Cérebro" de IA escolhido (veja /cerebros). Nulo = o padrão do servidor.
 
     @SerializedName("modelo_id") val modeloId: String? = null,

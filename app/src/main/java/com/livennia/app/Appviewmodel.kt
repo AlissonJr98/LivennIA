@@ -313,6 +313,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             ?: personaPadrao
             ?: personas.firstOrNull()
 
+    var personasCarregadas by mutableStateOf(false)
+        private set
+
+    var mostrarModalPersonaObrigatorio by mutableStateOf(false)
+
     val limitePersonas: Int
         get() = if (conta?.dono == true || conta?.premium == true) 20 else 3
 
@@ -334,9 +339,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val lista = api.listarPersonas()
                 personas = lista
+                personasCarregadas = true
                 personaPadrao = lista.firstOrNull { it.padrao } ?: lista.firstOrNull()
                 if (personaSelecionadaId == null || lista.none { it.id == personaSelecionadaId }) {
                     personaSelecionadaId = personaPadrao?.id
+                }
+                if (lista.isEmpty() && temSessao) {
+                    mostrarModalPersonaObrigatorio = true
                 }
                 onConcluido?.invoke()
             } catch (_: Exception) {}
@@ -354,6 +363,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             } else {
                 api.atualizarPersona(personaId, dados)
             }
+            mostrarModalPersonaObrigatorio = false
             if (salva.padrao || personas.isEmpty()) {
                 salvarMinhaPersona(
                     nome = salva.nome,
@@ -501,6 +511,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     // Entra direto no chat da IA continuando a história / sinopse do cenário
     fun iniciarHistoriaDireta(cenario: CenarioDto, modo: String = "historia") {
+        if (personas.isEmpty()) {
+            mostrarModalPersonaObrigatorio = true
+            aviso = "Crie sua Persona antes de conversar! O Bot precisa saber quem você é."
+            return
+        }
         cenarioSelecionado = cenario
         // Se o jogador já tem uma aventura desse cenário aberta, retoma imediatamente!
         val jogoExistente = jogos.firstOrNull {
@@ -518,6 +533,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     // Botão "+": aventura livre, sem cenário oficial.
     fun comecarAventuraLivre(modo: String? = null) {
+        if (personas.isEmpty()) {
+            mostrarModalPersonaObrigatorio = true
+            aviso = "Crie sua Persona antes de começar! O Bot precisa saber quem você é."
+            return
+        }
         cenarioSelecionado = null
         modoCriacao = when {
             modo != null -> if (modo == "historia") "historia" else "rpg"
@@ -696,7 +716,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private var versaoNavegacao = 0
 
     // Há sessão salva? Na tela de convite ainda não há.
-    private val temSessao: Boolean
+    val temSessao: Boolean
         get() = !prefs.token.isNullOrEmpty()
 
     private fun obterApi(): LivennIAApi? {
@@ -770,9 +790,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         try {
             val lista = api.listarPersonas()
             personas = lista
+            personasCarregadas = true
             personaPadrao = lista.firstOrNull { it.padrao } ?: lista.firstOrNull()
             if (personaSelecionadaId == null || lista.none { it.id == personaSelecionadaId }) {
                 personaSelecionadaId = personaPadrao?.id
+            }
+            if (lista.isEmpty() && temSessao) {
+                mostrarModalPersonaObrigatorio = true
             }
         } catch (_: Exception) {}
     }
@@ -1011,6 +1035,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     aversoes = fichaAversoes,
                     tags = listaTags,
                     cenarioId = cenario?.id,
+                    cenarioNome = cenario?.nome,
+                    cenarioPrologo = cenario?.sinopse ?: premissaLimpa,
                     modeloId = cerebro,
                     personaId = p?.id
                 )

@@ -118,6 +118,12 @@ import androidx.compose.material3.IconButton
 
 import androidx.compose.material3.MaterialTheme
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.draw.scale
 import androidx.compose.material3.OutlinedButton
 
 import androidx.compose.material3.OutlinedTextField
@@ -200,6 +206,14 @@ fun PersonagensTela(vm: AppViewModel) {
 
 
 
+    val contexto = LocalContext.current
+
+    LaunchedEffect(vm.personasCarregadas, vm.personas.size, vm.temSessao) {
+        if (vm.temSessao && vm.personasCarregadas && vm.personas.isEmpty()) {
+            vm.mostrarModalPersonaObrigatorio = true
+        }
+    }
+
     var modalModosCriacao by remember { mutableStateOf(false) }
 
     var modalSpark by remember { mutableStateOf(false) }
@@ -232,7 +246,14 @@ fun PersonagensTela(vm: AppViewModel) {
 
                 onSelecionar = { vm.selecionarAba(it) },
 
-                onNova = { modalModosCriacao = true }
+                onNova = {
+                    if (vm.personas.isEmpty()) {
+                        Toast.makeText(contexto, "Você precisa criar sua Persona primeiro para que o Bot saiba quem você é!", Toast.LENGTH_LONG).show()
+                        vm.mostrarModalPersonaObrigatorio = true
+                    } else {
+                        modalModosCriacao = true
+                    }
+                }
 
             )
 
@@ -260,7 +281,18 @@ fun PersonagensTela(vm: AppViewModel) {
 
                     1 -> AbaHistorias(vm)
 
-                    2 -> AbaExplorar(vm, onAbrirDetalhes = { cenarioPreviaDetalhes = it }, onAbrirCriacao = { modalModosCriacao = true })
+                    2 -> AbaExplorar(
+                        vm,
+                        onAbrirDetalhes = { cenarioPreviaDetalhes = it },
+                        onAbrirCriacao = {
+                            if (vm.personas.isEmpty()) {
+                                Toast.makeText(contexto, "Você precisa criar sua Persona primeiro para que o Bot saiba quem você é!", Toast.LENGTH_LONG).show()
+                                vm.mostrarModalPersonaObrigatorio = true
+                            } else {
+                                modalModosCriacao = true
+                            }
+                        }
+                    )
 
                     3 -> AbaPerfil(vm)
 
@@ -373,17 +405,28 @@ fun PersonagensTela(vm: AppViewModel) {
             onFechar = { cenarioPreviaDetalhes = null },
 
             onIniciarChat = {
-
-                cenarioPreviaDetalhes = null
-
-                val modo = cenario.modoSeguro
-
-                vm.iniciarHistoriaDireta(cenario, modo)
-
+                if (vm.personas.isEmpty()) {
+                    Toast.makeText(contexto, "Você precisa criar sua Persona primeiro para que o Bot saiba quem você é!", Toast.LENGTH_LONG).show()
+                    vm.mostrarModalPersonaObrigatorio = true
+                } else {
+                    cenarioPreviaDetalhes = null
+                    val modo = cenario.modoSeguro
+                    vm.iniciarHistoriaDireta(cenario, modo)
+                }
             }
 
         )
 
+    }
+
+    if (vm.mostrarModalPersonaObrigatorio) {
+        ModalMinhaPersona(
+            vm = vm,
+            obrigatorio = vm.personas.isEmpty(),
+            onFechar = {
+                vm.mostrarModalPersonaObrigatorio = false
+            }
+        )
     }
 
 }
@@ -4042,6 +4085,7 @@ private fun AbaPerfil(vm: AppViewModel) {
     if (mostrarDialogoPersona) {
         ModalMinhaPersona(
             vm = vm,
+            obrigatorio = vm.personas.isEmpty(),
             onFechar = { mostrarDialogoPersona = false }
         )
     }
@@ -4253,264 +4297,184 @@ private fun DivisorVerticalPerfil() {
 
 
 @Composable
-
 private fun BotaoAcaoRedondoPerfil(
-
     icone: String,
-
     rotulo: String,
-
     aoClicar: () -> Unit
-
 ) {
+    val pressInteraction = remember { MutableInteractionSource() }
+    val isPressed by pressInteraction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.88f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "btnRoundScale"
+    )
 
     Column(
-
         horizontalAlignment = Alignment.CenterHorizontally,
-
-        modifier = Modifier.clickable { aoClicar() }
-
+        modifier = Modifier
+            .scale(scale)
+            .clickable(
+                interactionSource = pressInteraction,
+                indication = null
+            ) { aoClicar() }
     ) {
-
         Surface(
-
             color = Color(0xFF161618),
-
             shape = CircleShape,
-
             border = BorderStroke(1.dp, Color(0xFF26262A)),
-
             modifier = Modifier.size(54.dp)
-
         ) {
-
             Box(contentAlignment = Alignment.Center) {
-
                 Text(icone, fontSize = 22.sp)
-
             }
-
         }
-
         Spacer(Modifier.height(6.dp))
-
         Text(
-
             text = rotulo,
-
             fontSize = 12.sp,
-
             color = Color.White,
-
             fontWeight = FontWeight.Medium
-
         )
-
     }
-
 }
 
-
-
 // ---------------------------------------------------------------
-
 // Barra de baixo: uma pílula flutuante, com margens e o "+" elevado no meio
-
 // na cor do tema (separando 🎲 RPG e 📖 Histórias).
-
 // ---------------------------------------------------------------
-
 @Composable
-
 private fun BarraInferior(
-
     aba: Int,
-
     onSelecionar: (Int) -> Unit,
-
     onNova: () -> Unit
-
 ) {
+    val pressInteraction = remember { MutableInteractionSource() }
+    val isPressed by pressInteraction.collectIsPressedAsState()
+    val plusScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.86f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "plusScale"
+    )
 
     Box(
-
         modifier = Modifier
-
             .fillMaxWidth()
-
             .navigationBarsPadding()
-
             .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 6.dp)
-
     ) {
-
         Surface(
-
             color = SuperficieAlta,
-
             shape = Cantos.grande,
-
             shadowElevation = 16.dp,
-
             modifier = Modifier.fillMaxWidth().height(60.dp)
-
         ) {
-
             Row(
-
                 modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp),
-
                 verticalAlignment = Alignment.CenterVertically
-
             ) {
-
                 ItemBarraEmoji("🎲", "RPG", aba == 0) { onSelecionar(0) }
-
                 ItemBarraEmoji("📖", "Histórias", aba == 1) { onSelecionar(1) }
-
                 Spacer(Modifier.width(56.dp))
-
                 ItemBarra(Icons.Filled.Search, "Explorar", aba == 2) { onSelecionar(2) }
-
                 ItemBarra(Icons.Filled.Person, "Perfil", aba == 3) { onSelecionar(3) }
-
             }
-
         }
 
-
-
-        // O "+" flutua por cima da pílula, no meio e na cor de destaque.
-
+        // O "+" flutua por cima da pílula, no meio e na cor de destaque com animação interativa
         Box(
-
             modifier = Modifier
-
                 .align(Alignment.TopCenter)
-
                 .offset(y = (-6).dp)
-
+                .scale(plusScale)
                 .size(56.dp)
-
                 .clip(CircleShape)
-
                 .background(Ouro)
-
-                .clickable { onNova() },
-
+                .clickable(
+                    interactionSource = pressInteraction,
+                    indication = null
+                ) { onNova() },
             contentAlignment = Alignment.Center
-
         ) {
-
             Icon(
-
                 Icons.Filled.Add,
-
                 contentDescription = "Nova aventura ou história",
-
                 tint = MaterialTheme.colorScheme.onPrimary,
-
                 modifier = Modifier.size(30.dp)
-
             )
-
         }
-
     }
-
 }
 
-
-
 @Composable
-
 private fun RowScope.ItemBarraEmoji(emoji: String, rotulo: String, ativo: Boolean, onClick: () -> Unit) {
+    val pressInteraction = remember { MutableInteractionSource() }
+    val isPressed by pressInteraction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.85f else if (ativo) 1.15f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "emojiScale"
+    )
 
     Column(
-
         modifier = Modifier
-
             .weight(1f)
-
-            .clickable { onClick() }
-
+            .clickable(interactionSource = pressInteraction, indication = null) { onClick() }
             .padding(vertical = 8.dp),
-
         horizontalAlignment = Alignment.CenterHorizontally
-
     ) {
-
         Text(
-
             text = emoji,
-
             style = MaterialTheme.typography.titleMedium,
-
-            color = if (ativo) Ouro else TextoSuave.copy(alpha = 0.65f)
-
+            color = if (ativo) Ouro else TextoSuave.copy(alpha = 0.65f),
+            modifier = Modifier.scale(scale)
         )
-
         Spacer(Modifier.height(2.dp))
-
         Text(
-
             rotulo,
-
             style = MaterialTheme.typography.labelSmall,
-
             color = if (ativo) Ouro else TextoSuave
-
         )
-
     }
-
 }
 
-
-
 @Composable
-
 private fun RowScope.ItemBarra(icone: ImageVector, rotulo: String, ativo: Boolean, onClick: () -> Unit) {
+    val pressInteraction = remember { MutableInteractionSource() }
+    val isPressed by pressInteraction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.85f else if (ativo) 1.15f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "iconScale"
+    )
 
     Column(
-
         modifier = Modifier
-
             .weight(1f)
-
-            .clickable { onClick() }
-
+            .clickable(interactionSource = pressInteraction, indication = null) { onClick() }
             .padding(vertical = 8.dp),
-
         horizontalAlignment = Alignment.CenterHorizontally
-
     ) {
-
         Icon(
-
             icone,
-
             contentDescription = rotulo,
-
             tint = if (ativo) Ouro else TextoSuave,
-
-            modifier = Modifier.size(22.dp)
-
+            modifier = Modifier
+                .size(22.dp)
+                .scale(scale)
         )
-
         Spacer(Modifier.height(3.dp))
-
         Text(
-
             rotulo,
-
             style = MaterialTheme.typography.labelSmall,
-
             color = if (ativo) Ouro else TextoSuave
-
         )
-
     }
-
 }
 

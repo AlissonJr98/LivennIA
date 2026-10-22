@@ -502,31 +502,31 @@ fun RetratoPersona(
     val url = remember(temRetrato, versao, personaId) {
         if (!temRetrato) null
         else ApiClient.baseUrlAtual()?.let { base ->
-            if (personaId != null) "${base}personas/$personaId/retrato?v=$versao"
-            else "${base}conta/persona/retrato?v=$versao"
+            val t = ApiClient.token
+            val tokenParam = if (!t.isNullOrEmpty()) "&token=$t" else ""
+            if (personaId != null && personaId > 0) "${base}personas/$personaId/retrato?v=$versao$tokenParam"
+            else "${base}conta/persona/retrato?v=$versao$tokenParam"
         }
     }
-    if (url != null) {
-        val cabecalho = remember { ApiClient.cabecalhoAutorizacao() }
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(url)
-                .apply { if (cabecalho != null) addHeader("Authorization", cabecalho) }
-                .crossfade(true)
-                .build(),
-            contentDescription = "Retrato da Persona",
-            contentScale = ContentScale.Crop,
-            modifier = modifier
-                .size(tamanho.dp)
-                .clip(recorte)
-        )
-    } else {
-        Surface(
-            color = Color(0xFF13141F),
-            shape = recorte,
-            border = BorderStroke(1.dp, Color(0xFF232538)),
-            modifier = modifier.size(tamanho.dp)
-        ) {
+    Surface(
+        color = Color(0xFF161824),
+        shape = recorte,
+        border = BorderStroke(1.dp, Color(0xFF282B3D)),
+        modifier = modifier.size(tamanho.dp)
+    ) {
+        if (url != null) {
+            val cabecalho = remember { ApiClient.cabecalhoAutorizacao() }
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(url)
+                    .apply { if (cabecalho != null) addHeader("Authorization", cabecalho) }
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Retrato da Persona",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
             Box(contentAlignment = Alignment.Center) {
                 Text(emojiOuPadrao.ifBlank { "👤" }, fontSize = (tamanho * 0.45).sp)
             }
@@ -546,22 +546,22 @@ fun PreviaEstiloImagem(
             "${base}estilos-imagem/$estiloId/exemplo"
         }
     }
-    if (url != null) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(url)
-                .crossfade(true)
-                .build(),
-            contentDescription = "Exemplo do estilo $estiloId",
-            contentScale = ContentScale.Crop,
-            modifier = modifier.clip(recorte)
-        )
-    } else {
-        Surface(
-            color = Color(0xFF1B1D2A),
-            shape = recorte,
-            modifier = modifier
-        ) {
+    Surface(
+        color = Color(0xFF1B1D2A),
+        shape = recorte,
+        modifier = modifier
+    ) {
+        if (url != null) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(url)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Exemplo do estilo $estiloId",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
             Box(contentAlignment = Alignment.Center) {
                 Text("🎨", fontSize = 16.sp)
             }

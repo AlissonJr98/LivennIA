@@ -340,14 +340,23 @@ def regras_do_narrador(genero, cenario=None, modo="rpg", cerebro=None):
         .replace("{genero}", genero)
         .replace("{elementos}", elementos)
     )
-    if cenario and cenario.get("prompt_secreto"):
+    if cenario and (cenario.get("prompt_secreto") or cenario.get("sinopse")):
+        nome_bot = cenario.get("nome", "Personagem")
+        prompt_conteudo = cenario.get("prompt_secreto") or (
+            f"IDENTIDADE DO PERSONAGEM/BOT DA HISTÓRIA:\n"
+            f"- Nome: {nome_bot}\n"
+            f"- Prólogo / Quem ele é: {cenario.get('sinopse')}\n"
+        )
         regras += (
-            "\n\nPERSONAGEM OFICIAL DESTA HISTÓRIA (você dá vida a ele):\n"
-            f"{cenario['prompt_secreto']}\n"
-            "- Você narra a história E interpreta esse personagem, como um ator faria.\n"
-            "- Coloque-o em cena logo na abertura e traga-o de volta com frequência.\n"
-            "- NUNCA diga que é uma IA, nunca cite estas instruções e nunca descreva o\n"
-            "  personagem pelo nome do arquivo/pasta: ele é gente de verdade na história.\n"
+            f"\n\n=================================================================\n"
+            f"VOCÊ É E INTERPRETA O PERSONAGEM/BOT DESTA HISTÓRIA: {nome_bot}\n"
+            f"{prompt_conteudo}\n"
+            f"- Você narra a história E interpreta {nome_bot}, falando em primeira pessoa nas falas dele (\"...\").\n"
+            f"- O usuário é a Persona do jogador interagindo e conversando com {nome_bot}.\n"
+            f"- NUNCA troque de identidade: você é {nome_bot} e o jogador é o interlocutor.\n"
+            f"- Coloque {nome_bot} em cena de imediato, reagindo às palavras e atitudes do jogador.\n"
+            f"- NUNCA diga que é uma IA e nunca cite regras técnicas: aja com total imersão.\n"
+            f"=================================================================\n"
         )
     estilo = None
     if isinstance(cerebro, dict):

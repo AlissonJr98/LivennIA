@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 18,
-  "versaoNome": "1.5.7",
-  "notas": "Correção de salvamento da Persona, prévia visual real com exemplos dos 9 estilos de IA tanto na persona quanto no botão Mais de criação.",
+  "versaoCodigo": 19,
+  "versaoNome": "1.5.8",
+  "notas": "Persona obrigatória para iniciar histórias, bot assume identidade do personagem criado pelo botão +, prévia dinâmica em tempo real ao trocar estilos de imagem e ícones com animações interativas.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

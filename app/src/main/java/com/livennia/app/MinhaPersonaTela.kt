@@ -88,6 +88,7 @@ val ESTILOS_IMAGEM_PERSONA = listOf(
 @Composable
 fun ModalMinhaPersona(
     vm: AppViewModel,
+    obrigatorio: Boolean = false,
     onFechar: () -> Unit
 ) {
     val contexto = LocalContext.current
@@ -96,12 +97,27 @@ fun ModalMinhaPersona(
         vm.carregarPersonas()
     }
 
-    var modoEdicao by remember { mutableStateOf(false) }
+    var modoEdicao by remember { mutableStateOf(obrigatorio && vm.personas.isEmpty()) }
     var personaEmEdicao by remember { mutableStateOf<PersonaResponse?>(null) }
 
+    LaunchedEffect(vm.personas.size) {
+        if (obrigatorio && vm.personas.isEmpty()) {
+            modoEdicao = true
+        }
+    }
+
+    val podeFechar = !obrigatorio || vm.personas.isNotEmpty()
+
     Dialog(
-        onDismissRequest = onFechar,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        onDismissRequest = {
+            if (podeFechar) onFechar()
+            else Toast.makeText(contexto, "Você precisa criar pelo menos uma persona para começar!", Toast.LENGTH_SHORT).show()
+        },
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = podeFechar,
+            dismissOnClickOutside = podeFechar
+        )
     ) {
         Surface(
             color = FundoOled,
@@ -113,19 +129,29 @@ fun ModalMinhaPersona(
                 FormularioPersona(
                     vm = vm,
                     personaExistente = personaEmEdicao,
+                    obrigatorio = obrigatorio && vm.personas.isEmpty(),
                     onVoltar = {
-                        modoEdicao = false
-                        personaEmEdicao = null
+                        if (obrigatorio && vm.personas.isEmpty()) {
+                            Toast.makeText(contexto, "Você precisa criar sua persona antes de continuar!", Toast.LENGTH_SHORT).show()
+                        } else {
+                            modoEdicao = false
+                            personaEmEdicao = null
+                        }
                     },
                     onSalvo = {
                         modoEdicao = false
                         personaEmEdicao = null
+                        if (obrigatorio) onFechar()
                     }
                 )
             } else {
                 ListaPersonas(
                     vm = vm,
-                    onFechar = onFechar,
+                    obrigatorio = obrigatorio && vm.personas.isEmpty(),
+                    onFechar = {
+                        if (podeFechar) onFechar()
+                        else Toast.makeText(contexto, "Você precisa criar pelo menos uma persona para começar!", Toast.LENGTH_SHORT).show()
+                    },
                     onNovaPersona = {
                         if (vm.personas.size >= vm.limitePersonas) {
                             Toast.makeText(
@@ -151,6 +177,7 @@ fun ModalMinhaPersona(
 @Composable
 private fun ListaPersonas(
     vm: AppViewModel,
+    obrigatorio: Boolean = false,
     onFechar: () -> Unit,
     onNovaPersona: () -> Unit,
     onEditarPersona: (PersonaResponse) -> Unit
@@ -426,6 +453,7 @@ private fun ItemCardPersona(
 private fun FormularioPersona(
     vm: AppViewModel,
     personaExistente: PersonaResponse?,
+    obrigatorio: Boolean = false,
     onVoltar: () -> Unit,
     onSalvo: () -> Unit
 ) {
@@ -443,6 +471,11 @@ private fun FormularioPersona(
     var estiloImagem by remember { mutableStateOf(personaExistente?.estiloImagem ?: "semi_realistic") }
     var padrao by remember { mutableStateOf(personaExistente?.padrao ?: (vm.personas.isEmpty())) }
 
+    var temRetratoLocal by remember(personaExistente) { mutableStateOf(personaExistente?.temRetrato == true) }
+    var versaoRetratoLocal by remember(personaExistente) { mutableStateOf(personaExistente?.versaoRetrato ?: 0) }
+    var personaIdLocal by remember(personaExistente) { mutableStateOf(personaExistente?.id) }
+    var gerandoRetratoLocal by remember { mutableStateOf(false) }
+
     val generos = listOf("Feminino", "Masculino", "Outro")
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -453,16 +486,29 @@ private fun FormularioPersona(
                 .padding(horizontal = 8.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onVoltar) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar", tint = TextoClaro)
+            if (!obrigatorio || vm.personas.isNotEmpty()) {
+                IconButton(onClick = onVoltar) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar", tint = TextoClaro)
+                }
+            } else {
+                Spacer(Modifier.width(16.dp))
             }
-            Text(
-                if (personaExistente == null) "Nova Persona" else "Editar Persona",
-                fontWeight = FontWeight.Bold,
-                fontSize = 17.sp,
-                color = TextoClaro,
-                modifier = Modifier.weight(1f)
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    if (obrigatorio) "Crie sua Persona (Obrigatório)"
+                    else if (personaExistente == null) "Nova Persona" else "Editar Persona",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp,
+                    color = TextoClaro
+                )
+                if (obrigatorio) {
+                    Text(
+                        "O Bot conversará com você através desta Persona",
+                        fontSize = 11.sp,
+                        color = OuroAmbar
+                    )
+                }
+            }
             Surface(
                 color = RoxoPrimario.copy(alpha = 0.15f),
                 shape = CircleShape,
@@ -488,16 +534,59 @@ private fun FormularioPersona(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                RetratoPersona(
-                    temRetrato = personaExistente?.temRetrato == true,
-                    emojiOuPadrao = "👤",
-                    tamanho = 96,
-                    versao = vm.personaRetratoVersao + (personaExistente?.versaoRetrato ?: 0),
-                    personaId = personaExistente?.id,
-                    recorte = CircleShape
-                )
+                Box(
+                    modifier = Modifier.size(102.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (temRetratoLocal && personaIdLocal != null && personaIdLocal!! > 0) {
+                        RetratoPersona(
+                            temRetrato = true,
+                            emojiOuPadrao = "👤",
+                            tamanho = 96,
+                            versao = vm.personaRetratoVersao + versaoRetratoLocal,
+                            personaId = personaIdLocal,
+                            recorte = CircleShape
+                        )
+                    } else {
+                        PreviaEstiloImagem(
+                            estiloId = estiloImagem,
+                            modifier = Modifier.size(96.dp),
+                            recorte = CircleShape
+                        )
+                    }
 
-                Spacer(Modifier.height(8.dp))
+                    if (gerandoRetratoLocal || vm.ocupado) {
+                        Box(
+                            modifier = Modifier
+                                .size(96.dp)
+                                .background(Color.Black.copy(alpha = 0.65f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            androidx.compose.material3.CircularProgressIndicator(
+                                modifier = Modifier.size(32.dp),
+                                color = RoxoPrimario,
+                                strokeWidth = 3.dp
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(4.dp))
+
+                Surface(
+                    color = if (temRetratoLocal) OuroAmbar.copy(alpha = 0.15f) else RoxoPrimario.copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, if (temRetratoLocal) OuroAmbar.copy(alpha = 0.4f) else RoxoPrimario.copy(alpha = 0.4f)),
+                    modifier = Modifier.padding(bottom = 6.dp)
+                ) {
+                    Text(
+                        if (temRetratoLocal) "✓ Ilustração Gerada" else "Estilo selecionado: ${ESTILOS_IMAGEM_PERSONA.firstOrNull { it.id == estiloImagem }?.nome ?: estiloImagem}",
+                        color = if (temRetratoLocal) OuroAmbar else TextoSecundario,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
 
                 Button(
                     onClick = {
@@ -518,8 +607,12 @@ private fun FormularioPersona(
                             estiloImagem = estiloImagem,
                             detalhesImagem = detalhesImagem
                         )
-                        if (personaExistente != null && personaExistente.id > 0) {
-                            vm.gerarRetratoPersonaId(personaExistente.id, req) {
+                        gerandoRetratoLocal = true
+                        if (personaIdLocal != null && personaIdLocal!! > 0) {
+                            vm.gerarRetratoPersonaId(personaIdLocal!!, req) {
+                                temRetratoLocal = true
+                                versaoRetratoLocal++
+                                gerandoRetratoLocal = false
                                 Toast.makeText(contexto, "✨ Retrato atualizado com sucesso!", Toast.LENGTH_SHORT).show()
                             }
                         } else {
@@ -540,21 +633,25 @@ private fun FormularioPersona(
                                 padrao = padrao
                             )
                             vm.salvarPersona(null, pIn) { salva ->
+                                personaIdLocal = salva.id
                                 vm.gerarRetratoPersonaId(salva.id, req) {
+                                    temRetratoLocal = true
+                                    versaoRetratoLocal++
+                                    gerandoRetratoLocal = false
                                     Toast.makeText(contexto, "✨ Persona criada e retrato gerado!", Toast.LENGTH_SHORT).show()
                                     onSalvo()
                                 }
                             }
                         }
                     },
-                    enabled = !vm.ocupado,
+                    enabled = !vm.ocupado && !gerandoRetratoLocal,
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = RoxoPrimario)
                 ) {
                     Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        if (personaExistente?.temRetrato == true) "Regerar Ilustração com IA" else "Gerar Ilustração com IA",
+                        if (temRetratoLocal) "Regerar Ilustração com IA" else "Gerar Ilustração com IA",
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp
