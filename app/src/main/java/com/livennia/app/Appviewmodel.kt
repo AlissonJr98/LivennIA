@@ -301,11 +301,124 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         prefs.personaAvatar = av
     }
 
+    // ---- Personas (Múltiplas personas do jogador) ----
+    var personas by mutableStateOf<List<PersonaResponse>>(emptyList())
+        private set
+    var personaPadrao by mutableStateOf<PersonaResponse?>(null)
+        private set
+    var personaSelecionadaId by mutableStateOf<Int?>(null)
+
+    val personaAtiva: PersonaResponse?
+        get() = personas.firstOrNull { it.id == personaSelecionadaId }
+            ?: personaPadrao
+            ?: personas.firstOrNull()
+
+    val limitePersonas: Int
+        get() = if (conta?.dono == true || conta?.premium == true) 20 else 3
+
     var personaRetratoVersao by mutableStateOf(0)
         private set
 
-    fun urlPersonaRetrato(versao: Int = personaRetratoVersao): String =
-        "${normalizarServidor(servidor)}/conta/persona/retrato?v=$versao"
+    fun urlPersonaRetrato(personaId: Int? = null, versao: Int = personaRetratoVersao): String {
+        val base = normalizarServidor(servidor)
+        return if (personaId != null && personaId > 0) {
+            "$base/personas/$personaId/retrato?v=$versao"
+        } else {
+            "$base/conta/persona/retrato?v=$versao"
+        }
+    }
+
+    fun carregarPersonas(onConcluido: (() -> Unit)? = null) {
+        val api = obterApi() ?: return
+        viewModelScope.launch {
+            try {
+                val lista = api.listarPersonas()
+                personas = lista
+                personaPadrao = lista.firstOrNull { it.padrao } ?: lista.firstOrNull()
+                if (personaSelecionadaId == null || lista.none { it.id == personaSelecionadaId }) {
+                    personaSelecionadaId = personaPadrao?.id
+                }
+                onConcluido?.invoke()
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun salvarPersona(
+        personaId: Int?,
+        dados: PersonaIn,
+        onSucesso: (PersonaResponse) -> Unit = {}
+    ) {
+        executar(if (personaId == null || personaId <= 0) "Criando persona..." else "Salvando persona...") { api ->
+            val salva = if (personaId == null || personaId <= 0) {
+                api.criarPersona(dados)
+            } else {
+                api.atualizarPersona(personaId, dados)
+            }
+            if (salva.padrao || personas.isEmpty()) {
+                salvarMinhaPersona(
+                    nome = salva.nome,
+                    genero = salva.genero,
+                    descricao = salva.descricao,
+                    idade = salva.idade,
+                    aparencia = salva.aparencia,
+                    interesses = salva.interesses,
+                    aversoes = salva.aversoes,
+                    tags = salva.tags.joinToString(", "),
+                    avatar = personaAvatar
+                )
+            }
+            atualizarListas(api)
+            personaSelecionadaId = salva.id
+            onSucesso(salva)
+        }
+    }
+
+    fun deletarPersona(personaId: Int, onSucesso: () -> Unit = {}) {
+        executar("Excluindo persona...") { api ->
+            api.apagarPersona(personaId)
+            atualizarListas(api)
+            if (personaSelecionadaId == personaId) {
+                personaSelecionadaId = personaPadrao?.id
+            }
+            onSucesso()
+        }
+    }
+
+    fun definirPersonaPadrao(personaId: Int, onSucesso: () -> Unit = {}) {
+        executar("Definindo persona como padrão...") { api ->
+            val p = api.definirPersonaPadrao(personaId)
+            salvarMinhaPersona(
+                nome = p.nome,
+                genero = p.genero,
+                descricao = p.descricao,
+                idade = p.idade,
+                aparencia = p.aparencia,
+                interesses = p.interesses,
+                aversoes = p.aversoes,
+                tags = p.tags.joinToString(", "),
+                avatar = personaAvatar
+            )
+            atualizarListas(api)
+            onSucesso()
+        }
+    }
+
+    fun gerarRetratoPersonaId(
+        personaId: Int,
+        dados: PersonaRetratoRequest,
+        onSucesso: () -> Unit = {}
+    ) {
+        executar("Gerando a imagem da sua persona com IA...") { api ->
+            api.gerarRetratoPersonaId(personaId, dados)
+            personaRetratoVersao++
+            atualizarListas(api)
+            onSucesso()
+        }
+    }
+
+    fun selecionarPersona(id: Int) {
+        personaSelecionadaId = id
+    }
 
     fun gerarRetratoPersona(
         nome: String,
@@ -654,6 +767,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             prefs.personaTemRetrato = true
         }
         jogos = api.jogos()
+        try {
+            val lista = api.listarPersonas()
+            personas = lista
+            personaPadrao = lista.firstOrNull { it.padrao } ?: lista.firstOrNull()
+            if (personaSelecionadaId == null || lista.none { it.id == personaSelecionadaId }) {
+                personaSelecionadaId = personaPadrao?.id
+            }
+        } catch (_: Exception) {}
     }
 
     private fun encerrarSessao() {
@@ -844,18 +965,36 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun criarPersonagem(nome: String) {
-        val nomeLimpo = (personaNome.trim().takeIf { it.isNotEmpty() } ?: nome.trim()).take(30).ifEmpty { "Viajante" }
+        val p = personaAtiva
+        val nomeLimpo = (p?.nome?.takeIf { it.isNotBlank() } ?: personaNome.trim().takeIf { it.isNotEmpty() } ?: nome.trim()).take(30).ifEmpty { "Viajante" }
         val cenario = cenarioSelecionado
         val genero = cenario?.genero?.takeIf { it.isNotBlank() } ?: generoSelecionado.ifBlank { "Aventura" }
         val premissaLimpa = premissa.trim().take(500).takeIf { it.isNotEmpty() } ?: cenario?.sinopse?.take(500)
-        val fichaAparencia = personaAparencia.trim().ifEmpty { aparencia.trim() }.take(500).takeIf { it.isNotEmpty() }
-        val prefixoGenero = if (personaGenero.isNotBlank()) "Gênero: ${personaGenero.trim()}. " else ""
-        val corpoDescricao = personaDescricao.trim().ifEmpty { descricao.trim() }
-        val fichaDescricao = (prefixoGenero + corpoDescricao).take(800).takeIf { it.isNotEmpty() }
-        val fichaIdade = personaIdade.trim().ifEmpty { idade.trim() }.take(20).takeIf { it.isNotEmpty() }
-        val fichaInteresses = personaInteresses.trim().ifEmpty { interesses.trim() }.take(500).takeIf { it.isNotEmpty() }
-        val fichaAversoes = personaAversoes.trim().ifEmpty { aversoes.trim() }.take(500).takeIf { it.isNotEmpty() }
-        val listaTags = if (personaTags.isNotBlank()) personaTags.split(",").map { it.trim() }.filter { it.isNotEmpty() }.take(8) else null
+        
+        val aparenciaVal = p?.aparencia?.takeIf { it.isNotBlank() } ?: personaAparencia.trim().ifEmpty { aparencia.trim() }
+        val fichaAparencia = aparenciaVal.take(500).takeIf { it.isNotEmpty() }
+        
+        val generoVal = p?.genero?.takeIf { it.isNotBlank() } ?: personaGenero.trim()
+        val prefixoGenero = if (generoVal.isNotBlank()) "Gênero: $generoVal. " else ""
+        
+        val descVal = p?.descricao?.takeIf { it.isNotBlank() } ?: personaDescricao.trim().ifEmpty { descricao.trim() }
+        val fichaDescricao = (prefixoGenero + descVal).take(800).takeIf { it.isNotEmpty() }
+        
+        val idadeVal = p?.idade?.takeIf { it.isNotBlank() } ?: personaIdade.trim().ifEmpty { idade.trim() }
+        val fichaIdade = idadeVal.take(20).takeIf { it.isNotEmpty() }
+        
+        val intVal = p?.interesses?.takeIf { it.isNotBlank() } ?: personaInteresses.trim().ifEmpty { interesses.trim() }
+        val fichaInteresses = intVal.take(500).takeIf { it.isNotEmpty() }
+        
+        val aveVal = p?.aversoes?.takeIf { it.isNotBlank() } ?: personaAversoes.trim().ifEmpty { aversoes.trim() }
+        val fichaAversoes = aveVal.take(500).takeIf { it.isNotEmpty() }
+        
+        val listaTags = if (p != null && p.tags.isNotEmpty()) {
+            p.tags.take(8)
+        } else if (personaTags.isNotBlank()) {
+            personaTags.split(",").map { it.trim() }.filter { it.isNotEmpty() }.take(8)
+        } else null
+        
         val cerebro = cerebroSelecionado
         val modo = if (modoCriacao == "historia") "historia" else "rpg"
         executar("O narrador está escrevendo o início da sua história...") { api ->
@@ -872,7 +1011,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     aversoes = fichaAversoes,
                     tags = listaTags,
                     cenarioId = cenario?.id,
-                    modeloId = cerebro
+                    modeloId = cerebro,
+                    personaId = p?.id
                 )
             )
             aplicarJogoCompleto(resposta)

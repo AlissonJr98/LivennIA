@@ -2,6 +2,7 @@ package com.livennia.app
 
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,14 +24,22 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +51,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -51,9 +61,29 @@ private val FundoOled = Color(0xFF090A0F)
 private val CardObsidian = Color(0xFF13141F)
 private val CardObsidianBorda = Color(0xFF232538)
 private val RoxoPrimario = Color(0xFF7C4DFF)
+private val OuroAmbar = Color(0xFFFFB300)
 private val TextoClaro = Color(0xFFF0F0F5)
 private val TextoSecundario = Color(0xFFA0A2B3)
 private val TextoMudo = Color(0xFF6E7082)
+
+data class EstiloImagemInfo(
+    val id: String,
+    val nome: String,
+    val icone: String,
+    val descricao: String
+)
+
+val ESTILOS_IMAGEM_PERSONA = listOf(
+    EstiloImagemInfo("photorealistic", "Realista Natural", "📸", "Foto autêntica, textura de pele natural e luz de estúdio"),
+    EstiloImagemInfo("semi_realistic", "Semi-realista Elegante", "🎨", "Retrato refinado com traços estéticos e iluminação suave"),
+    EstiloImagemInfo("vibrant_anime", "Anime Vibrante", "🌸", "Cores vivas, iluminação radiante e visual anime expressivo"),
+    EstiloImagemInfo("manga_bw", "Mangá Preto & Branco", "🖤", "Traço clássico em nanquim, retículas e alto contraste"),
+    EstiloImagemInfo("flat_color", "Line Art / Webcomic", "✒️", "Traços limpos com cores planas e estilo moderno"),
+    EstiloImagemInfo("warm_art", "Arte Quente de Livro", "📖", "Ilustração aconchegante com tons dourados e pinceladas"),
+    EstiloImagemInfo("exquisite", "Fantasia Requintada", "👑", "Alta fantasia épica, detalhes minuciosos e brilhos mágicos"),
+    EstiloImagemInfo("dark_fantasy", "Dark Fantasy", "🦇", "Atmosfera gótica, misteriosa com iluminação dramática"),
+    EstiloImagemInfo("vintage_oil", "Pintura a Óleo Vintage", "🏛️", "Quadro clássico a óleo sobre tela com iluminação Rembrandt")
+)
 
 @Composable
 fun ModalMinhaPersona(
@@ -62,18 +92,12 @@ fun ModalMinhaPersona(
 ) {
     val contexto = LocalContext.current
 
-    var nome by remember { mutableStateOf(vm.personaNome.ifBlank { vm.apelido }) }
-    var genero by remember { mutableStateOf(vm.personaGenero.ifBlank { "Masculino" }) }
-    var descricao by remember { mutableStateOf(vm.personaDescricao) }
-    var idade by remember { mutableStateOf(vm.personaIdade) }
-    var aparencia by remember { mutableStateOf(vm.personaAparencia) }
-    var interesses by remember { mutableStateOf(vm.personaInteresses) }
-    var aversoes by remember { mutableStateOf(vm.personaAversoes) }
-    var tags by remember { mutableStateOf(vm.personaTags) }
-    var avatar by remember { mutableStateOf(vm.personaAvatar.ifBlank { "👤" }) }
+    LaunchedEffect(Unit) {
+        vm.carregarPersonas()
+    }
 
-    val generos = listOf("Masculino", "Feminino", "Outro")
-    val emojisAvatar = listOf("👤", "🧙‍♂️", "🧝‍♀️", "👑", "🗡️", "🦊", "🌟", "✨")
+    var modoEdicao by remember { mutableStateOf(false) }
+    var personaEmEdicao by remember { mutableStateOf<PersonaResponse?>(null) }
 
     Dialog(
         onDismissRequest = onFechar,
@@ -85,381 +109,819 @@ fun ModalMinhaPersona(
                 .fillMaxSize()
                 .navigationBarsPadding()
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Top Bar
-                Row(
+            if (modoEdicao) {
+                FormularioPersona(
+                    vm = vm,
+                    personaExistente = personaEmEdicao,
+                    onVoltar = {
+                        modoEdicao = false
+                        personaEmEdicao = null
+                    },
+                    onSalvo = {
+                        modoEdicao = false
+                        personaEmEdicao = null
+                    }
+                )
+            } else {
+                ListaPersonas(
+                    vm = vm,
+                    onFechar = onFechar,
+                    onNovaPersona = {
+                        if (vm.personas.size >= vm.limitePersonas) {
+                            Toast.makeText(
+                                contexto,
+                                "Limite de ${vm.limitePersonas} personas atingido no seu plano!",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        } else {
+                            personaEmEdicao = null
+                            modoEdicao = true
+                        }
+                    },
+                    onEditarPersona = { p ->
+                        personaEmEdicao = p
+                        modoEdicao = true
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ListaPersonas(
+    vm: AppViewModel,
+    onFechar: () -> Unit,
+    onNovaPersona: () -> Unit,
+    onEditarPersona: (PersonaResponse) -> Unit
+) {
+    val contexto = LocalContext.current
+    val totalPersonas = vm.personas.size
+    val limite = vm.limitePersonas
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Top Bar
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onFechar) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar", tint = TextoClaro)
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Minhas Personas",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = TextoClaro
+                )
+                Text(
+                    "Protagonistas usados nas histórias e chats",
+                    fontSize = 11.sp,
+                    color = TextoSecundario
+                )
+            }
+
+            // Badge de Cota
+            Surface(
+                color = if (totalPersonas >= limite) Color(0xFFD32F2F).copy(alpha = 0.2f) else RoxoPrimario.copy(alpha = 0.15f),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, if (totalPersonas >= limite) Color(0xFFFF5252) else RoxoPrimario.copy(alpha = 0.4f)),
+                modifier = Modifier.padding(end = 8.dp)
+            ) {
+                Text(
+                    "$totalPersonas / $limite",
+                    color = if (totalPersonas >= limite) Color(0xFFFF5252) else RoxoPrimario,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+        }
+
+        // Lista com scroll
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                "A Persona selecionada como padrão será o seu personagem em qualquer nova conversa ou aventura.",
+                color = TextoMudo,
+                fontSize = 12.sp,
+                lineHeight = 16.sp
+            )
+
+            if (vm.personas.isEmpty()) {
+                Surface(
+                    color = CardObsidian,
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, CardObsidianBorda),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(vertical = 24.dp)
                 ) {
-                    IconButton(onClick = onFechar) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar", tint = TextoClaro)
-                    }
-                    Text(
-                        "Minha Persona",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 17.sp,
-                        color = TextoClaro,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Surface(
-                        color = RoxoPrimario.copy(alpha = 0.15f),
-                        shape = CircleShape,
-                        modifier = Modifier.size(34.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = RoxoPrimario, modifier = Modifier.size(18.dp))
-                        }
-                    }
-                    Spacer(Modifier.width(8.dp))
-                }
-
-                // Conteúdo do formulário com espaçamento consistente
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 16.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    // 1. Box de Avatar Circular & Opções
                     Column(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        RetratoPersona(
-                            temRetrato = vm.personaTemRetrato,
-                            emojiOuPadrao = avatar,
-                            tamanho = 96,
-                            versao = vm.personaRetratoVersao,
-                            recorte = CircleShape
-                        )
-
+                        Text("🎭", fontSize = 42.sp)
                         Spacer(Modifier.height(8.dp))
-
-                        // Botão para gerar a imagem da Persona via IA
-                        Button(
-                            onClick = {
-                                if (aparencia.isBlank() && descricao.isBlank()) {
-                                    Toast.makeText(contexto, "Preencha a aparência ou descrição abaixo para guiar a IA!", Toast.LENGTH_SHORT).show()
-                                }
-                                vm.gerarRetratoPersona(
-                                    nome = nome,
-                                    genero = genero,
-                                    aparencia = aparencia,
-                                    descricao = descricao,
-                                    idade = idade,
-                                    interesses = interesses,
-                                    aversoes = aversoes,
-                                    tags = tags,
-                                    onSucesso = {
-                                        Toast.makeText(contexto, "✨ Ilustração gerada com sucesso!", Toast.LENGTH_SHORT).show()
-                                    }
-                                )
-                            },
-                            enabled = !vm.ocupado,
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = RoxoPrimario)
-                        ) {
-                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                if (vm.personaTemRetrato) "Regerar Retrato com IA" else "Gerar Retrato com IA",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp
-                            )
-                        }
-
                         Text(
-                            "Gera uma ilustração oficial baseada na aparência física e características abaixo.",
-                            color = TextoMudo,
-                            fontSize = 11.sp,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                            "Nenhuma persona criada",
+                            fontWeight = FontWeight.Bold,
+                            color = TextoClaro,
+                            fontSize = 15.sp
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Crie sua primeira persona para definir quem você é nas histórias!",
+                            color = TextoSecundario,
+                            fontSize = 12.sp,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
+                    }
+                }
+            } else {
+                vm.personas.forEach { persona ->
+                    ItemCardPersona(
+                        persona = persona,
+                        versao = vm.personaRetratoVersao,
+                        onEditar = { onEditarPersona(persona) },
+                        onTornarPadrao = {
+                            vm.definirPersonaPadrao(persona.id) {
+                                Toast.makeText(contexto, "'${persona.nome}' agora é sua persona padrão!", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        onExcluir = {
+                            if (vm.personas.size <= 1) {
+                                Toast.makeText(contexto, "Você precisa ter pelo menos 1 persona!", Toast.LENGTH_SHORT).show()
+                            } else {
+                                vm.deletarPersona(persona.id) {
+                                    Toast.makeText(contexto, "Persona removida!", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    )
+                }
+            }
 
-                        Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(10.dp))
+        }
 
-                        // Seleção rápida de emojis de avatar
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            emojisAvatar.forEach { em ->
-                                val sel = em == avatar
-                                Surface(
-                                    color = if (sel) RoxoPrimario.copy(alpha = 0.25f) else CardObsidian,
-                                    shape = CircleShape,
-                                    border = BorderStroke(1.dp, if (sel) RoxoPrimario else CardObsidianBorda),
-                                    modifier = Modifier
-                                        .size(34.dp)
-                                        .clickable { avatar = em }
+        // Botão de Criar Nova Persona
+        Box(modifier = Modifier.padding(16.dp)) {
+            Button(
+                onClick = onNovaPersona,
+                enabled = !vm.ocupado,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = RoxoPrimario),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, tint = Color.White)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "Criar Nova Persona",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ItemCardPersona(
+    persona: PersonaResponse,
+    versao: Int,
+    onEditar: () -> Unit,
+    onTornarPadrao: () -> Unit,
+    onExcluir: () -> Unit
+) {
+    Surface(
+        color = CardObsidian,
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(
+            if (persona.padrao) 1.5.dp else 1.dp,
+            if (persona.padrao) OuroAmbar else CardObsidianBorda
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                RetratoPersona(
+                    temRetrato = persona.temRetrato,
+                    emojiOuPadrao = "👤",
+                    tamanho = 56,
+                    versao = versao + persona.versaoRetrato,
+                    personaId = persona.id,
+                    recorte = CircleShape
+                )
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            persona.nome.ifBlank { "Sem nome" },
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = TextoClaro,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        if (persona.padrao) {
+                            Spacer(Modifier.width(6.dp))
+                            Surface(
+                                color = OuroAmbar.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, OuroAmbar.copy(alpha = 0.5f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Text(em, fontSize = 15.sp)
-                                    }
+                                    Icon(Icons.Default.Star, contentDescription = null, tint = OuroAmbar, modifier = Modifier.size(11.dp))
+                                    Spacer(Modifier.width(3.dp))
+                                    Text("Padrão", color = OuroAmbar, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
                     }
 
-                    // 2. Nome * (com contador 0/40)
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Row {
-                                Text("Nome da Persona", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
-                                Text(" *", color = Color(0xFFFF5252), fontSize = 13.sp)
-                            }
-                            Text("${nome.length}/40", color = TextoMudo, fontSize = 11.sp)
-                        }
-                        Surface(
-                            color = CardObsidian,
-                            shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(1.dp, CardObsidianBorda),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            BasicTextField(
-                                value = nome,
-                                onValueChange = { nome = it.take(40) },
-                                textStyle = TextStyle(color = TextoClaro, fontSize = 14.sp),
-                                cursorBrush = SolidColor(RoxoPrimario),
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                                decorationBox = { inner ->
-                                    if (nome.isEmpty()) Text("Como a IA vai te chamar na aventura", color = TextoMudo, fontSize = 13.sp)
-                                    inner()
-                                }
-                            )
-                        }
-                    }
-
-                    // 3. Gênero *
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Row {
-                            Text("Gênero", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
-                            Text(" *", color = Color(0xFFFF5252), fontSize = 13.sp)
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            generos.forEach { g ->
-                                val sel = g == genero
-                                Surface(
-                                    color = if (sel) RoxoPrimario.copy(alpha = 0.22f) else CardObsidian,
-                                    shape = RoundedCornerShape(10.dp),
-                                    border = BorderStroke(1.dp, if (sel) RoxoPrimario else CardObsidianBorda),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { genero = g }
-                                ) {
-                                    Text(
-                                        g,
-                                        color = if (sel) Color.White else TextoSecundario,
-                                        fontSize = 13.sp,
-                                        fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
-                                        modifier = Modifier.padding(vertical = 10.dp),
-                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // 4. Descrição / História *
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Row {
-                            Text("História / Personalidade", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
-                            Text(" *", color = Color(0xFFFF5252), fontSize = 13.sp)
-                        }
-                        Surface(
-                            color = CardObsidian,
-                            shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(1.dp, CardObsidianBorda),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .defaultMinSize(minHeight = 72.dp)
-                        ) {
-                            BasicTextField(
-                                value = descricao,
-                                onValueChange = { descricao = it },
-                                textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp, lineHeight = 18.sp),
-                                cursorBrush = SolidColor(RoxoPrimario),
-                                modifier = Modifier.padding(12.dp),
-                                decorationBox = { inner ->
-                                    if (descricao.isEmpty()) {
-                                        Text(
-                                            "Quem você é? Resuma sua história, personalidade ou como age no mundo...",
-                                            color = TextoMudo,
-                                            fontSize = 12.sp,
-                                            lineHeight = 16.sp
-                                        )
-                                    }
-                                    inner()
-                                }
-                            )
-                        }
-                    }
-
-                    // 5. Idade & Interesses lado a lado
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(top = 2.dp)
                     ) {
-                        Column(modifier = Modifier.width(110.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("Idade", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
-                            Surface(
-                                color = CardObsidian,
-                                shape = RoundedCornerShape(12.dp),
-                                border = BorderStroke(1.dp, CardObsidianBorda),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                BasicTextField(
-                                    value = idade,
-                                    onValueChange = { idade = it.take(20) },
-                                    textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp),
-                                    cursorBrush = SolidColor(RoxoPrimario),
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
-                                    decorationBox = { inner ->
-                                        if (idade.isEmpty()) Text("Ex: 22", color = TextoMudo, fontSize = 13.sp)
-                                        inner()
-                                    }
-                                )
-                            }
+                        if (persona.idade.isNotBlank()) {
+                            Text("${persona.idade} anos", color = TextoMudo, fontSize = 11.sp)
+                            Text("•", color = TextoMudo, fontSize = 11.sp)
                         }
-
-                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("Interesses", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
-                            Surface(
-                                color = CardObsidian,
-                                shape = RoundedCornerShape(12.dp),
-                                border = BorderStroke(1.dp, CardObsidianBorda),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                BasicTextField(
-                                    value = interesses,
-                                    onValueChange = { interesses = it },
-                                    textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp),
-                                    cursorBrush = SolidColor(RoxoPrimario),
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
-                                    decorationBox = { inner ->
-                                        if (interesses.isEmpty()) Text("Música, mistérios, lutas...", color = TextoMudo, fontSize = 13.sp)
-                                        inner()
-                                    }
-                                )
-                            }
-                        }
+                        Text(persona.genero.ifBlank { "Gênero livre" }, color = TextoMudo, fontSize = 11.sp)
                     }
 
-                    // 6. Aparência
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("Aparência Física", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
-                        Surface(
-                            color = CardObsidian,
-                            shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(1.dp, CardObsidianBorda),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .defaultMinSize(minHeight = 64.dp)
-                        ) {
-                            BasicTextField(
-                                value = aparencia,
-                                onValueChange = { aparencia = it },
-                                textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp, lineHeight = 18.sp),
-                                cursorBrush = SolidColor(RoxoPrimario),
-                                modifier = Modifier.padding(12.dp),
-                                decorationBox = { inner ->
-                                    if (aparencia.isEmpty()) {
-                                        Text(
-                                            "Cabelo, roupas, traços marcantes ou porte físico...",
-                                            color = TextoMudo,
-                                            fontSize = 12.sp
-                                        )
-                                    }
-                                    inner()
-                                }
-                            )
-                        }
+                    if (persona.descricao.isNotBlank()) {
+                        Text(
+                            persona.descricao,
+                            color = TextoSecundario,
+                            fontSize = 12.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
                     }
+                }
+            }
 
-                    // 7. Aversões / Medos
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("Aversões / Medos", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
-                        Surface(
-                            color = CardObsidian,
-                            shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(1.dp, CardObsidianBorda),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            BasicTextField(
-                                value = aversoes,
-                                onValueChange = { aversoes = it },
-                                textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp),
-                                cursorBrush = SolidColor(RoxoPrimario),
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
-                                decorationBox = { inner ->
-                                    if (aversoes.isEmpty()) Text("O que evita ou tem pavor em situações de crise...", color = TextoMudo, fontSize = 12.sp)
-                                    inner()
-                                }
-                            )
-                        }
+            Spacer(Modifier.height(10.dp))
+
+            // Ações do card
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (!persona.padrao) {
+                    Surface(
+                        color = Color.Transparent,
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, CardObsidianBorda),
+                        modifier = Modifier.clickable { onTornarPadrao() }
+                    ) {
+                        Text(
+                            "Definir como Padrão",
+                            color = TextoSecundario,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
                     }
-
-                    // 8. Tags / Palavras-chave
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("Tags & Arquétipos", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
-                        Surface(
-                            color = CardObsidian,
-                            shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(1.dp, CardObsidianBorda),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            BasicTextField(
-                                value = tags,
-                                onValueChange = { tags = it },
-                                textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp),
-                                cursorBrush = SolidColor(RoxoPrimario),
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
-                                decorationBox = { inner ->
-                                    if (tags.isEmpty()) Text("Ex: Humano, Guerreiro, Calmo (separados por vírgula)", color = TextoMudo, fontSize = 12.sp)
-                                    inner()
-                                }
-                            )
-                        }
-                    }
-
-                    Spacer(Modifier.height(8.dp))
+                } else {
+                    Text("✓ Usada por padrão no Bot", color = OuroAmbar, fontSize = 11.sp)
                 }
 
-                // Botão de Salvar Persona
-                Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                    Button(
-                        onClick = {
-                            if (nome.isBlank()) {
-                                Toast.makeText(contexto, "Informe ao menos o nome da sua Persona!", Toast.LENGTH_SHORT).show()
-                                return@Button
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    IconButton(onClick = onEditar, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Edit, contentDescription = "Editar", tint = TextoClaro, modifier = Modifier.size(16.dp))
+                    }
+                    IconButton(onClick = onExcluir, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Delete, contentDescription = "Excluir", tint = Color(0xFFFF5252), modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FormularioPersona(
+    vm: AppViewModel,
+    personaExistente: PersonaResponse?,
+    onVoltar: () -> Unit,
+    onSalvo: () -> Unit
+) {
+    val contexto = LocalContext.current
+
+    var nome by remember { mutableStateOf(personaExistente?.nome ?: "") }
+    var genero by remember { mutableStateOf(personaExistente?.genero ?: "Feminino") }
+    var idade by remember { mutableStateOf(personaExistente?.idade ?: "") }
+    var descricao by remember { mutableStateOf(personaExistente?.descricao ?: "") } // Personalidade
+    var aparencia by remember { mutableStateOf(personaExistente?.aparencia ?: "") }
+    var interesses by remember { mutableStateOf(personaExistente?.interesses ?: "") }
+    var aversoes by remember { mutableStateOf(personaExistente?.aversoes ?: "") }
+    var tags by remember { mutableStateOf(personaExistente?.tags?.joinToString(", ") ?: "") }
+    var detalhesImagem by remember { mutableStateOf(personaExistente?.detalhesImagem ?: "") }
+    var estiloImagem by remember { mutableStateOf(personaExistente?.estiloImagem ?: "semi_realistic") }
+    var padrao by remember { mutableStateOf(personaExistente?.padrao ?: (vm.personas.isEmpty())) }
+
+    val generos = listOf("Feminino", "Masculino", "Outro")
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Top Bar
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onVoltar) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar", tint = TextoClaro)
+            }
+            Text(
+                if (personaExistente == null) "Nova Persona" else "Editar Persona",
+                fontWeight = FontWeight.Bold,
+                fontSize = 17.sp,
+                color = TextoClaro,
+                modifier = Modifier.weight(1f)
+            )
+            Surface(
+                color = RoxoPrimario.copy(alpha = 0.15f),
+                shape = CircleShape,
+                modifier = Modifier.size(34.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = RoxoPrimario, modifier = Modifier.size(18.dp))
+                }
+            }
+            Spacer(Modifier.width(8.dp))
+        }
+
+        // Formulário
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            // Retrato & Botão de Geração com IA
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                RetratoPersona(
+                    temRetrato = personaExistente?.temRetrato == true,
+                    emojiOuPadrao = "👤",
+                    tamanho = 96,
+                    versao = vm.personaRetratoVersao + (personaExistente?.versaoRetrato ?: 0),
+                    personaId = personaExistente?.id,
+                    recorte = CircleShape
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                Button(
+                    onClick = {
+                        if (nome.isBlank()) {
+                            Toast.makeText(contexto, "Digite o nome da persona antes de gerar o retrato!", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        val listaTags = if (tags.isNotBlank()) tags.split(",").map { it.trim() }.filter { it.isNotEmpty() } else emptyList()
+                        val req = PersonaRetratoRequest(
+                            nome = nome,
+                            genero = genero,
+                            aparencia = aparencia,
+                            descricao = descricao,
+                            idade = idade,
+                            interesses = interesses,
+                            aversoes = aversoes,
+                            tags = listaTags,
+                            estiloImagem = estiloImagem,
+                            detalhesImagem = detalhesImagem
+                        )
+                        if (personaExistente != null && personaExistente.id > 0) {
+                            vm.gerarRetratoPersonaId(personaExistente.id, req) {
+                                Toast.makeText(contexto, "✨ Retrato atualizado com sucesso!", Toast.LENGTH_SHORT).show()
                             }
-                            vm.salvarMinhaPersona(
+                        } else {
+                            // Salva primeiro para obter ID e depois gera
+                            val pIn = PersonaIn(
                                 nome = nome,
                                 genero = genero,
+                                aparencia = aparencia,
                                 descricao = descricao,
                                 idade = idade,
-                                aparencia = aparencia,
                                 interesses = interesses,
                                 aversoes = aversoes,
-                                tags = tags,
-                                avatar = avatar
+                                tags = listaTags,
+                                estiloImagem = estiloImagem,
+                                detalhesImagem = detalhesImagem,
+                                padrao = padrao
                             )
-                            Toast.makeText(contexto, "Persona '${nome}' salva com sucesso!", Toast.LENGTH_SHORT).show()
-                            onFechar()
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = RoxoPrimario),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Salvar Persona", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            vm.salvarPersona(null, pIn) { salva ->
+                                vm.gerarRetratoPersonaId(salva.id, req) {
+                                    Toast.makeText(contexto, "✨ Persona criada e retrato gerado!", Toast.LENGTH_SHORT).show()
+                                    onSalvo()
+                                }
+                            }
+                        }
+                    },
+                    enabled = !vm.ocupado,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = RoxoPrimario)
+                ) {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        if (personaExistente?.temRetrato == true) "Regerar Ilustração com IA" else "Gerar Ilustração com IA",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
+                }
+
+                Text(
+                    "Gera uma ilustração artística elegante com o estilo e características abaixo.",
+                    color = TextoMudo,
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
+
+            // 1. Nome da Persona *
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Row {
+                        Text("Nome da Persona", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
+                        Text(" *", color = Color(0xFFFF5252), fontSize = 13.sp)
+                    }
+                    Text("${nome.length}/40", color = TextoMudo, fontSize = 11.sp)
+                }
+                Surface(
+                    color = CardObsidian,
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, CardObsidianBorda),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    BasicTextField(
+                        value = nome,
+                        onValueChange = { nome = it.take(40) },
+                        textStyle = TextStyle(color = TextoClaro, fontSize = 14.sp),
+                        cursorBrush = SolidColor(RoxoPrimario),
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        decorationBox = { inner ->
+                            if (nome.isEmpty()) Text("Ex: Mariana, Arthur, Kaelen...", color = TextoMudo, fontSize = 13.sp)
+                            inner()
+                        }
+                    )
+                }
+            }
+
+            // 2. Gênero & Idade
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Gênero", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        generos.forEach { g ->
+                            val sel = g.equals(genero, ignoreCase = true)
+                            Surface(
+                                color = if (sel) RoxoPrimario.copy(alpha = 0.22f) else CardObsidian,
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, if (sel) RoxoPrimario else CardObsidianBorda),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { genero = g }
+                            ) {
+                                Text(
+                                    g,
+                                    color = if (sel) Color.White else TextoSecundario,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
+                                    modifier = Modifier.padding(vertical = 10.dp),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        }
                     }
                 }
+
+                Column(modifier = Modifier.width(90.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Idade", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
+                    Surface(
+                        color = CardObsidian,
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, CardObsidianBorda),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        BasicTextField(
+                            value = idade,
+                            onValueChange = { idade = it.take(20) },
+                            textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp),
+                            cursorBrush = SolidColor(RoxoPrimario),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                            decorationBox = { inner ->
+                                if (idade.isEmpty()) Text("Ex: 28", color = TextoMudo, fontSize = 13.sp)
+                                inner()
+                            }
+                        )
+                    }
+                }
+            }
+
+            // 3. PERSONALIDADE * (Requisito 1: apenas Personalidade, sem História)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row {
+                    Text("Personalidade", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
+                    Text(" *", color = Color(0xFFFF5252), fontSize = 13.sp)
+                }
+                Surface(
+                    color = CardObsidian,
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, CardObsidianBorda),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = 72.dp)
+                ) {
+                    BasicTextField(
+                        value = descricao,
+                        onValueChange = { descricao = it.take(800) },
+                        textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp, lineHeight = 18.sp),
+                        cursorBrush = SolidColor(RoxoPrimario),
+                        modifier = Modifier.padding(12.dp),
+                        decorationBox = { inner ->
+                            if (descricao.isEmpty()) {
+                                Text(
+                                    "Ex: Extrovertido, tímido, carinhoso, impulsivo, sarcástico, focado...",
+                                    color = TextoMudo,
+                                    fontSize = 12.sp,
+                                    lineHeight = 16.sp
+                                )
+                            }
+                            inner()
+                        }
+                    )
+                }
+            }
+
+            // 4. Aparência Física
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Aparência Física", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
+                Surface(
+                    color = CardObsidian,
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, CardObsidianBorda),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = 60.dp)
+                ) {
+                    BasicTextField(
+                        value = aparencia,
+                        onValueChange = { aparencia = it.take(500) },
+                        textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp, lineHeight = 18.sp),
+                        cursorBrush = SolidColor(RoxoPrimario),
+                        modifier = Modifier.padding(12.dp),
+                        decorationBox = { inner ->
+                            if (aparencia.isEmpty()) {
+                                Text(
+                                    "Cabelos, olhos, traços faciais, roupas que costuma vestir...",
+                                    color = TextoMudo,
+                                    fontSize = 12.sp
+                                )
+                            }
+                            inner()
+                        }
+                    )
+                }
+            }
+
+            // 5. Interesses & Aversões
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Interesses", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
+                    Surface(
+                        color = CardObsidian,
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, CardObsidianBorda),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        BasicTextField(
+                            value = interesses,
+                            onValueChange = { interesses = it.take(300) },
+                            textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp),
+                            cursorBrush = SolidColor(RoxoPrimario),
+                            modifier = Modifier.padding(12.dp),
+                            decorationBox = { inner ->
+                                if (interesses.isEmpty()) Text("Música, viagens...", color = TextoMudo, fontSize = 12.sp)
+                                inner()
+                            }
+                        )
+                    }
+                }
+
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Aversões / Medos", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
+                    Surface(
+                        color = CardObsidian,
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, CardObsidianBorda),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        BasicTextField(
+                            value = aversoes,
+                            onValueChange = { aversoes = it.take(300) },
+                            textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp),
+                            cursorBrush = SolidColor(RoxoPrimario),
+                            modifier = Modifier.padding(12.dp),
+                            decorationBox = { inner ->
+                                if (aversoes.isEmpty()) Text("Mentiras, altura...", color = TextoMudo, fontSize = 12.sp)
+                                inner()
+                            }
+                        )
+                    }
+                }
+            }
+
+            // 6. DETALHES DA IMAGEM (Requisito 2: o que deve aparecer na imagem)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    "O que deve aparecer na imagem (IA)",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp,
+                    color = TextoClaro
+                )
+                Surface(
+                    color = CardObsidian,
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, CardObsidianBorda),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = 56.dp)
+                ) {
+                    BasicTextField(
+                        value = detalhesImagem,
+                        onValueChange = { detalhesImagem = it.take(500) },
+                        textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp, lineHeight = 18.sp),
+                        cursorBrush = SolidColor(RoxoPrimario),
+                        modifier = Modifier.padding(12.dp),
+                        decorationBox = { inner ->
+                            if (detalhesImagem.isEmpty()) {
+                                Text(
+                                    "Ex: Pose sorrindo, segurando uma xícara, iluminação suave, fundo aconchegante...",
+                                    color = TextoMudo,
+                                    fontSize = 12.sp
+                                )
+                            }
+                            inner()
+                        }
+                    )
+                }
+            }
+
+            // 7. ESTILO DA IMAGEM (Requisito 2: estilos conforme anexo)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Estilo Visual da Imagem",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp,
+                    color = TextoClaro
+                )
+
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    ESTILOS_IMAGEM_PERSONA.forEach { estilo ->
+                        val sel = estilo.id == estiloImagem
+                        Surface(
+                            color = if (sel) RoxoPrimario.copy(alpha = 0.2f) else CardObsidian,
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(if (sel) 1.5.dp else 1.dp, if (sel) RoxoPrimario else CardObsidianBorda),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { estiloImagem = estilo.id }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(estilo.icone, fontSize = 20.sp)
+                                Spacer(Modifier.width(10.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        estilo.nome,
+                                        fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
+                                        fontSize = 13.sp,
+                                        color = if (sel) Color.White else TextoClaro
+                                    )
+                                    Text(
+                                        estilo.descricao,
+                                        fontSize = 11.sp,
+                                        color = TextoSecundario,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                                if (sel) {
+                                    Icon(Icons.Default.Check, contentDescription = null, tint = RoxoPrimario, modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 8. Definir como Padrão Switch
+            Surface(
+                color = CardObsidian,
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, CardObsidianBorda),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Persona Padrão", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
+                        Text(
+                            "Usar esta persona em todas as conversas do Bot automaticamente",
+                            fontSize = 11.sp,
+                            color = TextoSecundario
+                        )
+                    }
+                    Switch(
+                        checked = padrao,
+                        onCheckedChange = { padrao = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = OuroAmbar
+                        )
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+        }
+
+        // Botão Salvar
+        Box(modifier = Modifier.padding(16.dp)) {
+            Button(
+                onClick = {
+                    if (nome.isBlank()) {
+                        Toast.makeText(contexto, "Digite ao menos o nome da Persona!", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                    val listaTags = if (tags.isNotBlank()) tags.split(",").map { it.trim() }.filter { it.isNotEmpty() } else emptyList()
+                    val pIn = PersonaIn(
+                        nome = nome,
+                        genero = genero,
+                        aparencia = aparencia,
+                        descricao = descricao,
+                        idade = idade,
+                        interesses = interesses,
+                        aversoes = aversoes,
+                        tags = listaTags,
+                        estiloImagem = estiloImagem,
+                        detalhesImagem = detalhesImagem,
+                        padrao = padrao
+                    )
+                    vm.salvarPersona(personaExistente?.id, pIn) {
+                        Toast.makeText(contexto, "Persona '${nome}' salva com sucesso!", Toast.LENGTH_SHORT).show()
+                        onSalvo()
+                    }
+                },
+                enabled = !vm.ocupado,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = RoxoPrimario),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Text("Salvar Persona", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
         }
     }

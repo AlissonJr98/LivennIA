@@ -110,11 +110,17 @@ def caminho_retrato(jogo_id):
     return os.path.join(config.PASTA_RETRATOS, f"{jogo_id}.png")
 
 
-def caminho_persona_retrato(jogador_id):
+def caminho_persona_retrato(jogador_id, persona_id=None):
+    if persona_id:
+        return os.path.join(config.PASTA_RETRATOS, f"persona_{jogador_id}_{persona_id}.png")
     return os.path.join(config.PASTA_RETRATOS, f"persona_{jogador_id}.png")
 
 
-def tem_persona_retrato(jogador_id):
+def tem_persona_retrato(jogador_id, persona_id=None):
+    if persona_id:
+        c1 = caminho_persona_retrato(jogador_id, persona_id)
+        if os.path.exists(c1):
+            return True
     return os.path.exists(caminho_persona_retrato(jogador_id))
 
 
@@ -218,6 +224,7 @@ class FirebaseAuthIn(Base):
 
 class NovoJogoIn(Base):
     nome_personagem: str = Field(default="Viajante", min_length=1, max_length=100)
+    persona_id: Optional[int] = None
     modo: str = Field(default="rpg", max_length=30)
     genero: str = Field(default="Aventura", max_length=100)
     premissa: Optional[str] = Field(default=None, max_length=3000)
@@ -406,6 +413,36 @@ class JogoOut(BaseModel):
 class RetratoOut(BaseModel):
     retrato: bool = True
 
+
+class PersonaIn(Base):
+    nome: str = Field(default="Viajante", min_length=1, max_length=40)
+    genero: str = Field(default="Feminino", max_length=20)
+    idade: Optional[str] = Field(default="", max_length=20)
+    personalidade: Optional[str] = Field(default="", max_length=1000)
+    interesses: Optional[str] = Field(default="", max_length=500)
+    aparencia: Optional[str] = Field(default="", max_length=1000)
+    medos: Optional[str] = Field(default="", max_length=500)
+    detalhes_imagem: Optional[str] = Field(default="", max_length=500)
+    estilo_imagem: Optional[str] = Field(default="semi_realistic", max_length=50)
+    avatar_emoji: Optional[str] = Field(default="👤", max_length=10)
+    padrao: Optional[bool] = False
+
+
+class PersonaOut(Base):
+    id: int
+    nome: str
+    genero: str
+    idade: Optional[str] = ""
+    personalidade: Optional[str] = ""
+    interesses: Optional[str] = ""
+    aparencia: Optional[str] = ""
+    medos: Optional[str] = ""
+    detalhes_imagem: Optional[str] = ""
+    estilo_imagem: Optional[str] = "semi_realistic"
+    avatar_emoji: Optional[str] = "👤"
+    retrato_versao: int = 0
+    padrao: bool = False
+    tem_retrato: bool = False
 
 class PersonaRetratoIn(BaseModel):
     nome: str = ""
@@ -942,9 +979,19 @@ def criar_jogo(dados: NovoJogoIn, jogador=Depends(jogador_atual)):
             "aversoes": dados.aversoes,
             "tags": dados.tags,
         }
+        persona = None
+        if dados.persona_id:
+            persona = banco.obter_persona(jogador["id"], dados.persona_id)
+        if not persona:
+            persona = banco.obter_persona_padrao(jogador["id"])
+
+        nome_usado = dados.nome_personagem
+        if persona and (not dados.nome_personagem or dados.nome_personagem == "Viajante"):
+            nome_usado = persona["nome"]
+
         premissa = dados.premissa or (item["sinopse"] if item else None)
         estado = motor.novo_estado(
-            dados.nome_personagem,
+            nome_usado,
             genero,
             premissa,
             ficha,
@@ -1638,3 +1685,171 @@ def enviar_denuncia(dados: DenunciaIn, jogador=Depends(jogador_atual)):
     banco.salvar_denuncia(jogador["id"], dados.jogo_id, dados.motivo, trecho)
     logging.info("Nova denúncia (%s) do jogador %s.", dados.motivo, jogador["id"])
     return {"status": "recebido"}
+
+
+# ---------------------------------------------------------------
+# Endpoints de Múltiplas Personas
+# ---------------------------------------------------------------
+@app.get("/personas", response_model=list[PersonaOut])
+def listar_minhas_personas(jogador=Depends(jogador_atual)):
+    """Lista todas as personas do jogador com indicador de persona padrão e retrato."""
+    linhas = banco.listar_personas(jogador["id"])
+    resultado = []
+    for p in linhas:
+        resultado.append(PersonaOut(
+            id=p["id"],
+            nome=p["nome"],
+            genero=p["genero"],
+            idade=p["idade"] or "",
+            personalidade=p["personalidade"] or "",
+            interesses=p["interesses"] or "",
+            aparencia=p["aparencia"] or "",
+            medos=p["medos"] or "",
+            detalhes_imagem=p["detalhes_imagem"] or "",
+            estilo_imagem=p["estilo_imagem"] or "semi_realistic",
+            avatar_emoji=p["avatar_emoji"] or "👤",
+            retrato_versao=p["retrato_versao"],
+            padrao=bool(p["padrao"]),
+            tem_retrato=tem_persona_retrato(jogador["id"], p["id"])
+        ))
+    return resultado
+
+
+@app.post("/personas", response_model=PersonaOut, status_code=201)
+def criar_persona(dados: PersonaIn, jogador=Depends(jogador_atual)):
+    """Cria uma nova persona respeitando o limite do plano (grátis: 3, premium: 20)."""
+    try:
+        p_id = banco.salvar_persona(jogador["id"], dados.model_dump())
+    except banco.ErroNegocio as erro:
+        raise HTTPException(erro.status, erro.mensagem)
+    p = banco.obter_persona(jogador["id"], p_id)
+    return PersonaOut(
+        id=p["id"],
+        nome=p["nome"],
+        genero=p["genero"],
+        idade=p["idade"] or "",
+        personalidade=p["personalidade"] or "",
+        interesses=p["interesses"] or "",
+        aparencia=p["aparencia"] or "",
+        medos=p["medos"] or "",
+        detalhes_imagem=p["detalhes_imagem"] or "",
+        estilo_imagem=p["estilo_imagem"] or "semi_realistic",
+        avatar_emoji=p["avatar_emoji"] or "👤",
+        retrato_versao=p["retrato_versao"],
+        padrao=bool(p["padrao"]),
+        tem_retrato=False
+    )
+
+
+@app.put("/personas/{persona_id}", response_model=PersonaOut)
+def atualizar_persona(persona_id: int, dados: PersonaIn, jogador=Depends(jogador_atual)):
+    """Atualiza dados de uma persona existente."""
+    existente = banco.obter_persona(jogador["id"], persona_id)
+    if not existente:
+        raise HTTPException(404, "Persona não encontrada.")
+    banco.salvar_persona(jogador["id"], dados.model_dump(), persona_id)
+    p = banco.obter_persona(jogador["id"], persona_id)
+    return PersonaOut(
+        id=p["id"],
+        nome=p["nome"],
+        genero=p["genero"],
+        idade=p["idade"] or "",
+        personalidade=p["personalidade"] or "",
+        interesses=p["interesses"] or "",
+        aparencia=p["aparencia"] or "",
+        medos=p["medos"] or "",
+        detalhes_imagem=p["detalhes_imagem"] or "",
+        estilo_imagem=p["estilo_imagem"] or "semi_realistic",
+        avatar_emoji=p["avatar_emoji"] or "👤",
+        retrato_versao=p["retrato_versao"],
+        padrao=bool(p["padrao"]),
+        tem_retrato=tem_persona_retrato(jogador["id"], p["id"])
+    )
+
+
+@app.delete("/personas/{persona_id}", status_code=204)
+def deletar_minha_persona(persona_id: int, jogador=Depends(jogador_atual)):
+    """Deleta uma persona do jogador."""
+    existente = banco.obter_persona(jogador["id"], persona_id)
+    if not existente:
+        raise HTTPException(404, "Persona não encontrada.")
+    banco.deletar_persona(jogador["id"], persona_id)
+    caminho = caminho_persona_retrato(jogador["id"], persona_id)
+    if os.path.exists(caminho):
+        try:
+            os.remove(caminho)
+        except Exception:
+            pass
+
+
+@app.post("/personas/{persona_id}/padrao", status_code=200)
+def marcar_como_padrao(persona_id: int, jogador=Depends(jogador_atual)):
+    """Define a persona indicada como a persona padrão do jogador."""
+    existente = banco.obter_persona(jogador["id"], persona_id)
+    if not existente:
+        raise HTTPException(404, "Persona não encontrada.")
+    banco.definir_persona_padrao(jogador["id"], persona_id)
+    return {"ok": True}
+
+
+@app.post("/personas/{persona_id}/retrato", response_model=RetratoOut)
+def gerar_retrato_persona_id(persona_id: int, dados: PersonaRetratoIn, jogador=Depends(jogador_atual)):
+    """Gera ilustração por IA para uma persona específica usando detalhes e estilo de arte."""
+    existente = banco.obter_persona(jogador["id"], persona_id)
+    if not existente:
+        raise HTTPException(404, "Persona não encontrada.")
+    if not limite_retrato.permitir(f"persona_retrato:{jogador['id']}:{persona_id}"):
+        raise HTTPException(429, "Calma! Aguarde um pouco para gerar outro retrato.")
+    consumir_retrato_do_dia()
+
+    estado_persona = {
+        "personagem": {"nome": dados.nome or existente["nome"]},
+        "genero": dados.genero or existente["genero"] or "Aventura",
+        "persona": {
+            "nome": dados.nome or existente["nome"],
+            "genero": dados.genero or existente["genero"],
+            "aparencia": dados.aparencia or existente["aparencia"] or "",
+            "personalidade": dados.personalidade or dados.descricao or existente["personalidade"] or "",
+            "idade": dados.idade or existente["idade"] or "",
+            "interesses": dados.interesses or existente["interesses"] or "",
+            "medos": dados.medos or dados.aversoes or existente["medos"] or "",
+            "detalhes_imagem": dados.detalhes_imagem or existente["detalhes_imagem"] or "",
+            "estilo_imagem": dados.estilo_imagem or existente["estilo_imagem"] or "semi_realistic",
+        }
+    }
+    try:
+        imagem = motor.gerar_retrato(estado_persona)
+    except motor.ErroIA as erro:
+        logging.warning("Falha ao gerar retrato da persona %s: %s", persona_id, erro)
+        raise HTTPException(
+            503, "Não foi possível gerar a imagem da persona agora. Tente de novo em instantes."
+        )
+    os.makedirs(config.PASTA_RETRATOS, exist_ok=True)
+    caminho = caminho_persona_retrato(jogador["id"], persona_id)
+    with open(caminho, "wb") as arquivo:
+        arquivo.write(imagem)
+    banco.incrementar_retrato_persona(jogador["id"], persona_id)
+    return RetratoOut(retrato=True)
+
+
+@app.get("/personas/{persona_id}/retrato")
+def ver_retrato_persona_id(persona_id: int, token: Optional[str] = None, credenciais: Optional[HTTPAuthorizationCredentials] = Depends(esquema_bearer)):
+    """Devolve a imagem da persona específica."""
+    jogador = None
+    if credenciais and credenciais.credentials:
+        jogador = banco.jogador_por_token_hash(hash_token(credenciais.credentials))
+    elif token:
+        jogador = banco.jogador_por_token_hash(hash_token(token))
+    if jogador is None:
+        raise HTTPException(401, "Não autenticado.")
+
+    caminho = caminho_persona_retrato(jogador["id"], persona_id)
+    if not os.path.exists(caminho):
+        # Fallback para retrato geral da conta se existir
+        caminho_geral = caminho_persona_retrato(jogador["id"])
+        if os.path.exists(caminho_geral):
+            return FileResponse(caminho_geral, media_type=tipo_de_imagem(caminho_geral), headers={"Cache-Control": "no-cache"})
+        raise HTTPException(404, "Esta persona ainda não possui retrato gerado.")
+    return FileResponse(
+        caminho, media_type=tipo_de_imagem(caminho), headers={"Cache-Control": "no-cache"}
+    )

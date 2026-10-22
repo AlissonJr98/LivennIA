@@ -75,7 +75,9 @@ data class NovoJogoRequest(
 
     @SerializedName("modelo_id") val modeloId: String? = null,
 
-    val temperatura: Float? = null
+    val temperatura: Float? = null,
+
+    @SerializedName("persona_id") val personaId: Int? = null
 
 )
 
@@ -148,14 +150,50 @@ data class CerebroDto(
 
 
 data class PersonaRetratoRequest(
-    val nome: String,
-    val genero: String,
-    val aparencia: String,
-    val descricao: String,
-    val idade: String,
+    val nome: String? = null,
+    val genero: String? = null,
+    val aparencia: String? = null,
+    val descricao: String? = null,
+    val idade: String? = null,
     val interesses: String = "",
     val aversoes: String = "",
-    val tags: List<String> = emptyList()
+    val tags: List<String> = emptyList(),
+    @SerializedName("estilo_imagem") val estiloImagem: String = "semi_realistic",
+    @SerializedName("detalhes_imagem") val detalhesImagem: String = ""
+)
+
+data class PersonaIn(
+    val nome: String,
+    val genero: String = "Feminino",
+    val aparencia: String = "",
+    val descricao: String = "", // Personalidade ("Extrovertido, tímido...")
+    val idade: String = "",
+    val interesses: String = "",
+    val aversoes: String = "",
+    val tags: List<String> = emptyList(),
+    @SerializedName("estilo_imagem") val estiloImagem: String = "semi_realistic",
+    @SerializedName("detalhes_imagem") val detalhesImagem: String = "",
+    val padrao: Boolean = false
+)
+
+data class PersonaResponse(
+    val id: Int = 0,
+    @SerializedName("jogador_id") val jogadorId: String = "",
+    val nome: String = "",
+    val genero: String = "",
+    val aparencia: String = "",
+    val descricao: String = "", // Personalidade
+    val idade: String = "",
+    val interesses: String = "",
+    val aversoes: String = "",
+    val tags: List<String> = emptyList(),
+    @SerializedName("estilo_imagem") val estiloImagem: String = "semi_realistic",
+    @SerializedName("detalhes_imagem") val detalhesImagem: String = "",
+    val padrao: Boolean = false,
+    @SerializedName("tem_retrato") val temRetrato: Boolean = false,
+    @SerializedName("versao_retrato") val versaoRetrato: Int = 1,
+    @SerializedName("criado_em") val criadoEm: String = "",
+    @SerializedName("atualizado_em") val atualizadoEm: String = ""
 )
 
 data class CapaResponse(val capa: Boolean = true)
@@ -242,7 +280,9 @@ data class ConfigModeloRequest(
 
     @SerializedName("modelo_id") val modeloId: String? = null,
 
-    val temperatura: Float? = null
+    val temperatura: Float? = null,
+
+    @SerializedName("persona_id") val personaId: Int? = null
 
 )
 

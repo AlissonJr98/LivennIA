@@ -743,16 +743,18 @@ CEREBROS = [
         "id": "livennia-flash",
         "nome": "Liven Flash",
         "emoji": "⚡",
-        "descricao": "Rápido, dinâmico e direto ao ponto. Disponível gratuitamente com recompensa de anúncio.",
+        "descricao": "Rápido, dinâmico e direto ao ponto. Respostas curtas e objetivas (Plano Gratuito).",
         "modelo": "gemini-3.5-flash-lite",
         "premium": False,
         "custo_livens": 0,
         "categoria": "Grátis com Anúncio",
-        "temperatura_padrao": 0.70,
+        "temperatura_padrao": 0.65,
+        "max_tokens": 380,
         "estilo_prompt": (
-            "DIRETRIZ DE ESTILO (LIVEN FLASH - DIRETO & ÁGIL):\n"
-            "- Ritmo acelerado e direto: priorize acontecimentos e reações imediatas.\n"
-            "- Evite divagações longas ou floreios excessivos; foque no impacto presente da cena."
+            "DIRETRIZ OBRIGATÓRIA (LIVEN FLASH - RESPOSTAS CURTAS & DIRETAS):\n"
+            "- LIMITE DE TAMANHO: Escreva SOMENTE 1 a 2 parágrafos CURTOS e OBJETIVOS (no máximo 80 a 120 palavras).\n"
+            "- RITMO: Extremamente dinâmico e direto ao ponto, focado na ação presente e em diálogos ágeis.\n"
+            "- PROIBIDO: Não faça descrições poéticas longas, monólogos internos extensos ou parágrafos contemplativos. Seja rápido!"
         ),
     },
     {
@@ -765,10 +767,12 @@ CEREBROS = [
         "custo_livens": 2,
         "categoria": "Usa Energia (Livens)",
         "temperatura_padrao": 0.88,
+        "max_tokens": 550,
         "estilo_prompt": (
-            "DIRETRIZ DE ESTILO (LIVEN SPARK - DIÁLOGOS AFIADOS):\n"
-            "- Dê ênfase total à sagacidade verbal, ironia leve e provocações instigantes.\n"
-            "- Faça o personagem responder com personalidade marcante e réplicas memoráveis."
+            "DIRETRIZ OBRIGATÓRIA (LIVEN SPARK - DIÁLOGOS AFIADOS & QUÍMICA):\n"
+            "- TAMANHO: 2 parágrafos bem cadenciados.\n"
+            "- Dê ênfase total à sagacidade verbal, ironia inteligente e réplicas marcantes.\n"
+            "- Faça o personagem responder com carisma, personalidade e química instantânea."
         ),
     },
     {
@@ -781,10 +785,12 @@ CEREBROS = [
         "custo_livens": 3,
         "categoria": "Usa Energia (Livens)",
         "temperatura_padrao": 0.95,
+        "max_tokens": 750,
         "estilo_prompt": (
-            "DIRETRIZ DE ESTILO (LIVEN VELVET - ROMANCE & DRAMA):\n"
-            "- Foque intensamente na linguagem corporal: olhares demorados, respiração, toques sutis e batimentos.\n"
-            "- Explore a vulnerabilidade oculta e a química afetiva entre os personagens."
+            "DIRETRIZ OBRIGATÓRIA (LIVEN VELVET - ROMANCE & SENSIBILIDADE):\n"
+            "- TAMANHO: 2 a 3 parágrafos imersivos.\n"
+            "- Foque intensamente na linguagem corporal: respiração, toques sutis, olhares demorados e batimentos.\n"
+            "- Explore a vulnerabilidade oculta e a química afetiva irresistível entre os personagens."
         ),
     },
     {
@@ -797,9 +803,11 @@ CEREBROS = [
         "custo_livens": 3,
         "categoria": "Usa Energia (Livens)",
         "temperatura_padrao": 0.85,
+        "max_tokens": 850,
         "estilo_prompt": (
-            "DIRETRIZ DE ESTILO (LIVEN AMBER - RIQUEZA SENSORIAL):\n"
-            "- Descreva o ambiente com riqueza viva de detalhes sensoriais: iluminação ambiente, aromas, sons distantes e texturas físicas.\n"
+            "DIRETRIZ OBRIGATÓRIA (LIVEN AMBER - RIQUEZA SENSORIAL):\n"
+            "- TAMANHO: 3 parágrafos detalhados.\n"
+            "- Descreva o ambiente com riqueza viva: iluminação, aromas, sons distantes e texturas físicas táteis.\n"
             "- Faça o cenário parecer um local real que respira ao redor da cena."
         ),
     },
@@ -813,42 +821,48 @@ CEREBROS = [
         "custo_livens": 4,
         "categoria": "Usa Energia (Livens)",
         "temperatura_padrao": 1.05,
+        "max_tokens": 800,
         "estilo_prompt": (
-            "DIRETRIZ DE ESTILO (LIVEN ECLIPSE - REVIRAVOLTAS OUSADAS):\n"
-            "- Surpreenda o jogador com elementos inesperados, revelações de segredos ou mudanças súbitas na situação.\n"
-            "- Quebre a monotonia com atitudes ousadas e dilemas imediatos."
+            "DIRETRIZ OBRIGATÓRIA (LIVEN ECLIPSE - REVIRAVOLTAS OUSADAS):\n"
+            "- TAMANHO: 2 a 3 parágrafos de alta tensão.\n"
+            "- Surpreenda o jogador com elementos inesperados, revelações de segredos ou reviravoltas na situação.\n"
+            "- Crie dilemas urgentes e momentos de tirar o fôlego."
         ),
     },
     {
         "id": "livennia-prime",
         "nome": "Liven Prime (Mestre Pro)",
         "emoji": "👑",
-        "descricao": "Alta inteligência estratégica, psicologia profunda e coerência tática rigorosa.",
+        "descricao": "Alta inteligência narrativa, psicologia profunda, prosa literária rica e maturidade (Premium).",
         "modelo": "gemini-3.8-flash",
         "premium": True,
         "custo_livens": 5,
         "categoria": "Premium",
         "temperatura_padrao": 0.80,
+        "max_tokens": 1200,
         "estilo_prompt": (
-            "DIRETRIZ DE ESTILO (LIVEN PRIME - ALTA INTELIGÊNCIA):\n"
-            "- Raciocínio psicológico aprofundado: cada ação tem peso e consequências realistas.\n"
-            "- Diálogos de cinema maduros, sem clichês, com consistência lógica impecável."
+            "DIRETRIZ OBRIGATÓRIA (LIVEN PRIME - NARRATIVA LITERÁRIA PRO):\n"
+            "- TAMANHO: Prosa completa de 3 a 5 parágrafos ricos e imersivos.\n"
+            "- Raciocínio psicológico aprofundado dos personagens, nuances morais e diálogos maduros de cinema.\n"
+            "- Cada escolha do jogador tem peso narrativo e consequências duradouras."
         ),
     },
     {
         "id": "livennia-infinity",
         "nome": "Liven Infinity (Cinematográfico)",
         "emoji": "🌌",
-        "descricao": "Experiência de ápice: narrativa literária refinada, imersão total e cadência épica.",
+        "descricao": "Experiência máxima de romance literário: liberdade criativa total, prosa majestosa e cadência épica (Premium).",
         "modelo": "gemini-3.8-flash",
         "premium": True,
         "custo_livens": 10,
         "categoria": "Premium",
         "temperatura_padrao": 0.90,
+        "max_tokens": 1800,
         "estilo_prompt": (
-            "DIRETRIZ DE ESTILO (LIVEN INFINITY - CINEMATOGRÁFICO MÁXIMO):\n"
-            "- Prosa literária magnífica com enquadramento cinematográfico e profundidade épica.\n"
-            "- Crie uma experiência inesquecível mesclando ação vívida e diálogos poderosos."
+            "DIRETRIZ OBRIGATÓRIA (LIVEN INFINITY - CINEMATOGRÁFICO SUPREMO):\n"
+            "- TAMANHO: 4 a 6 parágrafos magníficos de romance best-seller.\n"
+            "- Prosa literária de alto padrão, enquadramento cinematográfico, introspecção emocionante e diálogos inesquecíveis.\n"
+            "- Crie uma experiência de ápice com máxima liberdade criativa e profundidade dramática."
         ),
     },
 ]

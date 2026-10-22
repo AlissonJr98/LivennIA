@@ -495,12 +495,16 @@ fun RetratoPersona(
     emojiOuPadrao: String = "👤",
     tamanho: Int = 72,
     versao: Int = 0,
+    personaId: Int? = null,
     modifier: Modifier = Modifier,
     recorte: Shape = CircleShape
 ) {
-    val url = remember(temRetrato, versao) {
+    val url = remember(temRetrato, versao, personaId) {
         if (!temRetrato) null
-        else ApiClient.baseUrlAtual()?.let { base -> "${base}conta/persona/retrato?v=$versao" }
+        else ApiClient.baseUrlAtual()?.let { base ->
+            if (personaId != null) "${base}personas/$personaId/retrato?v=$versao"
+            else "${base}conta/persona/retrato?v=$versao"
+        }
     }
     if (url != null) {
         val cabecalho = remember { ApiClient.cabecalhoAutorizacao() }

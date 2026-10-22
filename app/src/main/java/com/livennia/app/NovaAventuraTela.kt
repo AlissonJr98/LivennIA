@@ -20,7 +20,10 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -53,7 +56,20 @@ import androidx.compose.ui.unit.sp
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun NovaAventuraTela(vm: AppViewModel) {
-    var nome by rememberSaveable { mutableStateOf(vm.personaNome.ifBlank { "" }) }
+    var nome by rememberSaveable { mutableStateOf(vm.personaAtiva?.nome ?: vm.personaNome.ifBlank { "" }) }
+    var mostrarDialogoPersona by remember { mutableStateOf(false) }
+
+    LaunchedEffect(vm.personaAtiva) {
+        val p = vm.personaAtiva
+        if (p != null && (nome.isBlank() || nome == "Viajante")) {
+            nome = p.nome
+        }
+    }
+
+    if (mostrarDialogoPersona) {
+        ModalMinhaPersona(vm = vm, onFechar = { mostrarDialogoPersona = false })
+    }
+
     val ativos = vm.jogos.count { !it.encerrado }
     val limiteAtivos = vm.conta?.maxJogos ?: 3
     val podeCriar = !vm.ocupado && ativos < limiteAtivos
@@ -212,6 +228,97 @@ fun NovaAventuraTela(vm: AppViewModel) {
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis
                                 )
+                            }
+                        }
+                    }
+                }
+
+                // ---- Seleção de Persona ----
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TituloSecao("🎭 Persona da Aventura")
+                        TextButton(onClick = { mostrarDialogoPersona = true }) {
+                            Text("Gerenciar Personas", color = Ouro, fontSize = 12.sp)
+                        }
+                    }
+
+                    if (vm.personas.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            vm.personas.forEach { p ->
+                                val selecionada = (p.id == vm.personaSelecionadaId) || (vm.personaSelecionadaId == null && p.padrao)
+                                Surface(
+                                    color = if (selecionada) Ouro.copy(alpha = 0.16f) else SuperficieAlta,
+                                    shape = Cantos.cartao,
+                                    border = if (selecionada) BorderStroke(1.5.dp, Ouro) else null,
+                                    modifier = Modifier.clickable {
+                                        vm.selecionarPersona(p.id)
+                                        nome = p.nome
+                                    }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        RetratoPersona(
+                                            temRetrato = p.temRetrato,
+                                            emojiOuPadrao = "👤",
+                                            tamanho = 36,
+                                            versao = vm.personaRetratoVersao + p.versaoRetrato,
+                                            personaId = p.id,
+                                            recorte = CircleShape
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Column {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text(
+                                                    p.nome,
+                                                    style = MaterialTheme.typography.labelLarge,
+                                                    fontWeight = if (selecionada) FontWeight.Bold else FontWeight.Medium,
+                                                    color = if (selecionada) Ouro else Color.White
+                                                )
+                                                if (p.padrao) {
+                                                    Spacer(Modifier.width(4.dp))
+                                                    Text("★", color = Ouro, fontSize = 10.sp)
+                                                }
+                                            }
+                                            Text(
+                                                if (p.idade.isNotBlank()) "${p.idade} anos • ${p.genero}" else p.genero,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = TextoSuave
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        Surface(
+                            color = SuperficieAlta,
+                            shape = Cantos.cartao,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { mostrarDialogoPersona = true }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("🎭", fontSize = 24.sp)
+                                Spacer(Modifier.width(10.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Crie sua Persona Oficial", fontWeight = FontWeight.SemiBold, color = Color.White, fontSize = 13.sp)
+                                    Text("Defina personalidade, características e imagem para guiar a IA", color = TextoSuave, fontSize = 11.sp)
+                                }
+                                Text("Criar", color = Ouro, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                             }
                         }
                     }

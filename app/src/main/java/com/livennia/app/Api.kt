@@ -12,6 +12,7 @@ import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import java.io.IOException
 import java.net.SocketTimeoutException
@@ -110,6 +111,24 @@ interface LivennIAApi {
 
     @POST("jogos/{id}/retrato")
     suspend fun gerarRetrato(@Path("id") id: String): RetratoResponse
+
+    @GET("personas")
+    suspend fun listarPersonas(): List<PersonaResponse>
+
+    @POST("personas")
+    suspend fun criarPersona(@Body dados: PersonaIn): PersonaResponse
+
+    @PUT("personas/{id}")
+    suspend fun atualizarPersona(@Path("id") id: Int, @Body dados: PersonaIn): PersonaResponse
+
+    @DELETE("personas/{id}")
+    suspend fun apagarPersona(@Path("id") id: Int): Response<Unit>
+
+    @POST("personas/{id}/padrao")
+    suspend fun definirPersonaPadrao(@Path("id") id: Int): PersonaResponse
+
+    @POST("personas/{id}/retrato")
+    suspend fun gerarRetratoPersonaId(@Path("id") id: Int, @Body dados: PersonaRetratoRequest): RetratoResponse
 
     @POST("conta/persona/retrato")
     suspend fun gerarRetratoPersona(@Body dados: PersonaRetratoRequest): RetratoResponse

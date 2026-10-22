@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 16,
-  "versaoNome": "1.5.5",
-  "notas": "Servidor Cloudflare conectado por padrão para acesso externo, login com Google nativo e vínculo de convite.",
+  "versaoCodigo": 17,
+  "versaoNome": "1.5.6",
+  "notas": "Multiplas personas por plano, campo Personalidade, estilos de imagem, persona padrao e modelos Liven diferenciados.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

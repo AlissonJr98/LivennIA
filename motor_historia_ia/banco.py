@@ -61,6 +61,26 @@ CREATE TABLE IF NOT EXISTS uso (
 CREATE INDEX IF NOT EXISTS idx_uso_dia ON uso(dia);
 CREATE INDEX IF NOT EXISTS idx_uso_jogador_dia ON uso(jogador_id, dia);
 
+CREATE TABLE IF NOT EXISTS personas (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    jogador_id      INTEGER NOT NULL REFERENCES jogadores(id) ON DELETE CASCADE,
+    nome            TEXT NOT NULL,
+    genero          TEXT NOT NULL DEFAULT 'Feminino',
+    idade           TEXT,
+    personalidade   TEXT,
+    interesses      TEXT,
+    aparencia       TEXT,
+    medos           TEXT,
+    detalhes_imagem TEXT,
+    estilo_imagem   TEXT DEFAULT 'semi_realistic',
+    avatar_emoji    TEXT DEFAULT '👤',
+    retrato_versao  INTEGER NOT NULL DEFAULT 0,
+    padrao          INTEGER NOT NULL DEFAULT 0,
+    criado_em       TEXT NOT NULL,
+    atualizado_em   TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_personas_jogador ON personas(jogador_id);
+
 CREATE TABLE IF NOT EXISTS feedbacks (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     jogador_id  INTEGER REFERENCES jogadores(id) ON DELETE CASCADE,
@@ -506,3 +526,125 @@ def marcar_denuncia_revisada(denuncia_id):
         return c.execute(
             "UPDATE denuncias SET revisada = 1 WHERE id = ?", (denuncia_id,)
         ).rowcount > 0
+
+
+# ---------------------------------------------------------------
+# Gestão de Múltiplas Personas
+# ---------------------------------------------------------------
+def listar_personas(jogador_id):
+    with conexao() as c:
+        return [dict(l) for l in c.execute(
+            "SELECT * FROM personas WHERE jogador_id = ? ORDER BY padrao DESC, id ASC",
+            (jogador_id,)
+        ).fetchall()]
+
+
+def obter_persona(jogador_id, persona_id):
+    with conexao() as c:
+        linha = c.execute(
+            "SELECT * FROM personas WHERE jogador_id = ? AND id = ?",
+            (jogador_id, persona_id)
+        ).fetchone()
+        return dict(linha) if linha else None
+
+
+def obter_persona_padrao(jogador_id):
+    with conexao() as c:
+        linha = c.execute(
+            "SELECT * FROM personas WHERE jogador_id = ? ORDER BY padrao DESC, id ASC LIMIT 1",
+            (jogador_id,)
+        ).fetchone()
+        return dict(linha) if linha else None
+
+
+def salvar_persona(jogador_id, dados, persona_id=None):
+    with transacao() as c:
+        jogador = c.execute("SELECT dono, premium FROM jogadores WHERE id = ?", (jogador_id,)).fetchone()
+        eh_vip = bool(jogador and (jogador["dono"] or jogador["premium"]))
+        total = c.execute("SELECT COUNT(*) FROM personas WHERE jogador_id = ?", (jogador_id,)).fetchone()[0]
+
+        if persona_id is None:
+            if not eh_vip and total >= 3:
+                raise ErroNegocio(403, "Limite de 3 personas atingido no plano gratuito. Seja Premium para criar mais personas!")
+            if total >= 20:
+                raise ErroNegocio(403, "Limite máximo de 20 personas atingido.")
+
+        definir_como_padrao = bool(dados.get("padrao")) or (total == 0)
+
+        if definir_como_padrao:
+            c.execute("UPDATE personas SET padrao = 0 WHERE jogador_id = ?", (jogador_id,))
+
+        ag = agora()
+        if persona_id is None:
+            cursor = c.execute(
+                """
+                INSERT INTO personas (
+                    jogador_id, nome, genero, idade, personalidade, interesses,
+                    aparencia, medos, detalhes_imagem, estilo_imagem, avatar_emoji,
+                    retrato_versao, padrao, criado_em, atualizado_em
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
+                """,
+                (
+                    jogador_id,
+                    (dados.get("nome") or "Viajante").strip() or "Viajante",
+                    dados.get("genero") or "Feminino",
+                    (dados.get("idade") or "").strip(),
+                    (dados.get("personalidade") or dados.get("descricao") or "").strip(),
+                    (dados.get("interesses") or "").strip(),
+                    (dados.get("aparencia") or "").strip(),
+                    (dados.get("medos") or dados.get("aversoes") or "").strip(),
+                    (dados.get("detalhes_imagem") or "").strip(),
+                    dados.get("estilo_imagem") or "semi_realistic",
+                    dados.get("avatar_emoji") or "👤",
+                    1 if definir_como_padrao else 0,
+                    ag, ag
+                )
+            )
+            return cursor.lastrowid
+        else:
+            c.execute(
+                """
+                UPDATE personas SET
+                    nome = ?, genero = ?, idade = ?, personalidade = ?, interesses = ?,
+                    aparencia = ?, medos = ?, detalhes_imagem = ?, estilo_imagem = ?, avatar_emoji = ?,
+                    padrao = ?, atualizado_em = ?
+                WHERE jogador_id = ? AND id = ?
+                """,
+                (
+                    (dados.get("nome") or "Viajante").strip() or "Viajante",
+                    dados.get("genero") or "Feminino",
+                    (dados.get("idade") or "").strip(),
+                    (dados.get("personalidade") or dados.get("descricao") or "").strip(),
+                    (dados.get("interesses") or "").strip(),
+                    (dados.get("aparencia") or "").strip(),
+                    (dados.get("medos") or dados.get("aversoes") or "").strip(),
+                    (dados.get("detalhes_imagem") or "").strip(),
+                    dados.get("estilo_imagem") or "semi_realistic",
+                    dados.get("avatar_emoji") or "👤",
+                    1 if definir_como_padrao else 0,
+                    ag,
+                    jogador_id, persona_id
+                )
+            )
+            return persona_id
+
+
+def definir_persona_padrao(jogador_id, persona_id):
+    with transacao() as c:
+        c.execute("UPDATE personas SET padrao = 0 WHERE jogador_id = ?", (jogador_id,))
+        c.execute("UPDATE personas SET padrao = 1 WHERE jogador_id = ? AND id = ?", (jogador_id, persona_id))
+
+
+def incrementar_retrato_persona(jogador_id, persona_id):
+    with transacao() as c:
+        c.execute("UPDATE personas SET retrato_versao = retrato_versao + 1 WHERE jogador_id = ? AND id = ?", (jogador_id, persona_id))
+
+
+def deletar_persona(jogador_id, persona_id):
+    with transacao() as c:
+        antiga = c.execute("SELECT padrao FROM personas WHERE jogador_id = ? AND id = ?", (jogador_id, persona_id)).fetchone()
+        c.execute("DELETE FROM personas WHERE jogador_id = ? AND id = ?", (jogador_id, persona_id))
+        if antiga and antiga["padrao"]:
+            proxima = c.execute("SELECT id FROM personas WHERE jogador_id = ? ORDER BY id ASC LIMIT 1", (jogador_id,)).fetchone()
+            if proxima:
+                c.execute("UPDATE personas SET padrao = 1 WHERE id = ?", (proxima["id"],))
