@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.ui.graphics.RectangleShape
 import android.widget.Toast
 import androidx.compose.foundation.verticalScroll
@@ -343,12 +344,12 @@ fun JogoTela(vm: AppViewModel) {
                             modifier = Modifier.size(20.dp)
                         )
                     }
-                    IconButton(onClick = { dialogo = DialogoAberto.Denuncia }) {
+                    IconButton(onClick = { dialogo = DialogoAberto.Feedback }) {
                         Icon(
-                            Icons.Filled.Flag,
-                            contentDescription = "Denunciar",
-                            tint = TextoSuave,
-                            modifier = Modifier.size(18.dp)
+                            Icons.Filled.Star,
+                            contentDescription = "Avaliar / Feedback",
+                            tint = Ouro,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -1049,12 +1050,12 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             modifier = Modifier.size(20.dp)
                         )
                     }
-                    IconButton(onClick = { dialogo = DialogoAberto.Denuncia }) {
+                    IconButton(onClick = { dialogo = DialogoAberto.Feedback }) {
                         Icon(
-                            Icons.Filled.Flag,
-                            contentDescription = "Denunciar",
-                            tint = TextoSuave,
-                            modifier = Modifier.size(18.dp)
+                            Icons.Filled.Star,
+                            contentDescription = "Avaliar / Feedback",
+                            tint = Ouro,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }

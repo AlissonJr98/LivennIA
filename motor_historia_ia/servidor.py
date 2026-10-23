@@ -956,9 +956,11 @@ def criar_jogo(dados: NovoJogoIn, jogador=Depends(jogador_atual)):
     """Cria um personagem e já joga o primeiro turno (conta como 1 jogada)."""
     exigir_ritmo(jogador["id"])
     with uma_jogada_por_vez(jogador["id"]):
-        if banco.contar_jogos_ativos(jogador["id"]) >= config.MAX_JOGOS_POR_JOGADOR:
+        eh_dono = bool(jogador.get("apelido") in config.ADMINS or jogador.get("email") in config.ADMINS or jogador.get("dono"))
+        limite_jogos = 999999 if (eh_dono or jogador.get("premium")) else 20
+        if banco.contar_jogos_ativos(jogador["id"]) >= limite_jogos:
             raise HTTPException(
-                409, f"Limite de {config.MAX_JOGOS_POR_JOGADOR} personagens ativos. Apague um para criar outro."
+                409, f"Limite de {limite_jogos} histórias ativas atingido. Apague uma para criar outra."
             )
         restantes = verificar_limites(jogador["id"])
         # Vitrine: se o jogador tocou num card da aba Explorar, o cenário oficial traz
@@ -1935,6 +1937,7 @@ def ver_retrato_persona_id(persona_id: int, token: Optional[str] = None, credenc
         if os.path.exists(caminho_geral):
             return FileResponse(caminho_geral, media_type=tipo_de_imagem(caminho_geral), headers={"Cache-Control": "no-cache"})
         raise HTTPException(404, "Esta persona ainda não possui retrato gerado.")
+    return FileResponse(caminho, media_type=tipo_de_imagem(caminho), headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/estilos-imagem/{estilo_id}/exemplo")

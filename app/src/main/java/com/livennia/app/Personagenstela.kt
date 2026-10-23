@@ -847,16 +847,36 @@ private fun LinhaHistoria(
 
 ) {
 
+    val pressInteraction = remember { MutableInteractionSource() }
+    val isPressed by pressInteraction.collectIsPressedAsState()
+    val cardScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "historiaCardScale"
+    )
+
     Surface(
-
-        color = SuperficieAlta,
-
-        shape = Cantos.cartao,
-
-        border = androidx.compose.foundation.BorderStroke(1.dp, Ouro.copy(alpha = 0.25f)),
-
-        modifier = Modifier.fillMaxWidth().clickable(enabled = habilitado) { onAbrir() }
-
+        color = Color(0xFF131522),
+        shape = RoundedCornerShape(18.dp),
+        shadowElevation = 8.dp,
+        border = BorderStroke(
+            1.2.dp,
+            Brush.verticalGradient(
+                listOf(
+                    Color(0xFF7C4DFF).copy(alpha = 0.65f),
+                    Color(0xFF00E5FF).copy(alpha = 0.35f),
+                    Color(0xFF1D2136).copy(alpha = 0.5f)
+                )
+            )
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .scale(cardScale)
+            .clickable(
+                enabled = habilitado,
+                interactionSource = pressInteraction,
+                indication = null
+            ) { onAbrir() }
     ) {
 
         Row(
@@ -983,14 +1003,36 @@ private fun LinhaAventura(
 
 ) {
 
+    val pressInteraction = remember { MutableInteractionSource() }
+    val isPressed by pressInteraction.collectIsPressedAsState()
+    val cardScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "aventuraCardScale"
+    )
+
     Surface(
-
-        color = SuperficieAlta,
-
-        shape = Cantos.cartao,
-
-        modifier = Modifier.fillMaxWidth().clickable(enabled = habilitado) { onAbrir() }
-
+        color = Color(0xFF131522),
+        shape = RoundedCornerShape(18.dp),
+        shadowElevation = 8.dp,
+        border = BorderStroke(
+            1.2.dp,
+            Brush.verticalGradient(
+                listOf(
+                    Color(0xFF00E5FF).copy(alpha = 0.65f),
+                    Color(0xFF7C4DFF).copy(alpha = 0.35f),
+                    Color(0xFF1D2136).copy(alpha = 0.5f)
+                )
+            )
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .scale(cardScale)
+            .clickable(
+                enabled = habilitado,
+                interactionSource = pressInteraction,
+                indication = null
+            ) { onAbrir() }
     ) {
 
         Row(
@@ -2250,20 +2292,38 @@ private fun CardCenario(
 
 ) {
 
+    val pressInteraction = remember { MutableInteractionSource() }
+    val isPressed by pressInteraction.collectIsPressedAsState()
+    val cardScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "cardCenarioScale"
+    )
+
     Box(
-
         modifier = Modifier
-
             .fillMaxWidth()
-
             .aspectRatio(0.68f)
-
-            .clip(RoundedCornerShape(16.dp))
-
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(16.dp))
-
-            .clickable(enabled = habilitado) { onAbrir() }
-
+            .scale(cardScale)
+            .clip(RoundedCornerShape(20.dp))
+            .border(
+                BorderStroke(
+                    1.5.dp,
+                    Brush.verticalGradient(
+                        listOf(
+                            if (cenario.criadoPorUsuario) Color(0xFF8B5CF6) else Color(0xFF00E5FF),
+                            Color(0xFF7C4DFF).copy(alpha = 0.4f),
+                            Color(0xFF131522).copy(alpha = 0.2f)
+                        )
+                    )
+                ),
+                RoundedCornerShape(20.dp)
+            )
+            .clickable(
+                enabled = habilitado,
+                interactionSource = pressInteraction,
+                indication = null
+            ) { onAbrir() }
     ) {
 
         CapaCenario(
@@ -3107,119 +3167,65 @@ private fun AbaPerfil(vm: AppViewModel) {
                 ) {
 
                     // Ícone Discord
-
                     IconButton(
-
                         onClick = { mostrarDialogoDiscord = true },
-
-                        modifier = Modifier.size(38.dp)
-
+                        modifier = Modifier.size(40.dp)
                     ) {
-
                         Surface(
-
-                            color = Color(0xFF161618),
-
+                            color = Color(0xFF151828),
                             shape = CircleShape,
-
-                            border = BorderStroke(1.dp, Color(0xFF26262A)),
-
+                            shadowElevation = 6.dp,
+                            border = BorderStroke(1.2.dp, Brush.linearGradient(listOf(Color(0xFF5865F2), Color(0xFF1E2238)))),
                             modifier = Modifier.fillMaxSize()
-
                         ) {
-
                             Box(contentAlignment = Alignment.Center) {
-
                                 Text("💬", fontSize = 16.sp)
-
                             }
-
                         }
-
                     }
 
-
-
-                    // ÍCONE ESTRELA: FÓRUM INTERATIVO & FEEDBACK DA COMUNIDADE (Solicitação do usuário)
-
+                    // ÍCONE ESTRELA: FÓRUM INTERATIVO & FEEDBACK DA COMUNIDADE
                     IconButton(
-
                         onClick = { vm.navegarPara(Tela.Feedback) },
-
-                        modifier = Modifier.size(38.dp)
-
+                        modifier = Modifier.size(40.dp)
                     ) {
-
                         Surface(
-
-                            color = Color(0xFF161618),
-
+                            color = Color(0xFF151828),
                             shape = CircleShape,
-
-                            border = BorderStroke(1.dp, Color(0xFFF5C842).copy(alpha = 0.5f)),
-
+                            shadowElevation = 6.dp,
+                            border = BorderStroke(1.2.dp, Brush.linearGradient(listOf(Color(0xFFFFD54F), Color(0xFF1E2238)))),
                             modifier = Modifier.fillMaxSize()
-
                         ) {
-
                             Box(contentAlignment = Alignment.Center) {
-
                                 Text("⭐", fontSize = 16.sp)
-
                             }
-
                         }
-
                     }
-
-
 
                     // Ícone Configurações (Engrenagem)
-
                     IconButton(
-
                         onClick = { vm.navegarPara(Tela.Configuracoes) },
-
-                        modifier = Modifier.size(38.dp)
-
+                        modifier = Modifier.size(40.dp)
                     ) {
-
                         Surface(
-
-                            color = Color(0xFF161618),
-
+                            color = Color(0xFF151828),
                             shape = CircleShape,
-
-                            border = BorderStroke(1.dp, Color(0xFF26262A)),
-
+                            shadowElevation = 6.dp,
+                            border = BorderStroke(1.2.dp, Brush.linearGradient(listOf(Color(0xFF00E5FF), Color(0xFF1E2238)))),
                             modifier = Modifier.fillMaxSize()
-
                         ) {
-
                             Box(contentAlignment = Alignment.Center) {
-
                                 Icon(
-
-                                    imageVector = Icons.Default.Settings,
-
+                                    Icons.Filled.Settings,
                                     contentDescription = "Configurações",
-
-                                    tint = Color.White,
-
+                                    tint = Color(0xFFE2E8F0),
                                     modifier = Modifier.size(18.dp)
-
                                 )
-
                             }
-
                         }
-
                     }
-
                 }
-
             }
-
         }
 
 
@@ -4323,21 +4329,31 @@ private fun BotaoAcaoRedondoPerfil(
             ) { aoClicar() }
     ) {
         Surface(
-            color = Color(0xFF161618),
+            color = Color(0xFF151828),
             shape = CircleShape,
-            border = BorderStroke(1.dp, Color(0xFF26262A)),
-            modifier = Modifier.size(54.dp)
+            shadowElevation = 8.dp,
+            border = BorderStroke(
+                1.5.dp,
+                Brush.linearGradient(
+                    listOf(
+                        Color(0xFF7C4DFF).copy(alpha = 0.8f),
+                        Color(0xFF00E5FF).copy(alpha = 0.5f),
+                        Color(0xFF1E2238)
+                    )
+                )
+            ),
+            modifier = Modifier.size(56.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Text(icone, fontSize = 22.sp)
+                Text(icone, fontSize = 23.sp)
             }
         }
         Spacer(Modifier.height(6.dp))
         Text(
             text = rotulo,
             fontSize = 12.sp,
-            color = Color.White,
-            fontWeight = FontWeight.Medium
+            color = Color(0xFFE2E8F0),
+            fontWeight = FontWeight.SemiBold
         )
     }
 }
@@ -4370,10 +4386,20 @@ private fun BarraInferior(
             .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 6.dp)
     ) {
         Surface(
-            color = SuperficieAlta,
+            color = Color(0xF20F111D),
             shape = Cantos.grande,
-            shadowElevation = 16.dp,
-            modifier = Modifier.fillMaxWidth().height(60.dp)
+            shadowElevation = 20.dp,
+            border = BorderStroke(
+                1.2.dp,
+                Brush.horizontalGradient(
+                    listOf(
+                        Color(0xFF7C4DFF).copy(alpha = 0.65f),
+                        Color(0xFF00E5FF).copy(alpha = 0.5f),
+                        Color(0xFF7C4DFF).copy(alpha = 0.65f)
+                    )
+                )
+            ),
+            modifier = Modifier.fillMaxWidth().height(62.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp),
@@ -4387,15 +4413,25 @@ private fun BarraInferior(
             }
         }
 
-        // O "+" flutua por cima da pílula, no meio e na cor de destaque com animação interativa
+        // O "+" flutua por cima da pílula, no meio e na cor de destaque com animação interativa 3D
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .offset(y = (-6).dp)
+                .offset(y = (-7).dp)
                 .scale(plusScale)
-                .size(56.dp)
+                .size(58.dp)
                 .clip(CircleShape)
-                .background(Ouro)
+                .background(
+                    Brush.sweepGradient(
+                        listOf(
+                            Color(0xFFFFD54F),
+                            Color(0xFFFFB300),
+                            Color(0xFFFF8F00),
+                            Color(0xFFFFD54F)
+                        )
+                    )
+                )
+                .border(2.dp, Color(0xFFFFECB3).copy(alpha = 0.85f), CircleShape)
                 .clickable(
                     interactionSource = pressInteraction,
                     indication = null
@@ -4405,8 +4441,8 @@ private fun BarraInferior(
             Icon(
                 Icons.Filled.Add,
                 contentDescription = "Nova aventura ou história",
-                tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(30.dp)
+                tint = Color(0xFF1B1400),
+                modifier = Modifier.size(32.dp)
             )
         }
     }

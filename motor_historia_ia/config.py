@@ -124,7 +124,7 @@ TURNOS_GUARDADOS = 60     # mensagens guardadas para o chat (a IA só recebe os 
 # Limites do BETA (controlam o seu custo)
 # ---------------------------------------------------------------
 LIMITE_DIARIO_JOGADAS = _inteiro("LIVENNIA_LIMITE_DIARIO", 30)    # por jogador, por dia
-MAX_JOGOS_POR_JOGADOR = _inteiro("LIVENNIA_MAX_JOGOS", 3)         # personagens ativos
+MAX_JOGOS_POR_JOGADOR = _inteiro("LIVENNIA_MAX_JOGOS", 20)         # personagens ativos
 MAX_JOGADORES = _inteiro("LIVENNIA_MAX_JOGADORES", 100)           # trava do beta
 TETO_GLOBAL_JOGADAS_DIA = _inteiro("LIVENNIA_TETO_JOGADAS", 500)  # todos juntos, por dia
 TETO_GLOBAL_TOKENS_DIA = _inteiro("LIVENNIA_TETO_TOKENS", 2_000_000)

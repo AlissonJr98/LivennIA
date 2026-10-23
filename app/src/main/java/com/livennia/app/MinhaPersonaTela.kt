@@ -46,8 +46,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -332,14 +339,26 @@ private fun ItemCardPersona(
     onTornarPadrao: () -> Unit,
     onExcluir: () -> Unit
 ) {
+    val pressInteraction = remember { MutableInteractionSource() }
+    val isPressed by pressInteraction.collectIsPressedAsState()
+    val cardScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.98f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "personaCardScale"
+    )
+
     Surface(
-        color = CardObsidian,
-        shape = RoundedCornerShape(16.dp),
+        color = Color(0xFF131522),
+        shape = RoundedCornerShape(18.dp),
+        shadowElevation = 8.dp,
         border = BorderStroke(
-            if (persona.padrao) 1.5.dp else 1.dp,
-            if (persona.padrao) OuroAmbar else CardObsidianBorda
+            if (persona.padrao) 1.5.dp else 1.2.dp,
+            if (persona.padrao) Brush.horizontalGradient(listOf(OuroAmbar, Color(0xFFFFD54F), OuroAmbar))
+            else Brush.verticalGradient(listOf(Color(0xFF7C4DFF).copy(alpha = 0.5f), Color(0xFF232538)))
         ),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .scale(cardScale)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
@@ -974,13 +993,30 @@ private fun FormularioPersona(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     ESTILOS_IMAGEM_PERSONA.forEach { estilo ->
                         val sel = estilo.id == estiloImagem
+                        val pressInteraction = remember { MutableInteractionSource() }
+                        val isPressed by pressInteraction.collectIsPressedAsState()
+                        val styleScale by animateFloatAsState(
+                            targetValue = if (isPressed) 0.97f else if (sel) 1.02f else 1f,
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                            label = "styleScale"
+                        )
+
                         Surface(
-                            color = if (sel) RoxoPrimario.copy(alpha = 0.2f) else CardObsidian,
-                            shape = RoundedCornerShape(14.dp),
-                            border = BorderStroke(if (sel) 1.5.dp else 1.dp, if (sel) RoxoPrimario else CardObsidianBorda),
+                            color = if (sel) Color(0xFF1E1738) else Color(0xFF131522),
+                            shape = RoundedCornerShape(16.dp),
+                            shadowElevation = if (sel) 8.dp else 2.dp,
+                            border = BorderStroke(
+                                if (sel) 1.5.dp else 1.dp,
+                                if (sel) Brush.horizontalGradient(listOf(Color(0xFF7C4DFF), Color(0xFF00E5FF)))
+                                else SolidColor(CardObsidianBorda)
+                            ),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { estiloImagem = estilo.id }
+                                .scale(styleScale)
+                                .clickable(
+                                    interactionSource = pressInteraction,
+                                    indication = null
+                                ) { estiloImagem = estilo.id }
                         ) {
                             Row(
                                 modifier = Modifier.padding(10.dp),

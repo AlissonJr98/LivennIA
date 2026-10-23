@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 19,
-  "versaoNome": "1.5.8",
-  "notas": "Persona obrigatória para iniciar histórias, bot assume identidade do personagem criado pelo botão +, prévia dinâmica em tempo real ao trocar estilos de imagem e ícones com animações interativas.",
+  "versaoCodigo": 20,
+  "versaoNome": "1.5.9",
+  "notas": "Correção na exibição de retrato da persona, correção na abertura de histórias criadas sem bloqueio 409, substituição do botão de denúncia por feedback no chat e novo design 3D futurista neon com efeitos e animações por todo o app.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

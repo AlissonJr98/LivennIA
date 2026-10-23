@@ -213,7 +213,7 @@ fun Throwable.paraErroApp(): ErroApp {
                 402 -> ErroApp(detalhe ?: "Livens insuficientes para este motor.")
                 403 -> ErroApp(detalhe ?: "Acesso negado.")
                 404 -> ErroApp(detalhe ?: "Não encontrado.")
-                409 -> ErroApp(detalhe ?: "Não foi possível fazer isso agora.")
+                409 -> ErroApp(detalhe ?: "Limite de histórias atingido ou conflito na ação.")
                 413 -> ErroApp("Texto grande demais.")
                 422 -> ErroApp(detalhe ?: "Dados inválidos. Confira o que foi digitado.")
                 429 -> ErroApp(detalhe ?: "Muitas tentativas. Aguarde um pouco.")

@@ -2,6 +2,9 @@ package com.livennia.app
 
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
@@ -9,6 +12,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -65,9 +70,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -105,6 +112,32 @@ object RepositorioPersonagensComunidade {
 // 2. MODAL DE SELEÇÃO DO MODO DE CRIAÇÃO (IDENTIDADE LIVENNIA)
 // -------------------------------------------------------------
 @Composable
+private fun Modifier.cliqueFuturista3D(
+    onClick: () -> Unit
+): Modifier {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "scale3d"
+    )
+    return this
+        .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
+        .clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            onClick = onClick
+        )
+}
+
+@Composable
 fun ModalModosCriacao(
     onDismiss: () -> Unit,
     onEscolherSpark: () -> Unit,
@@ -118,14 +151,24 @@ fun ModalModosCriacao(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.75f))
+                .background(Color.Black.copy(alpha = 0.80f))
                 .clickable { onDismiss() },
             contentAlignment = Alignment.BottomCenter
         ) {
             Surface(
-                color = CardObsidian,
+                color = Color(0xF2121320),
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                border = BorderStroke(1.dp, CardObsidianBorda),
+                border = BorderStroke(
+                    1.2.dp,
+                    Brush.verticalGradient(
+                        listOf(
+                            Color(0xFF7C4DFF).copy(alpha = 0.85f),
+                            Color(0xFF00E5FF).copy(alpha = 0.35f),
+                            Color.Transparent
+                        )
+                    )
+                ),
+                shadowElevation = 24.dp,
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(enabled = false) {}
@@ -140,16 +183,22 @@ fun ModalModosCriacao(
                     Box(
                         modifier = Modifier
                             .align(Alignment.CenterHorizontally)
-                            .size(42.dp, 4.dp)
-                            .background(Color.White.copy(alpha = 0.22f), CircleShape)
+                            .size(46.dp, 4.dp)
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(Color(0xFF7C4DFF), Color(0xFF00E5FF))
+                                ),
+                                CircleShape
+                            )
                     )
 
                     Spacer(Modifier.height(18.dp))
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(
-                            color = RoxoPrimario.copy(alpha = 0.15f),
+                            color = RoxoPrimario.copy(alpha = 0.18f),
                             shape = CircleShape,
+                            border = BorderStroke(1.dp, RoxoPrimario.copy(alpha = 0.4f)),
                             modifier = Modifier.size(28.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
@@ -176,14 +225,20 @@ fun ModalModosCriacao(
 
                     Spacer(Modifier.height(18.dp))
 
-                    // CARD 1: CENTELHA CRIATIVA (ANTIGO SPARK - CARA DO LIVENNIA)
+                    // CARD 1: CENTELHA CRIATIVA (FUTURISTA 3D)
                     Surface(
-                        color = Color(0xFF19162B),
-                        shape = RoundedCornerShape(18.dp),
-                        border = BorderStroke(1.dp, RoxoPrimario.copy(alpha = 0.45f)),
+                        color = Color(0xFF1A182D),
+                        shape = RoundedCornerShape(20.dp),
+                        border = BorderStroke(
+                            1.5.dp,
+                            Brush.horizontalGradient(
+                                listOf(Color(0xFF7C4DFF), Color(0xFF00E5FF))
+                            )
+                        ),
+                        shadowElevation = 10.dp,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onEscolherSpark() }
+                            .cliqueFuturista3D { onEscolherSpark() }
                     ) {
                         Row(
                             modifier = Modifier.padding(16.dp),
@@ -197,13 +252,19 @@ fun ModalModosCriacao(
                                 Box(
                                     modifier = Modifier
                                         .size(48.dp)
-                                        .background(RoxoPrimario.copy(alpha = 0.20f), CircleShape),
+                                        .background(
+                                            Brush.radialGradient(
+                                                listOf(Color(0xFF7C4DFF).copy(alpha = 0.45f), Color(0xFF7C4DFF).copy(alpha = 0.10f))
+                                            ),
+                                            CircleShape
+                                        )
+                                        .border(1.dp, Color(0xFF7C4DFF).copy(alpha = 0.6f), CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         Icons.Default.AutoAwesome,
                                         contentDescription = null,
-                                        tint = RoxoPrimario,
+                                        tint = Color(0xFF00E5FF),
                                         modifier = Modifier.size(24.dp)
                                     )
                                 }
@@ -220,8 +281,9 @@ fun ModalModosCriacao(
                                         )
                                         Spacer(Modifier.width(6.dp))
                                         Surface(
-                                            color = DouradoLivenn.copy(alpha = 0.15f),
-                                            shape = RoundedCornerShape(4.dp)
+                                            color = DouradoLivenn.copy(alpha = 0.18f),
+                                            shape = RoundedCornerShape(4.dp),
+                                            border = BorderStroke(1.dp, DouradoLivenn.copy(alpha = 0.4f))
                                         ) {
                                             Text(
                                                 "IA Rápida",
@@ -246,35 +308,49 @@ fun ModalModosCriacao(
                             Icon(
                                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                 contentDescription = null,
-                                tint = RoxoPrimario,
+                                tint = Color(0xFF00E5FF),
                                 modifier = Modifier.size(20.dp)
                             )
                         }
                     }
 
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(14.dp))
 
                     // DUAS OPÇÕES MENORES: ESTÚDIO DE PERSONAGEM & ARQUITETO DE MUNDOS
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         // Estúdio de Personagem (Express)
                         Surface(
-                            color = Color.White.copy(alpha = 0.04f),
-                            shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                            color = Color(0xFF161826),
+                            shape = RoundedCornerShape(18.dp),
+                            border = BorderStroke(
+                                1.2.dp,
+                                Brush.verticalGradient(
+                                    listOf(Color(0xFFF5C842).copy(alpha = 0.7f), Color(0xFF7C4DFF).copy(alpha = 0.25f))
+                                )
+                            ),
+                            shadowElevation = 8.dp,
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable { onEscolherRapido() }
+                                .cliqueFuturista3D { onEscolherRapido() }
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
-                                Icon(
-                                    Icons.Default.Person,
-                                    contentDescription = null,
-                                    tint = DouradoLivenn,
-                                    modifier = Modifier.size(22.dp)
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .background(DouradoLivenn.copy(alpha = 0.15f), CircleShape)
+                                        .border(1.dp, DouradoLivenn.copy(alpha = 0.35f), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Default.Person,
+                                        contentDescription = null,
+                                        tint = DouradoLivenn,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
                                 Spacer(Modifier.height(8.dp))
                                 Text("Estúdio Visual", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TextoClaro)
                                 Text("Aparência e traços essenciais", fontSize = 11.sp, color = TextoSecundario)
@@ -283,20 +359,34 @@ fun ModalModosCriacao(
 
                         // Arquiteto de Mundos (Manual)
                         Surface(
-                            color = Color.White.copy(alpha = 0.04f),
-                            shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                            color = Color(0xFF161826),
+                            shape = RoundedCornerShape(18.dp),
+                            border = BorderStroke(
+                                1.2.dp,
+                                Brush.verticalGradient(
+                                    listOf(Color(0xFF00E5FF).copy(alpha = 0.7f), Color(0xFF7C4DFF).copy(alpha = 0.25f))
+                                )
+                            ),
+                            shadowElevation = 8.dp,
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable { onEscolherManual() }
+                                .cliqueFuturista3D { onEscolherManual() }
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
-                                Icon(
-                                    Icons.Default.Description,
-                                    contentDescription = null,
-                                    tint = Color(0xFF64B5F6),
-                                    modifier = Modifier.size(22.dp)
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .background(Color(0xFF00E5FF).copy(alpha = 0.15f), CircleShape)
+                                        .border(1.dp, Color(0xFF00E5FF).copy(alpha = 0.35f), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Default.Description,
+                                        contentDescription = null,
+                                        tint = Color(0xFF00E5FF),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
                                 Spacer(Modifier.height(8.dp))
                                 Text("Arquiteto de Mundos", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TextoClaro)
                                 Text("Prólogo, regras e mecânicas", fontSize = 11.sp, color = TextoSecundario)
