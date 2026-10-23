@@ -920,8 +920,10 @@ def validar_estado(bruto):
                 versao_ativa = versoes.index(narrativa_principal)
             except ValueError:
                 versao_ativa = len(versoes) - 1
+        acao_val = t.get("acao")
+        acao_limpa = limpar_texto(acao_val or "", config.MAX_TAMANHO_ACAO) if isinstance(acao_val, str) else ""
         historico.append({
-            "acao": _texto_valido(t.get("acao"), config.MAX_TAMANHO_ACAO, "acao"),
+            "acao": acao_limpa,
             "situacao": _situacao_valida(t.get("situacao")),
             "narrativa": versoes[versao_ativa],
             "versoes": versoes,

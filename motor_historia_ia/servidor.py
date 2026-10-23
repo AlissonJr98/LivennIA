@@ -1169,28 +1169,32 @@ def criar_jogo(dados: NovoJogoIn, jogador=Depends(jogador_atual)):
 def listar_jogos(jogador=Depends(jogador_atual)):
     resumos = []
     for jogo in banco.listar_jogos(jogador["id"]):
-        estado = carregar_estado_do_jogo(jogo)
-        p = estado["personagem"]
-        cenario = estado.get("cenario")
-        cena = estado.get("cena") or {}
-        ultima = (cena.get("narrativa") or "")[:140] or None
-        resumos.append(JogoResumoOut(
-            jogo_id=jogo["id"],
-            modo=estado.get("modo", "rpg"),
-            avatar_seed=estado["avatar_seed"],
-            nome=p["nome"],
-            turno=estado["turno"],
-            local=p["local"],
-            vida=p["vida"],
-            vida_max=p["vida_max"],
-            encerrado=bool(jogo["encerrado"]),
-            genero=estado.get("genero", "Aventura"),
-            atualizado_em=jogo["atualizado_em"],
-            retrato=tem_retrato(jogo["id"]),
-            cenario_nome=(cenario["nome"] if cenario else None),
-            capa=bool(cenario and tem_capa(cenario["id"])),
-            ultima_narrativa=ultima,
-        ))
+        try:
+            estado = carregar_estado_do_jogo(jogo)
+            p = estado["personagem"]
+            cenario = estado.get("cenario")
+            cena = estado.get("cena") or {}
+            ultima = (cena.get("narrativa") or "")[:140] or None
+            resumos.append(JogoResumoOut(
+                jogo_id=jogo["id"],
+                modo=estado.get("modo", "rpg"),
+                avatar_seed=estado["avatar_seed"],
+                nome=p.get("nome", "Viajante"),
+                turno=estado.get("turno", 0),
+                local=p.get("local", "Cenário"),
+                vida=p.get("vida", 100),
+                vida_max=p.get("vida_max", 100),
+                encerrado=bool(jogo["encerrado"]),
+                genero=estado.get("genero", "Aventura"),
+                atualizado_em=jogo["atualizado_em"],
+                retrato=tem_retrato(jogo["id"]),
+                cenario_nome=(cenario["nome"] if cenario else None),
+                capa=bool(cenario and tem_capa(cenario["id"])),
+                ultima_narrativa=ultima,
+            ))
+        except Exception as e:
+            logging.exception("Falha ao carregar jogo %s na listagem: %s", jogo.get("id"), e)
+            continue
     return resumos
 
 
