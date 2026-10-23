@@ -180,6 +180,32 @@ data class PersonaRetratoRequest(
     @SerializedName("detalhes_imagem") val detalhesImagem: String = ""
 )
 
+data class CandidatoRetratoDto(
+    val indice: Int = 0,
+    val seed: Long = 0L,
+    val url: String = "",
+    @SerializedName("url_direta") val urlDireta: String = ""
+)
+
+data class CandidatosRetratoResponse(
+    @SerializedName("lote_id") val loteId: String = "",
+    val candidatos: List<CandidatoRetratoDto> = emptyList()
+)
+
+data class ConfirmarCandidatoRequest(
+    @SerializedName("lote_id") val loteId: String,
+    val indice: Int,
+    val seed: Long? = null
+)
+
+data class UploadRetratoRequest(
+    @SerializedName("imagem_base64") val imagemBase64: String
+)
+
+data class TrocarPersonaJogoRequest(
+    @SerializedName("persona_id") val personaId: Int
+)
+
 data class PersonaIn(
     val nome: String,
     val genero: String = "Feminino",

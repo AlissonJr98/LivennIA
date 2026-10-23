@@ -436,6 +436,102 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         personaSelecionadaId = id
     }
 
+    var candidatosRetrato = mutableStateListOf<CandidatoRetratoDto>()
+    var loteCandidatosId by mutableStateOf("")
+    var gerandoCandidatos by mutableStateOf(false)
+    var candidatoSelecionadoIndice by mutableStateOf<Int?>(null)
+
+    fun gerarCandidatosRetrato(
+        req: PersonaRetratoRequest,
+        onSucesso: (CandidatosRetratoResponse) -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        val api = obterApi() ?: return
+        viewModelScope.launch {
+            gerandoCandidatos = true
+            candidatoSelecionadoIndice = null
+            try {
+                val resp = api.gerarCandidatosPersona(req)
+                loteCandidatosId = resp.loteId
+                candidatosRetrato.clear()
+                candidatosRetrato.addAll(resp.candidatos)
+                onSucesso(resp)
+            } catch (e: Exception) {
+                onError(e.message ?: "Falha ao gerar variações")
+            } finally {
+                gerandoCandidatos = false
+            }
+        }
+    }
+
+    fun confirmarCandidatoEscolhido(
+        personaId: Int,
+        loteId: String,
+        indice: Int,
+        onSucesso: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        val api = obterApi() ?: return
+        viewModelScope.launch {
+            ocupado = true
+            try {
+                api.confirmarCandidatoPersona(personaId, ConfirmarCandidatoRequest(loteId, indice))
+                personaRetratoVersao++
+                atualizarListas(api)
+                carregarPersonas()
+                onSucesso()
+            } catch (e: Exception) {
+                onError(e.message ?: "Falha ao confirmar imagem")
+            } finally {
+                ocupado = false
+            }
+        }
+    }
+
+    fun uploadRetratoPersona(
+        personaId: Int,
+        imagemBase64: String,
+        onSucesso: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        val api = obterApi() ?: return
+        viewModelScope.launch {
+            ocupado = true
+            try {
+                api.uploadRetratoPersona(personaId, UploadRetratoRequest(imagemBase64))
+                personaRetratoVersao++
+                atualizarListas(api)
+                carregarPersonas()
+                onSucesso()
+            } catch (e: Exception) {
+                onError(e.message ?: "Falha ao enviar imagem")
+            } finally {
+                ocupado = false
+            }
+        }
+    }
+
+    fun selecionarPersonaParaJogo(
+        jogoId: String,
+        persona: PersonaResponse,
+        onSucesso: () -> Unit = {}
+    ) {
+        personaNome = persona.nome
+        personaAvatar = persona.genero
+        prefs.personaTemRetrato = persona.temRetrato
+        personaSelecionadaId = persona.id
+        val api = obterApi() ?: return
+        viewModelScope.launch {
+            try {
+                val jogoAtualizado = api.trocarPersonaJogo(jogoId, TrocarPersonaJogoRequest(persona.id))
+                jogoAtual = jogoAtualizado
+                onSucesso()
+            } catch (_: Exception) {
+                onSucesso()
+            }
+        }
+    }
+
     fun gerarRetratoPersona(
         nome: String,
         genero: String,

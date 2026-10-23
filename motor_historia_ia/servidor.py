@@ -124,6 +124,10 @@ def tem_persona_retrato(jogador_id, persona_id=None):
     return os.path.exists(caminho_persona_retrato(jogador_id))
 
 
+# Lotes de candidatos a retrato de persona em memória
+_lotes_candidatos = {}
+
+
 def tem_retrato(jogo_id):
     try:
         return os.path.exists(caminho_retrato(jogo_id))
@@ -474,6 +478,32 @@ class PersonaRetratoIn(BaseModel):
     tags: list[str] = []
     estilo_imagem: Optional[str] = "semi_realistic"
     detalhes_imagem: Optional[str] = ""
+
+
+class CandidatoRetratoOut(BaseModel):
+    indice: int
+    seed: int
+    url: str
+    url_direta: str
+
+
+class CandidatosRetratoResponse(BaseModel):
+    lote_id: str
+    candidatos: list[CandidatoRetratoOut]
+
+
+class ConfirmarCandidatoIn(BaseModel):
+    lote_id: str
+    indice: int
+    seed: Optional[int] = None
+
+
+class UploadRetratoIn(BaseModel):
+    imagem_base64: str
+
+
+class TrocarPersonaJogoIn(BaseModel):
+    persona_id: int
 
 
 class AvatarOut(BaseModel):
@@ -1931,15 +1961,21 @@ def listar_minhas_personas(jogador=Depends(jogador_atual)):
             genero=p["genero"],
             idade=p["idade"] or "",
             personalidade=p["personalidade"] or "",
+            descricao=p["personalidade"] or "",
             interesses=p["interesses"] or "",
             aparencia=p["aparencia"] or "",
             medos=p["medos"] or "",
+            aversoes=p["medos"] or "",
+            tags=p.get("tags") or [],
             detalhes_imagem=p["detalhes_imagem"] or "",
             estilo_imagem=p["estilo_imagem"] or "semi_realistic",
             avatar_emoji=p["avatar_emoji"] or "👤",
             retrato_versao=p["retrato_versao"],
+            versao_retrato=p["retrato_versao"],
             padrao=bool(p["padrao"]),
-            tem_retrato=tem_persona_retrato(jogador["id"], p["id"])
+            tem_retrato=tem_persona_retrato(jogador["id"], p["id"]),
+            criado_em=p.get("criado_em") or "",
+            atualizado_em=p.get("atualizado_em") or ""
         ))
     return resultado
 
@@ -2064,7 +2100,7 @@ def marcar_como_padrao(persona_id: int, jogador=Depends(jogador_atual)):
         aparencia=p["aparencia"] or "",
         medos=med,
         aversoes=med,
-        tags=[],
+        tags=p.get("tags") or [],
         detalhes_imagem=p["detalhes_imagem"] or "",
         estilo_imagem=p["estilo_imagem"] or "semi_realistic",
         avatar_emoji=p["avatar_emoji"] or "👤",
@@ -2151,6 +2187,174 @@ def ver_retrato_persona_id(persona_id: int, token: Optional[str] = None, credenc
     if not caminho or not os.path.exists(caminho):
         raise HTTPException(404, "Esta persona ainda não possui retrato gerado.")
     return FileResponse(caminho, media_type=tipo_de_imagem(caminho), headers={"Cache-Control": "public, max-age=86400"})
+
+
+@app.post("/conta/persona/candidatos", response_model=CandidatosRetratoResponse)
+def gerar_candidatos_persona(dados: PersonaRetratoIn, jogador=Depends(jogador_atual)):
+    """Gera 4 sementes e links de candidatos a retrato para a persona."""
+    estado_persona = {
+        "personagem": {"nome": dados.nome or jogador.get("apelido", "Viajante")},
+        "genero": dados.genero or "Feminino",
+        "persona": {
+            "nome": dados.nome or jogador.get("apelido", "Viajante"),
+            "genero": dados.genero or "Feminino",
+            "aparencia": dados.aparencia or "",
+            "personalidade": dados.personalidade or dados.descricao or "",
+            "idade": dados.idade or "",
+            "interesses": dados.interesses or "",
+            "medos": dados.medos or dados.aversoes or "",
+            "tags": dados.tags or [],
+            "detalhes_imagem": dados.detalhes_imagem or "",
+            "estilo_imagem": dados.estilo_imagem or "semi_realistic",
+        }
+    }
+    prompt_en = motor.prompt_retrato_en(estado_persona)
+    seeds = [random.randint(1, 2_000_000_000) for _ in range(4)]
+    lote_id = uuid.uuid4().hex[:12]
+
+    agora_ts = time.time()
+    expirados = [k for k, v in _lotes_candidatos.items() if agora_ts - v.get("criado_em", 0) > 1800]
+    for k in expirados:
+        _lotes_candidatos.pop(k, None)
+
+    _lotes_candidatos[lote_id] = {
+        "prompt_en": prompt_en,
+        "seeds": seeds,
+        "criado_em": agora_ts,
+        "jogador_id": jogador["id"],
+        "imagens": {}
+    }
+
+    candidatos = []
+    largura = config.POLLINATIONS_LARGURA or 768
+    altura = config.POLLINATIONS_ALTURA or 1024
+    modelo_flux = config.POLLINATIONS_MODELO or "flux"
+    url_base_polli = config.POLLINATIONS_URL or "https://image.pollinations.ai/prompt"
+
+    for i, s in enumerate(seeds):
+        params = {
+            "width": largura,
+            "height": altura,
+            "seed": s,
+            "model": modelo_flux,
+            "nologo": "true"
+        }
+        url_direta = f"{url_base_polli}/{urllib.parse.quote(prompt_en[:1400])}?{urllib.parse.urlencode(params)}"
+        candidatos.append(CandidatoRetratoOut(
+            indice=i,
+            seed=s,
+            url=f"/conta/persona/candidatos/{lote_id}/{i}",
+            url_direta=url_direta
+        ))
+
+    return CandidatosRetratoResponse(lote_id=lote_id, candidatos=candidatos)
+
+
+@app.get("/conta/persona/candidatos/{lote_id}/{indice}")
+def obter_candidato_imagem(lote_id: str, indice: int):
+    """Devolve a imagem gerada para o candidato específico do lote."""
+    lote = _lotes_candidatos.get(lote_id)
+    if not lote or indice not in range(len(lote["seeds"])):
+        raise HTTPException(404, "Candidato não encontrado ou lote expirado.")
+
+    if indice in lote["imagens"]:
+        return Response(content=lote["imagens"][indice], media_type="image/jpeg", headers={"Cache-Control": "public, max-age=3600"})
+
+    seed = lote["seeds"][indice]
+    prompt_en = lote["prompt_en"]
+    largura = config.POLLINATIONS_LARGURA or 768
+    altura = config.POLLINATIONS_ALTURA or 1024
+    modelo_flux = config.POLLINATIONS_MODELO or "flux"
+    url_base_polli = config.POLLINATIONS_URL or "https://image.pollinations.ai/prompt"
+    params = {
+        "width": largura,
+        "height": altura,
+        "seed": seed,
+        "model": modelo_flux,
+        "nologo": "true"
+    }
+    url = f"{url_base_polli}/{urllib.parse.quote(prompt_en[:1400])}?{urllib.parse.urlencode(params)}"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "LivennIA/1.0"})
+        with urllib.request.urlopen(req, timeout=35) as resp:
+            dados_img = resp.read()
+        lote["imagens"][indice] = dados_img
+        return Response(content=dados_img, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=3600"})
+    except Exception as e:
+        logging.warning("Erro ao baixar candidato %s do lote %s: %s", indice, lote_id, e)
+        raise HTTPException(503, "Falha ao gerar esta variação de imagem.")
+
+
+@app.post("/personas/{persona_id}/confirmar-candidato", response_model=RetratoOut)
+def confirmar_candidato_persona(persona_id: int, dados: ConfirmarCandidatoIn, jogador=Depends(jogador_atual)):
+    """Salva a imagem do candidato escolhido como retrato oficial da persona."""
+    existente = banco.obter_persona(jogador["id"], persona_id)
+    if not existente:
+        raise HTTPException(404, "Persona não encontrada.")
+
+    lote = _lotes_candidatos.get(dados.lote_id)
+    dados_img = None
+    if lote and dados.indice in lote.get("imagens", {}):
+        dados_img = lote["imagens"][dados.indice]
+    elif lote and dados.indice in range(len(lote["seeds"])):
+        seed = lote["seeds"][dados.indice]
+        prompt_en = lote["prompt_en"]
+        largura = config.POLLINATIONS_LARGURA or 768
+        altura = config.POLLINATIONS_ALTURA or 1024
+        modelo_flux = config.POLLINATIONS_MODELO or "flux"
+        url_base_polli = config.POLLINATIONS_URL or "https://image.pollinations.ai/prompt"
+        params = {"width": largura, "height": altura, "seed": seed, "model": modelo_flux, "nologo": "true"}
+        url = f"{url_base_polli}/{urllib.parse.quote(prompt_en[:1400])}?{urllib.parse.urlencode(params)}"
+        req = urllib.request.Request(url, headers={"User-Agent": "LivennIA/1.0"})
+        with urllib.request.urlopen(req, timeout=35) as resp:
+            dados_img = resp.read()
+        lote["imagens"][dados.indice] = dados_img
+
+    if not dados_img:
+        raise HTTPException(400, "Imagem do candidato não encontrada. Tente gerar novamente.")
+
+    os.makedirs(config.PASTA_RETRATOS, exist_ok=True)
+    caminho = caminho_persona_retrato(jogador["id"], persona_id)
+    with open(caminho, "wb") as f:
+        f.write(dados_img)
+    banco.incrementar_retrato_persona(jogador["id"], persona_id)
+    return RetratoOut(retrato=True)
+
+
+@app.post("/personas/{persona_id}/upload-retrato", response_model=RetratoOut)
+def upload_retrato_persona(persona_id: int, dados: UploadRetratoIn, jogador=Depends(jogador_atual)):
+    """Salva uma imagem enviada pelo usuário da galeria como retrato da persona."""
+    existente = banco.obter_persona(jogador["id"], persona_id)
+    if not existente:
+        raise HTTPException(404, "Persona não encontrada.")
+    import base64
+    b64 = dados.imagem_base64
+    if "," in b64:
+        b64 = b64.split(",")[-1]
+    dados_img = base64.b64decode(b64)
+    if not dados_img or len(dados_img) < 100:
+        raise HTTPException(400, "Arquivo de imagem inválido.")
+    os.makedirs(config.PASTA_RETRATOS, exist_ok=True)
+    caminho = caminho_persona_retrato(jogador["id"], persona_id)
+    with open(caminho, "wb") as f:
+        f.write(dados_img)
+    banco.incrementar_retrato_persona(jogador["id"], persona_id)
+    return RetratoOut(retrato=True)
+
+
+@app.post("/jogos/{jogo_id}/persona", response_model=JogoOut)
+def trocar_persona_jogo(jogo_id: IdDoJogo, dados: TrocarPersonaJogoIn, jogador=Depends(jogador_atual)):
+    """Troca a persona ativa do jogador na história."""
+    jogo = banco.obter_jogo(jogo_id, jogador["id"])
+    if jogo is None:
+        raise HTTPException(404, "Jogo não encontrado.")
+    persona = banco.obter_persona(jogador["id"], dados.persona_id)
+    if not persona:
+        raise HTTPException(404, "Persona não encontrada.")
+    estado = carregar_estado_do_jogo(jogo)
+    estado["persona"] = persona
+    banco.atualizar_jogo(jogo_id, jogador["id"], motor.estado_para_texto(estado), jogo["encerrado"])
+    return montar_saida(jogo_id, estado, jogo["encerrado"], restante_do_dia(jogador["id"]), mochis=int(jogador.get("mochis") or 0))
 
 
 @app.get("/estilos-imagem/{estilo_id}/exemplo")

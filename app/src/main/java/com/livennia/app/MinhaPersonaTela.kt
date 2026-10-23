@@ -1,14 +1,27 @@
 package com.livennia.app
 
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,50 +38,58 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
+import kotlinx.coroutines.delay
 
 private val FundoOled = Color(0xFF090A0F)
 private val CardObsidian = Color(0xFF13141F)
 private val CardObsidianBorda = Color(0xFF232538)
-private val RoxoPrimario = Color(0xFF7C4DFF)
-private val OuroAmbar = Color(0xFFFFB300)
+private val AmareloDestaque = Color(0xFFFFD54F)
+private val AmareloEscuro = Color(0xFFFFB300)
 private val TextoClaro = Color(0xFFF0F0F5)
 private val TextoSecundario = Color(0xFFA0A2B3)
 private val TextoMudo = Color(0xFF6E7082)
@@ -84,17 +105,44 @@ val ESTILOS_IMAGEM_PERSONA = listOf(
     EstiloImagemInfo("photorealistic", "Realista Natural", "📸", "Foto autêntica, textura de pele natural e luz de estúdio"),
     EstiloImagemInfo("semi_realistic", "Semi-realista Elegante", "🎨", "Retrato refinado com traços estéticos e iluminação suave"),
     EstiloImagemInfo("vibrant_anime", "Anime Vibrante", "🌸", "Cores vivas, iluminação radiante e visual anime expressivo"),
-    EstiloImagemInfo("manga_bw", "Mangá Preto & Branco", "🖤", "Traço clássico em nanquim, retículas e alto contraste"),
-    EstiloImagemInfo("flat_color", "Line Art / Webcomic", "✒️", "Traços limpos com cores planas e estilo moderno"),
-    EstiloImagemInfo("warm_art", "Arte Quente de Livro", "📖", "Ilustração aconchegante com tons dourados e pinceladas"),
+    EstiloImagemInfo("manga_bw", "Mangá P&B", "🖤", "Traço clássico em nanquim, retículas e alto contraste"),
+    EstiloImagemInfo("flat_color", "Webcomic / Line Art", "✒️", "Traços limpos com cores planas e estilo moderno"),
+    EstiloImagemInfo("warm_art", "Arte de Livro", "📖", "Ilustração aconchegante com tons dourados e pinceladas"),
     EstiloImagemInfo("exquisite", "Fantasia Requintada", "👑", "Alta fantasia épica, detalhes minuciosos e brilhos mágicos"),
     EstiloImagemInfo("dark_fantasy", "Dark Fantasy", "🦇", "Atmosfera gótica, misteriosa com iluminação dramática"),
-    EstiloImagemInfo("vintage_oil", "Pintura a Óleo Vintage", "🏛️", "Quadro clássico a óleo sobre tela com iluminação Rembrandt")
+    EstiloImagemInfo("vintage_oil", "Pintura Vintage", "🏛️", "Quadro clássico a óleo sobre tela com iluminação Rembrandt")
 )
+
+val TAGS_DISPONIVEIS_CATEGORIZADAS = mapOf(
+    "Aparência Física" to listOf(
+        "Alto", "Baixo", "Atlético", "Musculoso", "Magro", "Elegante",
+        "Cabelo Curto", "Cabelo Longo", "Cabelo Cacheado", "Cabelo Ondulado",
+        "Loiro", "Moreno", "Ruivo", "Cabelo Preto", "Cabelo Branco",
+        "Olhos Azuis", "Olhos Verdes", "Olhos Castanhos", "Olhos Claros",
+        "Barba", "Óculos", "Tatuagem", "Sardas", "Cicatriz"
+    ),
+    "Personalidade & Vibe" to listOf(
+        "Gentil", "Reservado", "Extrovertido", "Misterioso", "Inteligente",
+        "Leal", "Corajoso", "Calmo", "Romântico", "Sarcástico",
+        "Protetor", "Líder", "Curioso", "Sensível", "Sério", "Confiante"
+    ),
+    "Papel & Estilo" to listOf(
+        "Casual", "Formal", "Elegante", "Armadura", "Moletom",
+        "Estudante", "Guerreiro", "Detetive", "Artista", "Mago",
+        "Cientista", "Viajante", "Nobre", "Rebelde"
+    )
+)
+
+private enum class TelaPersonaState {
+    LISTA,
+    CRIAR_EDITAR,
+    SELECIONAR_IMAGEM
+}
 
 @Composable
 fun ModalMinhaPersona(
     vm: AppViewModel,
+    jogoAtualId: String? = null,
     obrigatorio: Boolean = false,
     onFechar: () -> Unit
 ) {
@@ -104,12 +152,58 @@ fun ModalMinhaPersona(
         vm.carregarPersonas()
     }
 
-    var modoEdicao by remember { mutableStateOf(obrigatorio && vm.personas.isEmpty()) }
+    var telaAtual by remember {
+        mutableStateOf(
+            if (obrigatorio && vm.personas.isEmpty()) TelaPersonaState.CRIAR_EDITAR
+            else TelaPersonaState.LISTA
+        )
+    }
     var personaEmEdicao by remember { mutableStateOf<PersonaResponse?>(null) }
+    var mostrarModalTags by remember { mutableStateOf(false) }
 
-    LaunchedEffect(vm.personas.size) {
-        if (obrigatorio && vm.personas.isEmpty()) {
-            modoEdicao = true
+    // Estado do formulário de criação/edição compartilhado
+    var formNome by remember { mutableStateOf("") }
+    var formGenero by remember { mutableStateOf("Masculino") }
+    var formDescricao by remember { mutableStateOf("") }
+    var formAparencia by remember { mutableStateOf("") }
+    var formIdade by remember { mutableStateOf("") }
+    var formInteresses by remember { mutableStateOf("") }
+    var formAversoes by remember { mutableStateOf("") }
+    var formDetalhesImagem by remember { mutableStateOf("") }
+    var formEstiloImagem by remember { mutableStateOf("semi_realistic") }
+    var formPadrao by remember { mutableStateOf(false) }
+    val formTags = remember { mutableStateListOf<String>() }
+    var formFotoReferenciaUri by remember { mutableStateOf<Uri?>(null) }
+
+    fun carregarFormularioCom(persona: PersonaResponse?) {
+        personaEmEdicao = persona
+        if (persona != null) {
+            formNome = persona.nome
+            formGenero = persona.genero.ifBlank { "Masculino" }
+            formDescricao = persona.descricao
+            formAparencia = persona.aparencia
+            formIdade = persona.idade
+            formInteresses = persona.interesses
+            formAversoes = persona.aversoes
+            formDetalhesImagem = persona.detalhesImagem
+            formEstiloImagem = persona.estiloImagem.ifBlank { "semi_realistic" }
+            formPadrao = persona.padrao
+            formTags.clear()
+            formTags.addAll(persona.tags)
+            formFotoReferenciaUri = null
+        } else {
+            formNome = ""
+            formGenero = "Masculino"
+            formDescricao = ""
+            formAparencia = ""
+            formIdade = ""
+            formInteresses = ""
+            formAversoes = ""
+            formDetalhesImagem = ""
+            formEstiloImagem = "semi_realistic"
+            formPadrao = vm.personas.isEmpty()
+            formTags.clear()
+            formFotoReferenciaUri = null
         }
     }
 
@@ -118,7 +212,7 @@ fun ModalMinhaPersona(
     Dialog(
         onDismissRequest = {
             if (podeFechar) onFechar()
-            else Toast.makeText(contexto, "Você precisa criar pelo menos uma persona para começar!", Toast.LENGTH_SHORT).show()
+            else Toast.makeText(contexto, "Você precisa ter ao menos uma persona!", Toast.LENGTH_SHORT).show()
         },
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
@@ -132,110 +226,169 @@ fun ModalMinhaPersona(
                 .fillMaxSize()
                 .navigationBarsPadding()
         ) {
-            if (modoEdicao) {
-                FormularioPersona(
-                    vm = vm,
-                    personaExistente = personaEmEdicao,
-                    obrigatorio = obrigatorio && vm.personas.isEmpty(),
-                    onVoltar = {
-                        if (obrigatorio && vm.personas.isEmpty()) {
-                            Toast.makeText(contexto, "Você precisa criar sua persona antes de continuar!", Toast.LENGTH_SHORT).show()
-                        } else {
-                            modoEdicao = false
-                            personaEmEdicao = null
+            when (telaAtual) {
+                TelaPersonaState.LISTA -> {
+                    TelaListaPersonas(
+                        vm = vm,
+                        jogoAtualId = jogoAtualId,
+                        onFechar = {
+                            if (podeFechar) onFechar()
+                            else Toast.makeText(contexto, "Crie uma persona para continuar!", Toast.LENGTH_SHORT).show()
+                        },
+                        onNovaPersona = {
+                            if (vm.personas.size >= vm.limitePersonas) {
+                                Toast.makeText(contexto, "Limite de ${vm.limitePersonas} personas atingido!", Toast.LENGTH_LONG).show()
+                            } else {
+                                carregarFormularioCom(null)
+                                telaAtual = TelaPersonaState.CRIAR_EDITAR
+                            }
+                        },
+                        onEditarPersona = { p ->
+                            carregarFormularioCom(p)
+                            telaAtual = TelaPersonaState.CRIAR_EDITAR
+                        },
+                        onPersonaSelecionada = { p ->
+                            if (jogoAtualId != null) {
+                                vm.selecionarPersonaParaJogo(jogoAtualId, p) {
+                                    Toast.makeText(contexto, "Persona '${p.nome}' ativada para esta história!", Toast.LENGTH_SHORT).show()
+                                    onFechar()
+                                }
+                            } else {
+                                vm.definirPersonaPadrao(p.id) {
+                                    Toast.makeText(contexto, "'${p.nome}' é agora sua persona padrão!", Toast.LENGTH_SHORT).show()
+                                }
+                            }
                         }
-                    },
-                    onSalvo = {
-                        modoEdicao = false
-                        personaEmEdicao = null
-                        if (obrigatorio) onFechar()
-                    }
-                )
-            } else {
-                ListaPersonas(
-                    vm = vm,
-                    obrigatorio = obrigatorio && vm.personas.isEmpty(),
-                    onFechar = {
-                        if (podeFechar) onFechar()
-                        else Toast.makeText(contexto, "Você precisa criar pelo menos uma persona para começar!", Toast.LENGTH_SHORT).show()
-                    },
-                    onNovaPersona = {
-                        if (vm.personas.size >= vm.limitePersonas) {
-                            Toast.makeText(
-                                contexto,
-                                "Limite de ${vm.limitePersonas} personas atingido no seu plano!",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        } else {
-                            personaEmEdicao = null
-                            modoEdicao = true
+                    )
+                }
+
+                TelaPersonaState.CRIAR_EDITAR -> {
+                    TelaCriarEditarPersona(
+                        vm = vm,
+                        personaExistente = personaEmEdicao,
+                        nome = formNome,
+                        onNomeChange = { formNome = it },
+                        genero = formGenero,
+                        onGeneroChange = { formGenero = it },
+                        descricao = formDescricao,
+                        onDescricaoChange = { formDescricao = it },
+                        aparencia = formAparencia,
+                        onAparenciaChange = { formAparencia = it },
+                        detalhesImagem = formDetalhesImagem,
+                        onDetalhesImagemChange = { formDetalhesImagem = it },
+                        estiloImagem = formEstiloImagem,
+                        onEstiloImagemChange = { formEstiloImagem = it },
+                        tags = formTags,
+                        onAbrirTags = { mostrarModalTags = true },
+                        fotoReferenciaUri = formFotoReferenciaUri,
+                        onFotoReferenciaUriChange = { formFotoReferenciaUri = it },
+                        onVoltar = {
+                            if (obrigatorio && vm.personas.isEmpty()) {
+                                Toast.makeText(contexto, "Você precisa criar uma persona!", Toast.LENGTH_SHORT).show()
+                            } else {
+                                telaAtual = TelaPersonaState.LISTA
+                            }
+                        },
+                        onIniciarGeracaoCandidatos = { req ->
+                            vm.gerarCandidatosRetrato(
+                                req = req,
+                                onSucesso = {
+                                    telaAtual = TelaPersonaState.SELECIONAR_IMAGEM
+                                },
+                                onError = { msg ->
+                                    Toast.makeText(contexto, msg, Toast.LENGTH_LONG).show()
+                                }
+                            )
+                            telaAtual = TelaPersonaState.SELECIONAR_IMAGEM
+                        },
+                        onSalvoSemGerar = {
+                            telaAtual = TelaPersonaState.LISTA
+                            if (obrigatorio && vm.personas.isNotEmpty()) onFechar()
                         }
+                    )
+                }
+
+                TelaPersonaState.SELECIONAR_IMAGEM -> {
+                    TelaSelecionarImagem(
+                        vm = vm,
+                        personaExistente = personaEmEdicao,
+                        nome = formNome,
+                        genero = formGenero,
+                        descricao = formDescricao,
+                        aparencia = formAparencia,
+                        detalhesImagem = formDetalhesImagem,
+                        estiloImagem = formEstiloImagem,
+                        tags = formTags.toList(),
+                        padrao = formPadrao,
+                        onVoltar = {
+                            telaAtual = TelaPersonaState.CRIAR_EDITAR
+                        },
+                        onImagemEscolhida = {
+                            telaAtual = TelaPersonaState.LISTA
+                            if (obrigatorio && vm.personas.isNotEmpty()) onFechar()
+                        }
+                    )
+                }
+            }
+
+            if (mostrarModalTags) {
+                ModalSelecaoTagsPersona(
+                    tagsAtuais = formTags.toList(),
+                    onConfirmar = { novas ->
+                        formTags.clear()
+                        formTags.addAll(novas)
+                        mostrarModalTags = false
                     },
-                    onEditarPersona = { p ->
-                        personaEmEdicao = p
-                        modoEdicao = true
-                    }
+                    onCancelar = { mostrarModalTags = false }
                 )
             }
         }
     }
 }
 
+// ---------------------------------------------------------------------------
+// TELA 1: LISTA DE PERSONAS (Conforme Imagem 1)
+// ---------------------------------------------------------------------------
 @Composable
-private fun ListaPersonas(
+private fun TelaListaPersonas(
     vm: AppViewModel,
-    obrigatorio: Boolean = false,
+    jogoAtualId: String?,
     onFechar: () -> Unit,
     onNovaPersona: () -> Unit,
-    onEditarPersona: (PersonaResponse) -> Unit
+    onEditarPersona: (PersonaResponse) -> Unit,
+    onPersonaSelecionada: (PersonaResponse) -> Unit
 ) {
     val contexto = LocalContext.current
-    val totalPersonas = vm.personas.size
-    val limite = vm.limitePersonas
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Top Bar
+        // Cabeçalho (Imagem 1)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 10.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onFechar) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar", tint = TextoClaro)
-            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "Minhas Personas",
+                    "Persona",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
+                    fontSize = 20.sp,
                     color = TextoClaro
                 )
+                Spacer(Modifier.height(2.dp))
                 Text(
-                    "Protagonistas usados nas histórias e chats",
-                    fontSize = 11.sp,
-                    color = TextoSecundario
+                    "Configure seu perfil pessoal para que a IA possa te conhecer melhor.",
+                    fontSize = 12.sp,
+                    color = TextoSecundario,
+                    lineHeight = 16.sp
                 )
             }
-
-            // Badge de Cota
-            Surface(
-                color = if (totalPersonas >= limite) Color(0xFFD32F2F).copy(alpha = 0.2f) else RoxoPrimario.copy(alpha = 0.15f),
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, if (totalPersonas >= limite) Color(0xFFFF5252) else RoxoPrimario.copy(alpha = 0.4f)),
-                modifier = Modifier.padding(end = 8.dp)
-            ) {
-                Text(
-                    "$totalPersonas / $limite",
-                    color = if (totalPersonas >= limite) Color(0xFFFF5252) else RoxoPrimario,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                )
+            IconButton(onClick = onFechar) {
+                Icon(Icons.Default.Close, contentDescription = "Fechar", tint = TextoClaro)
             }
         }
 
-        // Lista com scroll
+        // Lista de Cards com Scroll
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -243,13 +396,6 @@ private fun ListaPersonas(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                "A Persona selecionada como padrão será o seu personagem em qualquer nova conversa ou aventura.",
-                color = TextoMudo,
-                fontSize = 12.sp,
-                lineHeight = 16.sp
-            )
-
             if (vm.personas.isEmpty()) {
                 Surface(
                     color = CardObsidian,
@@ -257,13 +403,13 @@ private fun ListaPersonas(
                     border = BorderStroke(1.dp, CardObsidianBorda),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 24.dp)
+                        .padding(vertical = 32.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("🎭", fontSize = 42.sp)
+                        Text("👤", fontSize = 42.sp)
                         Spacer(Modifier.height(8.dp))
                         Text(
                             "Nenhuma persona criada",
@@ -273,18 +419,26 @@ private fun ListaPersonas(
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            "Crie sua primeira persona para definir quem você é nas histórias!",
+                            "Crie sua persona para que o Bot te conheça nas histórias!",
                             color = TextoSecundario,
                             fontSize = 12.sp,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            textAlign = TextAlign.Center
                         )
                     }
                 }
             } else {
                 vm.personas.forEach { persona ->
-                    ItemCardPersona(
+                    val ehAtivaParaJogo = if (jogoAtualId != null) {
+                        (vm.personaSelecionadaId == persona.id) || (vm.personaSelecionadaId == null && persona.padrao)
+                    } else {
+                        persona.padrao
+                    }
+
+                    ItemCardPersonaEstiloEmochi(
                         persona = persona,
-                        versao = vm.personaRetratoVersao,
+                        ehAtiva = ehAtivaParaJogo,
+                        versaoRetrato = vm.personaRetratoVersao + persona.versaoRetrato,
+                        onCardClick = { onPersonaSelecionada(persona) },
                         onEditar = { onEditarPersona(persona) },
                         onTornarPadrao = {
                             vm.definirPersonaPadrao(persona.id) {
@@ -293,7 +447,7 @@ private fun ListaPersonas(
                         },
                         onExcluir = {
                             if (vm.personas.size <= 1) {
-                                Toast.makeText(contexto, "Você precisa ter pelo menos 1 persona!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(contexto, "Você precisa manter pelo menos 1 persona!", Toast.LENGTH_SHORT).show()
                             } else {
                                 vm.deletarPersona(persona.id) {
                                     Toast.makeText(contexto, "Persona removida!", Toast.LENGTH_SHORT).show()
@@ -304,82 +458,84 @@ private fun ListaPersonas(
                 }
             }
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
         }
 
-        // Botão de Criar Nova Persona
-        Box(modifier = Modifier.padding(16.dp)) {
+        // Botão "Criar" Amarelo no Rodapé (Imagem 1)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
             Button(
                 onClick = onNovaPersona,
                 enabled = !vm.ocupado,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = RoxoPrimario),
+                    .height(52.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AmareloDestaque,
+                    contentColor = Color(0xFF141414)
+                ),
                 shape = RoundedCornerShape(14.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = null, tint = Color.White)
-                Spacer(Modifier.width(8.dp))
                 Text(
-                    "Criar Nova Persona",
-                    color = Color.White,
+                    "Criar",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
+                    fontSize = 16.sp,
+                    color = Color(0xFF141414)
                 )
             }
         }
     }
 }
 
+// Card de Persona no formato fiel da Imagem 1
 @Composable
-private fun ItemCardPersona(
+private fun ItemCardPersonaEstiloEmochi(
     persona: PersonaResponse,
-    versao: Int,
+    ehAtiva: Boolean,
+    versaoRetrato: Int,
+    onCardClick: () -> Unit,
     onEditar: () -> Unit,
     onTornarPadrao: () -> Unit,
     onExcluir: () -> Unit
 ) {
-    val pressInteraction = remember { MutableInteractionSource() }
-    val isPressed by pressInteraction.collectIsPressedAsState()
-    val cardScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.98f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-        label = "personaCardScale"
-    )
+    var menuAberto by remember { mutableStateOf(false) }
 
     Surface(
-        color = Color(0xFF131522),
-        shape = RoundedCornerShape(18.dp),
-        shadowElevation = 8.dp,
+        color = CardObsidian,
+        shape = RoundedCornerShape(16.dp),
         border = BorderStroke(
-            if (persona.padrao) 1.5.dp else 1.2.dp,
-            if (persona.padrao) Brush.horizontalGradient(listOf(OuroAmbar, Color(0xFFFFD54F), OuroAmbar))
-            else Brush.verticalGradient(listOf(Color(0xFF7C4DFF).copy(alpha = 0.5f), Color(0xFF232538)))
+            width = if (ehAtiva) 1.8.dp else 1.dp,
+            color = if (ehAtiva) AmareloDestaque else CardObsidianBorda
         ),
         modifier = Modifier
             .fillMaxWidth()
-            .scale(cardScale)
+            .clickable { onCardClick() }
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Avatar da Persona
                 RetratoPersona(
                     temRetrato = persona.temRetrato,
                     emojiOuPadrao = "👤",
                     tamanho = 56,
-                    versao = versao + persona.versaoRetrato,
+                    versao = versaoRetrato,
                     personaId = persona.id,
-                    recorte = CircleShape
+                    recorte = RoundedCornerShape(14.dp)
                 )
 
                 Column(modifier = Modifier.weight(1f)) {
+                    // Nome e Badge Padrão
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             persona.nome.ifBlank { "Sem nome" },
                             fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
+                            fontSize = 16.sp,
                             color = TextoClaro,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -388,79 +544,90 @@ private fun ItemCardPersona(
                         if (persona.padrao) {
                             Spacer(Modifier.width(6.dp))
                             Surface(
-                                color = OuroAmbar.copy(alpha = 0.15f),
-                                shape = RoundedCornerShape(8.dp),
-                                border = BorderStroke(1.dp, OuroAmbar.copy(alpha = 0.5f))
+                                color = AmareloDestaque.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(6.dp),
+                                border = BorderStroke(1.dp, AmareloDestaque.copy(alpha = 0.5f))
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Default.Star, contentDescription = null, tint = OuroAmbar, modifier = Modifier.size(11.dp))
+                                    Icon(Icons.Default.Star, contentDescription = null, tint = AmareloDestaque, modifier = Modifier.size(10.dp))
                                     Spacer(Modifier.width(3.dp))
-                                    Text("Padrão", color = OuroAmbar, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    Text("Padrão", color = AmareloDestaque, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
                     }
 
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.padding(top = 2.dp)
-                    ) {
-                        if (persona.idade.isNotBlank()) {
-                            Text("${persona.idade} anos", color = TextoMudo, fontSize = 11.sp)
-                            Text("•", color = TextoMudo, fontSize = 11.sp)
-                        }
-                        Text(persona.genero.ifBlank { "Gênero livre" }, color = TextoMudo, fontSize = 11.sp)
-                    }
-
+                    // Descrição
                     if (persona.descricao.isNotBlank()) {
+                        Spacer(Modifier.height(2.dp))
                         Text(
                             persona.descricao,
                             color = TextoSecundario,
                             fontSize = 12.sp,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(top = 4.dp)
+                            lineHeight = 16.sp
                         )
                     }
-                }
-            }
 
-            Spacer(Modifier.height(10.dp))
-
-            // Ações do card
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (!persona.padrao) {
-                    Surface(
-                        color = Color.Transparent,
-                        shape = RoundedCornerShape(8.dp),
-                        border = BorderStroke(1.dp, CardObsidianBorda),
-                        modifier = Modifier.clickable { onTornarPadrao() }
+                    // Linha de Tags (Imagem 1: Idade: 28, Masculino, etc.)
+                    Spacer(Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text(
-                            "Definir como Padrão",
-                            color = TextoSecundario,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                        )
+                        if (persona.idade.isNotBlank()) {
+                            TagPequenaCinza("Idade: ${persona.idade}")
+                        }
+                        if (persona.genero.isNotBlank()) {
+                            TagPequenaCinza(persona.genero)
+                        }
+                        persona.tags.forEach { tag ->
+                            TagPequenaCinza(tag)
+                        }
                     }
-                } else {
-                    Text("✓ Usada por padrão no Bot", color = OuroAmbar, fontSize = 11.sp)
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    IconButton(onClick = onEditar, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Edit, contentDescription = "Editar", tint = TextoClaro, modifier = Modifier.size(16.dp))
+                // Menu de 3 pontinhos
+                Box {
+                    IconButton(
+                        onClick = { menuAberto = true },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Mais opções", tint = TextoSecundario)
                     }
-                    IconButton(onClick = onExcluir, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Delete, contentDescription = "Excluir", tint = Color(0xFFFF5252), modifier = Modifier.size(16.dp))
+                    DropdownMenu(
+                        expanded = menuAberto,
+                        onDismissRequest = { menuAberto = false }
+                    ) {
+                        if (!persona.padrao) {
+                            DropdownMenuItem(
+                                text = { Text("Definir como padrão") },
+                                onClick = {
+                                    menuAberto = false
+                                    onTornarPadrao()
+                                }
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text("Editar") },
+                            onClick = {
+                                menuAberto = false
+                                onEditar()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Excluir", color = Color(0xFFFF5252)) },
+                            onClick = {
+                                menuAberto = false
+                                onExcluir()
+                            }
+                        )
                     }
                 }
             }
@@ -469,241 +636,186 @@ private fun ItemCardPersona(
 }
 
 @Composable
-private fun FormularioPersona(
+private fun TagPequenaCinza(texto: String) {
+    Surface(
+        color = Color(0xFF202334),
+        shape = RoundedCornerShape(6.dp)
+    ) {
+        Text(
+            texto,
+            color = Color(0xFFC0C2D5),
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// TELA 2: CRIAR / EDITAR PERSONA (Conforme Imagem 4)
+// ---------------------------------------------------------------------------
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TelaCriarEditarPersona(
     vm: AppViewModel,
     personaExistente: PersonaResponse?,
-    obrigatorio: Boolean = false,
+    nome: String,
+    onNomeChange: (String) -> Unit,
+    genero: String,
+    onGeneroChange: (String) -> Unit,
+    descricao: String,
+    onDescricaoChange: (String) -> Unit,
+    aparencia: String,
+    onAparenciaChange: (String) -> Unit,
+    detalhesImagem: String,
+    onDetalhesImagemChange: (String) -> Unit,
+    estiloImagem: String,
+    onEstiloImagemChange: (String) -> Unit,
+    tags: List<String>,
+    onAbrirTags: () -> Unit,
+    fotoReferenciaUri: Uri?,
+    onFotoReferenciaUriChange: (Uri?) -> Unit,
     onVoltar: () -> Unit,
-    onSalvo: () -> Unit
+    onIniciarGeracaoCandidatos: (PersonaRetratoRequest) -> Unit,
+    onSalvoSemGerar: () -> Unit
 ) {
     val contexto = LocalContext.current
 
-    var nome by remember { mutableStateOf(personaExistente?.nome ?: "") }
-    var genero by remember { mutableStateOf(personaExistente?.genero ?: "Feminino") }
-    var idade by remember { mutableStateOf(personaExistente?.idade ?: "") }
-    var descricao by remember { mutableStateOf(personaExistente?.descricao ?: "") } // Personalidade
-    var aparencia by remember { mutableStateOf(personaExistente?.aparencia ?: "") }
-    var interesses by remember { mutableStateOf(personaExistente?.interesses ?: "") }
-    var aversoes by remember { mutableStateOf(personaExistente?.aversoes ?: "") }
-    var tags by remember { mutableStateOf(personaExistente?.tags?.joinToString(", ") ?: "") }
-    var detalhesImagem by remember { mutableStateOf(personaExistente?.detalhesImagem ?: "") }
-    var estiloImagem by remember { mutableStateOf(personaExistente?.estiloImagem ?: "semi_realistic") }
-    var padrao by remember { mutableStateOf(personaExistente?.padrao ?: (vm.personas.isEmpty())) }
+    // Launcher para selecionar imagem de referência ou enviar imagem pronta
+    val launcherGaleriaReferencia = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        onFotoReferenciaUriChange(uri)
+    }
 
-    var temRetratoLocal by remember(personaExistente) { mutableStateOf(personaExistente?.temRetrato == true) }
-    var versaoRetratoLocal by remember(personaExistente) { mutableStateOf(personaExistente?.versaoRetrato ?: 0) }
-    var personaIdLocal by remember(personaExistente) { mutableStateOf(personaExistente?.id) }
-    var gerandoRetratoLocal by remember { mutableStateOf(false) }
-    var mostrarExemploEstilo by remember { mutableStateOf(!temRetratoLocal) }
-
-    LaunchedEffect(vm.ocupado) {
-        if (!vm.ocupado && gerandoRetratoLocal) {
-            gerandoRetratoLocal = false
+    val launcherGaleriaPronta = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            try {
+                val bytes = contexto.contentResolver.openInputStream(it)?.readBytes()
+                if (bytes != null) {
+                    val b64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                    if (personaExistente != null && personaExistente.id > 0) {
+                        vm.uploadRetratoPersona(personaExistente.id, b64, onSucesso = {
+                            Toast.makeText(contexto, "Foto da persona enviada com sucesso!", Toast.LENGTH_SHORT).show()
+                            onSalvoSemGerar()
+                        })
+                    } else {
+                        // Salva antes para ter id
+                        val pIn = PersonaIn(
+                            nome = nome.ifBlank { "Viajante" },
+                            genero = genero,
+                            aparencia = aparencia,
+                            personalidade = descricao,
+                            descricao = descricao,
+                            tags = tags,
+                            estiloImagem = estiloImagem,
+                            detalhesImagem = detalhesImagem,
+                            padrao = vm.personas.isEmpty()
+                        )
+                        vm.salvarPersona(null, pIn) { salva ->
+                            vm.uploadRetratoPersona(salva.id, b64, onSucesso = {
+                                Toast.makeText(contexto, "Persona criada com sua foto!", Toast.LENGTH_SHORT).show()
+                                onSalvoSemGerar()
+                            })
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Toast.makeText(contexto, "Falha ao ler imagem: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
-    val generos = listOf("Feminino", "Masculino", "Outro")
+    val generos = listOf("Masculino", "Feminino", "Não binário")
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Top Bar
+        // Barra Superior
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 10.dp),
+                .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (!obrigatorio || vm.personas.isNotEmpty()) {
-                IconButton(onClick = onVoltar) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar", tint = TextoClaro)
-                }
-            } else {
-                Spacer(Modifier.width(16.dp))
+            IconButton(onClick = onVoltar) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar", tint = TextoClaro)
             }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    if (obrigatorio) "Crie sua Persona (Obrigatório)"
-                    else if (personaExistente == null) "Nova Persona" else "Editar Persona",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 17.sp,
-                    color = TextoClaro
-                )
-                if (obrigatorio) {
-                    Text(
-                        "O Bot conversará com você através desta Persona",
-                        fontSize = 11.sp,
-                        color = OuroAmbar
-                    )
-                }
-            }
-            Surface(
-                color = RoxoPrimario.copy(alpha = 0.15f),
-                shape = CircleShape,
-                modifier = Modifier.size(34.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = RoxoPrimario, modifier = Modifier.size(18.dp))
-                }
-            }
-            Spacer(Modifier.width(8.dp))
+            Text(
+                if (personaExistente == null) "Criar Persona" else "Editar Persona",
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                color = TextoClaro,
+                modifier = Modifier.weight(1f)
+            )
         }
 
-        // Formulário
+        // Formulário com Scroll
         Column(
             modifier = Modifier
                 .weight(1f)
                 .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Retrato & Botão de Geração com IA
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+            // 1. Imagem de Referência (Opcional) - Imagem 4
+            Surface(
+                color = CardObsidian,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, CardObsidianBorda),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { launcherGaleriaReferencia.launch("image/*") }
             ) {
-                Box(
-                    modifier = Modifier.size(102.dp),
-                    contentAlignment = Alignment.Center
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    if (!mostrarExemploEstilo && temRetratoLocal && personaIdLocal != null && personaIdLocal!! > 0) {
-                        RetratoPersona(
-                            temRetrato = true,
-                            emojiOuPadrao = "👤",
-                            tamanho = 96,
-                            versao = vm.personaRetratoVersao + versaoRetratoLocal,
-                            personaId = personaIdLocal,
-                            recorte = CircleShape
-                        )
-                    } else {
-                        PreviaEstiloImagem(
-                            estiloId = estiloImagem,
-                            modifier = Modifier.size(96.dp),
-                            recorte = CircleShape
-                        )
-                    }
-
-                    if (gerandoRetratoLocal || vm.ocupado) {
-                        Box(
-                            modifier = Modifier
-                                .size(96.dp)
-                                .background(Color.Black.copy(alpha = 0.65f), CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            androidx.compose.material3.CircularProgressIndicator(
-                                modifier = Modifier.size(32.dp),
-                                color = RoxoPrimario,
-                                strokeWidth = 3.dp
+                    Box(
+                        modifier = Modifier
+                            .size(54.dp)
+                            .background(Color(0xFF1E2132), RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (fotoReferenciaUri != null) {
+                            SubcomposeAsyncImage(
+                                model = fotoReferenciaUri,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(12.dp))
                             )
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(4.dp))
-
-                Surface(
-                    color = if (!mostrarExemploEstilo && temRetratoLocal) OuroAmbar.copy(alpha = 0.15f) else RoxoPrimario.copy(alpha = 0.15f),
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, if (!mostrarExemploEstilo && temRetratoLocal) OuroAmbar.copy(alpha = 0.4f) else RoxoPrimario.copy(alpha = 0.4f)),
-                    modifier = Modifier.padding(bottom = 6.dp).clickable(enabled = temRetratoLocal) {
-                        mostrarExemploEstilo = !mostrarExemploEstilo
-                    }
-                ) {
-                    Text(
-                        if (!mostrarExemploEstilo && temRetratoLocal) "✓ Meu Retrato (toque p/ estilo)" else "🎨 Estilo: ${ESTILOS_IMAGEM_PERSONA.firstOrNull { it.id == estiloImagem }?.nome ?: estiloImagem}",
-                        color = if (!mostrarExemploEstilo && temRetratoLocal) OuroAmbar else Color.White,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                    )
-                }
-
-                Button(
-                    onClick = {
-                        if (nome.isBlank()) {
-                            Toast.makeText(contexto, "Digite o nome da persona antes de gerar o retrato!", Toast.LENGTH_SHORT).show()
-                            return@Button
-                        }
-                        val listaTags = if (tags.isNotBlank()) tags.split(",").map { it.trim() }.filter { it.isNotEmpty() } else emptyList()
-                        val req = PersonaRetratoRequest(
-                            nome = nome,
-                            genero = genero,
-                            aparencia = aparencia,
-                            descricao = descricao,
-                            idade = idade,
-                            interesses = interesses,
-                            aversoes = aversoes,
-                            tags = listaTags,
-                            estiloImagem = estiloImagem,
-                            detalhesImagem = detalhesImagem
-                        )
-                        gerandoRetratoLocal = true
-                        if (personaIdLocal != null && personaIdLocal!! > 0) {
-                            vm.gerarRetratoPersonaId(personaIdLocal!!, req) {
-                                temRetratoLocal = true
-                                versaoRetratoLocal++
-                                gerandoRetratoLocal = false
-                                Toast.makeText(contexto, "✨ Retrato atualizado com sucesso!", Toast.LENGTH_SHORT).show()
-                            }
                         } else {
-                            // Salva primeiro para obter ID e depois gera
-                            val pIn = PersonaIn(
-                                nome = nome,
-                                genero = genero,
-                                aparencia = aparencia,
-                                personalidade = descricao,
-                                descricao = descricao,
-                                idade = idade,
-                                interesses = interesses,
-                                medos = aversoes,
-                                aversoes = aversoes,
-                                tags = listaTags,
-                                estiloImagem = estiloImagem,
-                                detalhesImagem = detalhesImagem,
-                                padrao = padrao
-                            )
-                            vm.salvarPersona(null, pIn) { salva ->
-                                personaIdLocal = salva.id
-                                vm.gerarRetratoPersonaId(salva.id, req) {
-                                    temRetratoLocal = true
-                                    versaoRetratoLocal++
-                                    gerandoRetratoLocal = false
-                                    Toast.makeText(contexto, "✨ Persona criada e retrato gerado!", Toast.LENGTH_SHORT).show()
-                                    onSalvo()
-                                }
-                            }
+                            Icon(Icons.Default.Image, contentDescription = null, tint = TextoMudo, modifier = Modifier.size(24.dp))
                         }
-                    },
-                    enabled = !vm.ocupado && !gerandoRetratoLocal,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = RoxoPrimario)
-                ) {
-                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        if (temRetratoLocal) "Regerar Ilustração com IA" else "Gerar Ilustração com IA",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp
-                    )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Imagem de referência (opcional)",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = TextoClaro
+                        )
+                        Text(
+                            if (fotoReferenciaUri != null) "✓ Imagem selecionada (toque para trocar)"
+                            else "Adicionar imagem de referência",
+                            fontSize = 12.sp,
+                            color = if (fotoReferenciaUri != null) AmareloDestaque else TextoMudo
+                        )
+                    }
+                    if (fotoReferenciaUri != null) {
+                        IconButton(onClick = { onFotoReferenciaUriChange(null) }) {
+                            Icon(Icons.Default.Close, contentDescription = "Remover", tint = TextoMudo)
+                        }
+                    }
                 }
-
-                Text(
-                    "Gera uma ilustração artística elegante com o estilo e características abaixo.",
-                    color = TextoMudo,
-                    fontSize = 11.sp,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
             }
 
-            // 1. Nome da Persona *
+            // 2. Nome da Persona
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Row {
-                        Text("Nome da Persona", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
-                        Text(" *", color = Color(0xFFFF5252), fontSize = 13.sp)
-                    }
-                    Text("${nome.length}/40", color = TextoMudo, fontSize = 11.sp)
-                }
+                Text("Nome", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
                 Surface(
                     color = CardObsidian,
                     shape = RoundedCornerShape(12.dp),
@@ -712,192 +824,52 @@ private fun FormularioPersona(
                 ) {
                     BasicTextField(
                         value = nome,
-                        onValueChange = { nome = it.take(40) },
+                        onValueChange = onNomeChange,
                         textStyle = TextStyle(color = TextoClaro, fontSize = 14.sp),
-                        cursorBrush = SolidColor(RoxoPrimario),
+                        cursorBrush = SolidColor(AmareloDestaque),
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
                         decorationBox = { inner ->
-                            if (nome.isEmpty()) Text("Ex: Mariana, Arthur, Kaelen...", color = TextoMudo, fontSize = 13.sp)
+                            if (nome.isEmpty()) Text("Como o Bot deve te chamar?", color = TextoMudo, fontSize = 13.sp)
                             inner()
                         }
                     )
                 }
             }
 
-            // 2. Gênero & Idade
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Gênero", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        generos.forEach { g ->
-                            val sel = g.equals(genero, ignoreCase = true)
-                            Surface(
-                                color = if (sel) RoxoPrimario.copy(alpha = 0.22f) else CardObsidian,
-                                shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.dp, if (sel) RoxoPrimario else CardObsidianBorda),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable { genero = g }
-                            ) {
-                                Text(
-                                    g,
-                                    color = if (sel) Color.White else TextoSecundario,
-                                    fontSize = 12.sp,
-                                    fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
-                                    modifier = Modifier.padding(vertical = 10.dp),
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Column(modifier = Modifier.width(90.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Idade", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
-                    Surface(
-                        color = CardObsidian,
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, CardObsidianBorda),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        BasicTextField(
-                            value = idade,
-                            onValueChange = { idade = it.take(20) },
-                            textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp),
-                            cursorBrush = SolidColor(RoxoPrimario),
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                            decorationBox = { inner ->
-                                if (idade.isEmpty()) Text("Ex: 28", color = TextoMudo, fontSize = 13.sp)
-                                inner()
-                            }
-                        )
-                    }
-                }
-            }
-
-            // 3. PERSONALIDADE * (Requisito 1: apenas Personalidade, sem História)
+            // 3. Gênero (Chips: Masculino, Feminino, Não binário - Imagem 4)
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row {
-                    Text("Personalidade", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
-                    Text(" *", color = Color(0xFFFF5252), fontSize = 13.sp)
-                }
-                Surface(
-                    color = CardObsidian,
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, CardObsidianBorda),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .defaultMinSize(minHeight = 72.dp)
-                ) {
-                    BasicTextField(
-                        value = descricao,
-                        onValueChange = { descricao = it.take(800) },
-                        textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp, lineHeight = 18.sp),
-                        cursorBrush = SolidColor(RoxoPrimario),
-                        modifier = Modifier.padding(12.dp),
-                        decorationBox = { inner ->
-                            if (descricao.isEmpty()) {
-                                Text(
-                                    "Ex: Extrovertido, tímido, carinhoso, impulsivo, sarcástico, focado...",
-                                    color = TextoMudo,
-                                    fontSize = 12.sp,
-                                    lineHeight = 16.sp
-                                )
-                            }
-                            inner()
+                Text("Gênero", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    generos.forEach { g ->
+                        val sel = g.equals(genero, ignoreCase = true)
+                        Surface(
+                            color = if (sel) Color(0xFF262A3C) else CardObsidian,
+                            shape = RoundedCornerShape(50),
+                            border = BorderStroke(
+                                1.dp,
+                                if (sel) AmareloDestaque else CardObsidianBorda
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { onGeneroChange(g) }
+                        ) {
+                            Text(
+                                g,
+                                color = if (sel) AmareloDestaque else TextoSecundario,
+                                fontSize = 12.sp,
+                                fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
+                                modifier = Modifier.padding(vertical = 10.dp),
+                                textAlign = TextAlign.Center
+                            )
                         }
-                    )
-                }
-            }
-
-            // 4. Aparência Física
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Aparência Física", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
-                Surface(
-                    color = CardObsidian,
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, CardObsidianBorda),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .defaultMinSize(minHeight = 60.dp)
-                ) {
-                    BasicTextField(
-                        value = aparencia,
-                        onValueChange = { aparencia = it.take(500) },
-                        textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp, lineHeight = 18.sp),
-                        cursorBrush = SolidColor(RoxoPrimario),
-                        modifier = Modifier.padding(12.dp),
-                        decorationBox = { inner ->
-                            if (aparencia.isEmpty()) {
-                                Text(
-                                    "Cabelos, olhos, traços faciais, roupas que costuma vestir...",
-                                    color = TextoMudo,
-                                    fontSize = 12.sp
-                                )
-                            }
-                            inner()
-                        }
-                    )
-                }
-            }
-
-            // 5. Interesses & Aversões
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Interesses", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
-                    Surface(
-                        color = CardObsidian,
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, CardObsidianBorda),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        BasicTextField(
-                            value = interesses,
-                            onValueChange = { interesses = it.take(300) },
-                            textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp),
-                            cursorBrush = SolidColor(RoxoPrimario),
-                            modifier = Modifier.padding(12.dp),
-                            decorationBox = { inner ->
-                                if (interesses.isEmpty()) Text("Música, viagens...", color = TextoMudo, fontSize = 12.sp)
-                                inner()
-                            }
-                        )
-                    }
-                }
-
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Aversões / Medos", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
-                    Surface(
-                        color = CardObsidian,
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, CardObsidianBorda),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        BasicTextField(
-                            value = aversoes,
-                            onValueChange = { aversoes = it.take(300) },
-                            textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp),
-                            cursorBrush = SolidColor(RoxoPrimario),
-                            modifier = Modifier.padding(12.dp),
-                            decorationBox = { inner ->
-                                if (aversoes.isEmpty()) Text("Mentiras, altura...", color = TextoMudo, fontSize = 12.sp)
-                                inner()
-                            }
-                        )
                     }
                 }
             }
 
-            // 6. DETALHES DA IMAGEM (Requisito 2: o que deve aparecer na imagem)
+            // 4. Campo de descrição do que deve aparecer na imagem (Imagem 4)
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    "O que deve aparecer na imagem (IA)",
+                    "Conteúdo visual da imagem",
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 13.sp,
                     color = TextoClaro
@@ -908,20 +880,21 @@ private fun FormularioPersona(
                     border = BorderStroke(1.dp, CardObsidianBorda),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .defaultMinSize(minHeight = 56.dp)
+                        .defaultMinSize(minHeight = 84.dp)
                 ) {
                     BasicTextField(
                         value = detalhesImagem,
-                        onValueChange = { detalhesImagem = it.take(500) },
+                        onValueChange = onDetalhesImagemChange,
                         textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp, lineHeight = 18.sp),
-                        cursorBrush = SolidColor(RoxoPrimario),
+                        cursorBrush = SolidColor(AmareloDestaque),
                         modifier = Modifier.padding(12.dp),
                         decorationBox = { inner ->
                             if (detalhesImagem.isEmpty()) {
                                 Text(
-                                    "Ex: Pose sorrindo, segurando uma xícara, iluminação suave, fundo aconchegante...",
+                                    "(Opcional) Conte o que deve aparecer na imagem: rosto, corpo, poses, expressões, roupa, fundo, etc.",
                                     color = TextoMudo,
-                                    fontSize = 12.sp
+                                    fontSize = 12.sp,
+                                    lineHeight = 17.sp
                                 )
                             }
                             inner()
@@ -930,114 +903,95 @@ private fun FormularioPersona(
                 }
             }
 
-            // 7. ESTILO DA IMAGEM COM PRÉVIA VISUAL REAL
-            var estiloParaAmpliar by remember { mutableStateOf<EstiloImagemInfo?>(null) }
-            if (estiloParaAmpliar != null) {
-                Dialog(onDismissRequest = { estiloParaAmpliar = null }) {
-                    Surface(
-                        color = CardObsidian,
-                        shape = RoundedCornerShape(20.dp),
-                        border = BorderStroke(1.dp, CardObsidianBorda),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
+            // 5. Seletor de Tags (Imagem 3 & 4)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Tags", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
+                    Text("${tags.size}/5", color = AmareloDestaque, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+
+                Surface(
+                    color = CardObsidian,
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, CardObsidianBorda),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onAbrirTags() }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            PreviaEstiloImagem(
-                                estiloId = estiloParaAmpliar!!.id,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(260.dp),
-                                recorte = RoundedCornerShape(14.dp)
-                            )
-                            Spacer(Modifier.height(12.dp))
-                            Text(
-                                "${estiloParaAmpliar!!.icone} ${estiloParaAmpliar!!.nome}",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,
-                                color = TextoClaro
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                estiloParaAmpliar!!.descricao,
-                                color = TextoSecundario,
-                                fontSize = 12.sp,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                            Spacer(Modifier.height(14.dp))
-                            Button(
-                                onClick = {
-                                    estiloImagem = estiloParaAmpliar!!.id
-                                    estiloParaAmpliar = null
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = RoxoPrimario),
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.fillMaxWidth()
+                        Text(
+                            if (tags.isEmpty()) "Adicionar tags de personalidade e aparência..."
+                            else "Editar tags selecionadas (${tags.size}/5)",
+                            color = if (tags.isEmpty()) TextoMudo else TextoClaro,
+                            fontSize = 13.sp
+                        )
+                        Icon(Icons.Default.Add, contentDescription = null, tint = AmareloDestaque)
+                    }
+                }
+
+                if (tags.isNotEmpty()) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        tags.forEach { tag ->
+                            Surface(
+                                color = AmareloDestaque.copy(alpha = 0.12f),
+                                shape = RoundedCornerShape(50),
+                                border = BorderStroke(1.dp, AmareloDestaque.copy(alpha = 0.4f))
                             ) {
-                                Text("Selecionar este Estilo", color = Color.White, fontWeight = FontWeight.Bold)
+                                Text(
+                                    tag,
+                                    color = AmareloDestaque,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
                             }
                         }
                     }
                 }
             }
 
+            // 6. Estilo de imagem (Imagem 4)
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Estilo de imagem", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text(
-                        "Estilo Visual da Imagem",
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 13.sp,
-                        color = TextoClaro
-                    )
-                    Text("Toque na imagem para ampliar", color = TextoMudo, fontSize = 11.sp)
-                }
-
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     ESTILOS_IMAGEM_PERSONA.forEach { estilo ->
                         val sel = estilo.id == estiloImagem
-                        val pressInteraction = remember { MutableInteractionSource() }
-                        val isPressed by pressInteraction.collectIsPressedAsState()
-                        val styleScale by animateFloatAsState(
-                            targetValue = if (isPressed) 0.97f else if (sel) 1.02f else 1f,
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-                            label = "styleScale"
-                        )
-
                         Surface(
-                            color = if (sel) Color(0xFF1E1738) else Color(0xFF131522),
-                            shape = RoundedCornerShape(16.dp),
-                            shadowElevation = if (sel) 8.dp else 2.dp,
+                            color = if (sel) Color(0xFF262A3C) else CardObsidian,
+                            shape = RoundedCornerShape(14.dp),
                             border = BorderStroke(
-                                if (sel) 1.5.dp else 1.dp,
-                                if (sel) Brush.horizontalGradient(listOf(Color(0xFF7C4DFF), Color(0xFF00E5FF)))
-                                else SolidColor(CardObsidianBorda)
+                                if (sel) 1.8.dp else 1.dp,
+                                if (sel) AmareloDestaque else CardObsidianBorda
                             ),
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .scale(styleScale)
-                                .clickable(
-                                    interactionSource = pressInteraction,
-                                    indication = null
-                                ) { 
-                                    estiloImagem = estilo.id 
-                                    mostrarExemploEstilo = true
-                                }
+                                .width(110.dp)
+                                .clickable { onEstiloImagemChange(estilo.id) }
                         ) {
-                            Row(
-                                modifier = Modifier.padding(10.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                            Column(
+                                modifier = Modifier.padding(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(60.dp)
-                                        .clickable { estiloParaAmpliar = estilo }
+                                        .size(76.dp)
+                                        .clip(RoundedCornerShape(10.dp))
                                 ) {
                                     PreviaEstiloImagem(
                                         estiloId = estilo.id,
@@ -1045,107 +999,536 @@ private fun FormularioPersona(
                                         recorte = RoundedCornerShape(10.dp)
                                     )
                                 }
-                                Spacer(Modifier.width(12.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(estilo.icone, fontSize = 14.sp)
-                                        Spacer(Modifier.width(4.dp))
-                                        Text(
-                                            estilo.nome,
-                                            fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
-                                            fontSize = 13.sp,
-                                            color = if (sel) Color.White else TextoClaro
-                                        )
-                                    }
-                                    Spacer(Modifier.height(2.dp))
-                                    Text(
-                                        estilo.descricao,
-                                        fontSize = 11.sp,
-                                        color = TextoSecundario,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                                if (sel) {
-                                    Icon(Icons.Default.Check, contentDescription = null, tint = RoxoPrimario, modifier = Modifier.size(20.dp))
-                                }
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    estilo.nome,
+                                    color = if (sel) AmareloDestaque else TextoClaro,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
                         }
                     }
                 }
             }
 
-            // 8. Definir como Padrão Switch
-            Surface(
-                color = CardObsidian,
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, CardObsidianBorda),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Persona Padrão", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
-                        Text(
-                            "Usar esta persona em todas as conversas do Bot automaticamente",
-                            fontSize = 11.sp,
-                            color = TextoSecundario
-                        )
-                    }
-                    Switch(
-                        checked = padrao,
-                        onCheckedChange = { padrao = it },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = OuroAmbar
-                        )
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(16.dp))
         }
 
-        // Botão Salvar
-        Box(modifier = Modifier.padding(16.dp)) {
+        // Rodapé com Botão "Gerar" e Link "Já tenho uma imagem" (Imagem 4)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
             Button(
                 onClick = {
-                    if (nome.isBlank()) {
-                        Toast.makeText(contexto, "Digite ao menos o nome da Persona!", Toast.LENGTH_SHORT).show()
-                        return@Button
-                    }
-                    val listaTags = if (tags.isNotBlank()) tags.split(",").map { it.trim() }.filter { it.isNotEmpty() } else emptyList()
-                    val pIn = PersonaIn(
-                        nome = nome,
+                    val req = PersonaRetratoRequest(
+                        nome = nome.ifBlank { "Viajante" },
                         genero = genero,
                         aparencia = aparencia,
-                        personalidade = descricao,
                         descricao = descricao,
-                        idade = idade,
-                        interesses = interesses,
-                        medos = aversoes,
-                        aversoes = aversoes,
-                        tags = listaTags,
+                        tags = tags,
                         estiloImagem = estiloImagem,
-                        detalhesImagem = detalhesImagem,
-                        padrao = padrao
+                        detalhesImagem = detalhesImagem
                     )
-                    vm.salvarPersona(personaExistente?.id, pIn) {
-                        Toast.makeText(contexto, "Persona '${nome}' salva com sucesso!", Toast.LENGTH_SHORT).show()
-                        onSalvo()
-                    }
+                    onIniciarGeracaoCandidatos(req)
                 },
                 enabled = !vm.ocupado,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = RoxoPrimario),
+                    .height(52.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AmareloDestaque,
+                    contentColor = Color(0xFF141414)
+                ),
                 shape = RoundedCornerShape(14.dp)
             ) {
-                Text("Salvar Persona", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(
+                    "Gerar",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = Color(0xFF141414)
+                )
+            }
+
+            Text(
+                "Já tenho uma imagem. Enviar",
+                color = TextoSecundario,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier
+                    .clickable { launcherGaleriaPronta.launch("image/*") }
+                    .padding(vertical = 4.dp)
+            )
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// TELA 3: MODAL DE TAGS (Conforme Imagem 3)
+// ---------------------------------------------------------------------------
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ModalSelecaoTagsPersona(
+    tagsAtuais: List<String>,
+    onConfirmar: (List<String>) -> Unit,
+    onCancelar: () -> Unit
+) {
+    val contexto = LocalContext.current
+    val selecionadas = remember { mutableStateListOf<String>().apply { addAll(tagsAtuais) } }
+
+    Dialog(
+        onDismissRequest = onCancelar,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            color = Color(0xFF11131E),
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.dp, CardObsidianBorda),
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .padding(vertical = 24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                // Header (Imagem 3)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Tags",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = TextoClaro
+                    )
+                    Text(
+                        "${selecionadas.size}/5",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = if (selecionadas.size == 5) AmareloDestaque else TextoMudo
+                    )
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                // Categorias de Chips
+                TAGS_DISPONIVEIS_CATEGORIZADAS.forEach { (categoria, listaTags) ->
+                    Text(
+                        categoria,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp,
+                        color = TextoSecundario,
+                        modifier = Modifier.padding(top = 10.dp, bottom = 6.dp)
+                    )
+
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listaTags.forEach { tag ->
+                            val estaSelecionada = selecionadas.contains(tag)
+                            Surface(
+                                color = if (estaSelecionada) AmareloDestaque.copy(alpha = 0.20f) else Color(0xFF1B1E2E),
+                                shape = RoundedCornerShape(50),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (estaSelecionada) AmareloDestaque else Color(0xFF2B2F44)
+                                ),
+                                modifier = Modifier.clickable {
+                                    if (estaSelecionada) {
+                                        selecionadas.remove(tag)
+                                    } else {
+                                        if (selecionadas.size < 5) {
+                                            selecionadas.add(tag)
+                                        } else {
+                                            Toast.makeText(contexto, "Você pode escolher no máximo 5 tags!", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                            ) {
+                                Text(
+                                    tag,
+                                    color = if (estaSelecionada) AmareloDestaque else TextoClaro,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (estaSelecionada) FontWeight.Bold else FontWeight.Normal,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(20.dp))
+
+                // Botões Cancelar e Confirmar (Imagem 3)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onCancelar,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(46.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, CardObsidianBorda)
+                    ) {
+                        Text("Cancelar", color = TextoSecundario)
+                    }
+
+                    Button(
+                        onClick = { onConfirmar(selecionadas.toList()) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(46.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = AmareloDestaque,
+                            contentColor = Color(0xFF141414)
+                        )
+                    ) {
+                        Text("Confirmar", fontWeight = FontWeight.Bold, color = Color(0xFF141414))
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// TELA 4: SELECIONAR IMAGEM COM 4 CANDIDATOS (Conforme Imagens 2 & 5)
+// ---------------------------------------------------------------------------
+@Composable
+private fun TelaSelecionarImagem(
+    vm: AppViewModel,
+    personaExistente: PersonaResponse?,
+    nome: String,
+    genero: String,
+    descricao: String,
+    aparencia: String,
+    detalhesImagem: String,
+    estiloImagem: String,
+    tags: List<String>,
+    padrao: Boolean,
+    onVoltar: () -> Unit,
+    onImagemEscolhida: () -> Unit
+) {
+    val contexto = LocalContext.current
+    var indiceSelecionado by remember { mutableStateOf<Int?>(null) }
+
+    // Simulação de progresso 0% a 100% enquanto gera
+    var progressoSimulado by remember { mutableIntStateOf(0) }
+    LaunchedEffect(vm.gerandoCandidatos) {
+        if (vm.gerandoCandidatos) {
+            progressoSimulado = 12
+            while (vm.gerandoCandidatos && progressoSimulado < 95) {
+                delay(250)
+                progressoSimulado += (5..15).random()
+                if (progressoSimulado > 95) progressoSimulado = 95
+            }
+        } else {
+            progressoSimulado = 100
+        }
+    }
+
+    val requestAtual = remember(nome, genero, descricao, aparencia, detalhesImagem, estiloImagem, tags) {
+        PersonaRetratoRequest(
+            nome = nome.ifBlank { "Viajante" },
+            genero = genero,
+            aparencia = aparencia,
+            descricao = descricao,
+            tags = tags,
+            estiloImagem = estiloImagem,
+            detalhesImagem = detalhesImagem
+        )
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Barra Superior: < Selecionar imagem [X]
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onVoltar) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar", tint = TextoClaro)
+            }
+            Text(
+                "Selecionar imagem",
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                color = TextoClaro,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = onVoltar) {
+                Icon(Icons.Default.Close, contentDescription = "Fechar", tint = TextoClaro)
+            }
+        }
+
+        // Grade 2x2 de Candidatos (Imagens 2 e 5)
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.Center
+        ) {
+            for (linha in 0..1) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    for (coluna in 0..1) {
+                        val indice = linha * 2 + coluna
+                        val candidato = vm.candidatosRetrato.getOrNull(indice)
+                        val ehSelecionado = (indiceSelecionado == indice)
+
+                        CardCandidatoQuadrado(
+                            candidato = candidato,
+                            indice = indice,
+                            loteId = vm.loteCandidatosId,
+                            carregando = vm.gerandoCandidatos,
+                            progresso = progressoSimulado,
+                            ehSelecionado = ehSelecionado,
+                            onSelecionar = {
+                                if (!vm.gerandoCandidatos) {
+                                    indiceSelecionado = indice
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .aspectRatio(0.78f)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Rodapé com "Gerar novamente" e "Escolher" (Imagens 2 e 5)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Botão "Gerar novamente" com ícone de refresh
+            OutlinedButton(
+                onClick = {
+                    indiceSelecionado = null
+                    vm.gerarCandidatosRetrato(
+                        req = requestAtual,
+                        onSucesso = {},
+                        onError = { Toast.makeText(contexto, it, Toast.LENGTH_SHORT).show() }
+                    )
+                },
+                enabled = !vm.gerandoCandidatos && !vm.ocupado,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.dp, CardObsidianBorda),
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = CardObsidian)
+            ) {
+                Icon(Icons.Default.Refresh, contentDescription = null, tint = TextoClaro, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Gerar novamente", color = TextoClaro, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            }
+
+            // Botão "Escolher" Amarelo
+            Button(
+                onClick = {
+                    val idx = indiceSelecionado
+                    if (idx == null) {
+                        Toast.makeText(contexto, "Toque em uma das 4 imagens para selecionar!", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                    val loteId = vm.loteCandidatosId
+                    if (loteId.isBlank()) {
+                        Toast.makeText(contexto, "Aguarde as imagens carregarem...", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+
+                    if (personaExistente != null && personaExistente.id > 0) {
+                        // Atualiza persona existente
+                        vm.confirmarCandidatoEscolhido(
+                            personaId = personaExistente.id,
+                            loteId = loteId,
+                            indice = idx,
+                            onSucesso = {
+                                Toast.makeText(contexto, "Imagem da persona definida!", Toast.LENGTH_SHORT).show()
+                                onImagemEscolhida()
+                            },
+                            onError = { err ->
+                                Toast.makeText(contexto, err, Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    } else {
+                        // Salva persona nova e depois confirma imagem
+                        val pIn = PersonaIn(
+                            nome = nome.ifBlank { "Viajante" },
+                            genero = genero,
+                            aparencia = aparencia,
+                            personalidade = descricao,
+                            descricao = descricao,
+                            tags = tags,
+                            estiloImagem = estiloImagem,
+                            detalhesImagem = detalhesImagem,
+                            padrao = padrao || vm.personas.isEmpty()
+                        )
+                        vm.salvarPersona(null, pIn) { salva ->
+                            vm.confirmarCandidatoEscolhido(
+                                personaId = salva.id,
+                                loteId = loteId,
+                                indice = idx,
+                                onSucesso = {
+                                    Toast.makeText(contexto, "Persona criada com sucesso!", Toast.LENGTH_SHORT).show()
+                                    onImagemEscolhida()
+                                },
+                                onError = { err ->
+                                    Toast.makeText(contexto, err, Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        }
+                    }
+                },
+                enabled = indiceSelecionado != null && !vm.gerandoCandidatos && !vm.ocupado,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AmareloDestaque,
+                    contentColor = Color(0xFF141414),
+                    disabledContainerColor = AmareloDestaque.copy(alpha = 0.35f),
+                    disabledContentColor = Color(0xFF141414).copy(alpha = 0.5f)
+                )
+            ) {
+                Text("Escolher", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF141414))
+            }
+        }
+    }
+}
+
+// Cada quadrado da grade 2x2
+@Composable
+private fun CardCandidatoQuadrado(
+    candidato: CandidatoRetratoDto?,
+    indice: Int,
+    loteId: String,
+    carregando: Boolean,
+    progresso: Int,
+    ehSelecionado: Boolean,
+    onSelecionar: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val base = remember { ApiClient.baseUrlAtual() }
+    val imageUrl = remember(candidato, loteId) {
+        if (candidato == null) null
+        else if (base != null) "${base}conta/persona/candidatos/$loteId/${candidato.indice}"
+        else candidato.urlDireta
+    }
+
+    Surface(
+        color = CardObsidian,
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(
+            width = if (ehSelecionado) 2.5.dp else 1.dp,
+            color = if (ehSelecionado) AmareloDestaque else CardObsidianBorda
+        ),
+        modifier = modifier.clickable { onSelecionar() }
+    ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            if (carregando || candidato == null || imageUrl == null) {
+                // Estado de carregamento com porcentagem (Imagem 2)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(36.dp),
+                        color = AmareloDestaque,
+                        strokeWidth = 3.dp
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "$progresso%",
+                        color = AmareloDestaque,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                }
+            } else {
+                // Imagem gerada (Imagem 5)
+                val cabecalho = remember { ApiClient.cabecalhoAutorizacao() }
+                SubcomposeAsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(imageUrl)
+                        .apply { if (cabecalho != null) addHeader("Authorization", cabecalho) }
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Variação ${indice + 1}",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                    loading = {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().background(CardObsidian)) {
+                            CircularProgressIndicator(modifier = Modifier.size(32.dp), color = AmareloDestaque, strokeWidth = 2.5.dp)
+                        }
+                    },
+                    error = {
+                        // Tenta fallback com URL direta
+                        SubcomposeAsyncImage(
+                            model = candidato.urlDireta,
+                            contentDescription = "Variação fallback",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                            loading = {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().background(CardObsidian)) {
+                                    CircularProgressIndicator(modifier = Modifier.size(32.dp), color = AmareloDestaque, strokeWidth = 2.5.dp)
+                                }
+                            },
+                            error = {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().background(Color(0xFF1E2132))) {
+                                    Text("Erro", color = TextoMudo, fontSize = 12.sp)
+                                }
+                            }
+                        )
+                    }
+                )
+
+                // Indicador de seleção no canto superior direito (Imagem 5)
+                if (ehSelecionado) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(8.dp),
+                        contentAlignment = Alignment.TopEnd
+                    ) {
+                        Surface(
+                            color = AmareloDestaque,
+                            shape = CircleShape,
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF141414), modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
+                }
             }
         }
     }

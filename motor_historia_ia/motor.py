@@ -1462,6 +1462,36 @@ DICIONARIO_PT_EN = [
     (r"\bcolar\b", "necklace pendant"),
     (r"\bchapeu\b", "wearing hat"),
     (r"\blenco\b", "neck scarf"),
+    # Estilo & Roupa Geral
+    (r"\belegante\b", "refined classy fashionable attire, sophisticated style"),
+    (r"\bcasual\b", "comfortable modern casual streetwear"),
+    (r"\bformal\b", "sharp elegant formal wear"),
+    # Expressão, Vibe e Personalidade
+    (r"\bgentil\b", "gentle warm smile, approachable kind facial expression"),
+    (r"\breservado\b", "reserved calm expression, thoughtful quiet gaze"),
+    (r"\bserio\b", "serious composed expression, determined gaze"),
+    (r"\bmisterioso\b", "mysterious enigmatic aura, intense captivating eyes"),
+    (r"\bextrovertido\b", "radiant cheerful smile, charismatic lively presence"),
+    (r"\bconfiante\b", "confident self-assured poise, charismatic gaze"),
+    (r"\bsarcastico\b", "subtle playful smirk, witty observant expression"),
+    (r"\bromantico\b", "dreamy romantic expression, tender gentle eyes"),
+    (r"\bcorajoso\b", "brave resolute determined expression, heroic aura"),
+    (r"\bcalmo\b", "serene peaceful face, tranquil aura"),
+    (r"\binteligente\b", "intellectual observant look, sharp piercing eyes"),
+    (r"\bprotetor\b", "protective steadfast demeanor, strong reliable presence"),
+    (r"\bcurioso\b", "curious inquisitive expression, bright engaged eyes"),
+    (r"\bsensivel\b", "empathetic tender gaze, delicate expressive facial features"),
+    (r"\blider\b", "commanding noble posture, natural leader presence"),
+    # Papel & Arquétipo
+    (r"\bguerreiro\b", "warrior aesthetic, combat ready posture"),
+    (r"\bmago\b", "mystic mage aesthetic, subtle arcane vibe"),
+    (r"\bestudante\b", "stylish student aesthetic, academic attire"),
+    (r"\bdetetive\b", "sharp detective aesthetic, classic investigator coat"),
+    (r"\bartista\b", "bohemian creative artist vibe"),
+    (r"\bviajante\b", "adventurous traveler outfit, wanderer spirit"),
+    (r"\bnobre\b", "regal aristocratic elegance, opulent noble details"),
+    (r"\brebelde\b", "edgy rebel style, leather and defiance"),
+    (r"\bcientista\b", "clean modern scientist aesthetic"),
 ]
 
 
@@ -1499,7 +1529,12 @@ def prompt_retrato_en(estado):
             tags_en.append(f"age {idade}")
 
     # Extrai tags visuais dos campos da persona
-    texto_total = f"{ficha.get('aparencia', '')} {ficha.get('detalhes_imagem', '')} {ficha.get('personalidade', '')} {ficha.get('descricao', '')} {ficha.get('interesses', '')}"
+    tags_persona = ficha.get("tags") or []
+    if isinstance(tags_persona, list):
+        tags_persona_str = " ".join(tags_persona)
+    else:
+        tags_persona_str = str(tags_persona)
+    texto_total = f"{ficha.get('aparencia', '')} {ficha.get('detalhes_imagem', '')} {ficha.get('personalidade', '')} {ficha.get('descricao', '')} {ficha.get('interesses', '')} {tags_persona_str}"
     tags_visuais = extrair_tags_visuais_en(texto_total)
     tags_en.extend(tags_visuais)
 

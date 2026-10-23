@@ -133,6 +133,18 @@ interface LivennIAApi {
     @POST("personas/{id}/retrato")
     suspend fun gerarRetratoPersonaId(@Path("id") id: Int, @Body dados: PersonaRetratoRequest): RetratoResponse
 
+    @POST("conta/persona/candidatos")
+    suspend fun gerarCandidatosPersona(@Body dados: PersonaRetratoRequest): CandidatosRetratoResponse
+
+    @POST("personas/{id}/confirmar-candidato")
+    suspend fun confirmarCandidatoPersona(@Path("id") id: Int, @Body req: ConfirmarCandidatoRequest): RetratoResponse
+
+    @POST("personas/{id}/upload-retrato")
+    suspend fun uploadRetratoPersona(@Path("id") id: Int, @Body req: UploadRetratoRequest): RetratoResponse
+
+    @POST("jogos/{id}/persona")
+    suspend fun trocarPersonaJogo(@Path("id") id: String, @Body req: TrocarPersonaJogoRequest): JogoResponse
+
     @POST("conta/persona/retrato")
     suspend fun gerarRetratoPersona(@Body dados: PersonaRetratoRequest): RetratoResponse
 

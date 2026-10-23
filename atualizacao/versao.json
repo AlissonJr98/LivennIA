@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 23,
-  "versaoNome": "1.6.2",
-  "notas": "Atualização visual e social: tela de prévia completa da história com comentários reais, likes, edição e exclusão de comentários pelo próprio autor; tela de perfil do criador com grid de criações, botão de seguir, opções de denunciar perfil e bloquear; atualização em tempo real do modelo e temperatura escolhidos no chat; e fundo do chat imersivo personalizado com base no personagem.",
+  "versaoCodigo": 24,
+  "versaoNome": "1.6.3",
+  "notas": "Novo seletor de persona no chat: toque no perfil/nome para abrir o modal de personas e alternar para a persona desejada. Nova tela de criação de persona completa com seleção de gênero, tags categorizadas (aparência e personalidade, até 5 tags), descrição detalhada e geração concorrente de 4 variações de imagem por IA em grade 2x2 com escolha visual.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

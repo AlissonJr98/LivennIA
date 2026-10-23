@@ -231,6 +231,11 @@ def _migrar_colunas(c):
         c.execute("ALTER TABLE jogadores ADD COLUMN email TEXT")
         logging.info("Banco atualizado: coluna jogadores.email criada.")
 
+    colunas_personas = {linha["name"] for linha in c.execute("PRAGMA table_info(personas)")}
+    if "tags" not in colunas_personas:
+        c.execute("ALTER TABLE personas ADD COLUMN tags TEXT DEFAULT ''")
+        logging.info("Banco atualizado: coluna personas.tags criada.")
+
 
 # ---------------------------------------------------------------
 # Jogadores e convites
@@ -593,9 +598,28 @@ def marcar_denuncia_revisada(denuncia_id):
 # ---------------------------------------------------------------
 # Gestão de Múltiplas Personas
 # ---------------------------------------------------------------
+def _deserializar_persona(linha):
+    if not linha:
+        return None
+    d = dict(linha)
+    tags_raw = d.get("tags") or ""
+    if isinstance(tags_raw, str) and tags_raw.startswith("["):
+        try:
+            d["tags"] = json.loads(tags_raw)
+        except Exception:
+            d["tags"] = []
+    elif isinstance(tags_raw, str) and tags_raw.strip():
+        d["tags"] = [t.strip() for t in tags_raw.split(",") if t.strip()]
+    elif isinstance(tags_raw, list):
+        d["tags"] = tags_raw
+    else:
+        d["tags"] = []
+    return d
+
+
 def listar_personas(jogador_id):
     with conexao() as c:
-        return [dict(l) for l in c.execute(
+        return [_deserializar_persona(l) for l in c.execute(
             "SELECT * FROM personas WHERE jogador_id = ? ORDER BY padrao DESC, id ASC",
             (jogador_id,)
         ).fetchall()]
@@ -607,7 +631,7 @@ def obter_persona(jogador_id, persona_id):
             "SELECT * FROM personas WHERE jogador_id = ? AND id = ?",
             (jogador_id, persona_id)
         ).fetchone()
-        return dict(linha) if linha else None
+        return _deserializar_persona(linha) if linha else None
 
 
 def obter_persona_padrao(jogador_id):
@@ -616,7 +640,7 @@ def obter_persona_padrao(jogador_id):
             "SELECT * FROM personas WHERE jogador_id = ? ORDER BY padrao DESC, id ASC LIMIT 1",
             (jogador_id,)
         ).fetchone()
-        return dict(linha) if linha else None
+        return _deserializar_persona(linha) if linha else None
 
 
 def salvar_persona(jogador_id, dados, persona_id=None):
@@ -637,14 +661,17 @@ def salvar_persona(jogador_id, dados, persona_id=None):
             c.execute("UPDATE personas SET padrao = 0 WHERE jogador_id = ?", (jogador_id,))
 
         ag = agora()
+        tags_dado = dados.get("tags") or []
+        tags_str = json.dumps(tags_dado, ensure_ascii=False) if isinstance(tags_dado, list) else str(tags_dado)
+
         if persona_id is None:
             cursor = c.execute(
                 """
                 INSERT INTO personas (
                     jogador_id, nome, genero, idade, personalidade, interesses,
-                    aparencia, medos, detalhes_imagem, estilo_imagem, avatar_emoji,
+                    aparencia, medos, tags, detalhes_imagem, estilo_imagem, avatar_emoji,
                     retrato_versao, padrao, criado_em, atualizado_em
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
                 """,
                 (
                     jogador_id,
@@ -655,6 +682,7 @@ def salvar_persona(jogador_id, dados, persona_id=None):
                     (dados.get("interesses") or "").strip(),
                     (dados.get("aparencia") or "").strip(),
                     (dados.get("medos") or dados.get("aversoes") or "").strip(),
+                    tags_str,
                     (dados.get("detalhes_imagem") or "").strip(),
                     dados.get("estilo_imagem") or "semi_realistic",
                     dados.get("avatar_emoji") or "👤",
@@ -668,7 +696,7 @@ def salvar_persona(jogador_id, dados, persona_id=None):
                 """
                 UPDATE personas SET
                     nome = ?, genero = ?, idade = ?, personalidade = ?, interesses = ?,
-                    aparencia = ?, medos = ?, detalhes_imagem = ?, estilo_imagem = ?, avatar_emoji = ?,
+                    aparencia = ?, medos = ?, tags = ?, detalhes_imagem = ?, estilo_imagem = ?, avatar_emoji = ?,
                     padrao = ?, atualizado_em = ?
                 WHERE jogador_id = ? AND id = ?
                 """,
@@ -680,6 +708,7 @@ def salvar_persona(jogador_id, dados, persona_id=None):
                     (dados.get("interesses") or "").strip(),
                     (dados.get("aparencia") or "").strip(),
                     (dados.get("medos") or dados.get("aversoes") or "").strip(),
+                    tags_str,
                     (dados.get("detalhes_imagem") or "").strip(),
                     dados.get("estilo_imagem") or "semi_realistic",
                     dados.get("avatar_emoji") or "👤",

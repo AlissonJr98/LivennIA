@@ -728,6 +728,7 @@ fun JogoTela(vm: AppViewModel) {
     if (mostrarPersonaModal) {
         ModalMinhaPersona(
             vm = vm,
+            jogoAtualId = jogo.jogoId,
             onFechar = { mostrarPersonaModal = false }
         )
     }
@@ -1044,7 +1045,8 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             style = MaterialTheme.typography.labelSmall,
                             color = TextoSuave,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.clickable { mostrarPersonaModal = true }
                         )
                     }
                     if (vm.gerandoRetrato) {
@@ -1131,6 +1133,30 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalAlignment = Alignment.End
                             ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.End,
+                                    modifier = Modifier
+                                        .padding(bottom = 3.dp, end = 4.dp)
+                                        .clickable { mostrarPersonaModal = true }
+                                ) {
+                                    Text(
+                                        text = vm.personaNome.ifBlank { vm.apelido.ifBlank { "Minha Persona" } },
+                                        color = Ouro.copy(alpha = 0.85f),
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    if (vm.personaTemRetrato) {
+                                        RetratoPersona(
+                                            temRetrato = true,
+                                            tamanho = 14,
+                                            versao = vm.personaRetratoVersao,
+                                            recorte = CircleShape
+                                        )
+                                    } else {
+                                        Text(vm.personaAvatar.ifBlank { "👤" }, fontSize = 11.sp)
+                                    }
+                                }
                                 Surface(
                                     color = Ouro.copy(alpha = 0.16f),
                                     shape = RoundedCornerShape(
@@ -1568,6 +1594,14 @@ private fun JogoModoHistoria(vm: AppViewModel) {
         onFecharDialogo = { dialogo = null },
         onFecharEdicao = { indiceEdicao = null }
     )
+
+    if (mostrarPersonaModal) {
+        ModalMinhaPersona(
+            vm = vm,
+            jogoAtualId = jogo.jogoId,
+            onFechar = { mostrarPersonaModal = false }
+        )
+    }
 
     SnackbarHost(hostState = snackbarHostState)
 }

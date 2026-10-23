@@ -1015,7 +1015,7 @@ fun ModalModoRapido(
                                 .horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            ESTILOS_IMAGEM_PERSONA.forEach { est ->
+                            for (est in ESTILOS_IMAGEM_PERSONA) {
                                 val sel = est.id == estiloImagem
                                 Surface(
                                     color = if (sel) RoxoPrimario.copy(alpha = 0.22f) else CardObsidian,
