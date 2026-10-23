@@ -776,9 +776,10 @@ fun WizardModoSpark(
                                 saves = 0,
                                 modoJogo = modoNarrativa
                             )
-                            RepositorioPersonagensComunidade.adicionar(novoCenario)
-                            onConcluido(novoCenario)
-                            Toast.makeText(contexto, "História '$finalNome' criada e publicada!", Toast.LENGTH_LONG).show()
+                            vm.publicarCenario(novoCenario) { cenarioSalvo ->
+                                onConcluido(cenarioSalvo)
+                                Toast.makeText(contexto, "História '$finalNome' criada e publicada!", Toast.LENGTH_LONG).show()
+                            }
                         }
                     },
                     modifier = Modifier
@@ -813,7 +814,7 @@ fun ModalModoRapido(
     val contexto = LocalContext.current
     var genero by remember { mutableStateOf("Feminino") }
     var descricaoVisual by remember { mutableStateOf("") }
-    var estiloImagem by remember { mutableStateOf("Anime") }
+    var estiloImagem by remember { mutableStateOf("semi_realistic") }
     var modoJogoEscolhido by remember { mutableStateOf("historia") }
     var nome by remember { mutableStateOf("") }
 
@@ -1066,9 +1067,10 @@ fun ModalModoRapido(
                                 saves = 0,
                                 modoJogo = modoJogoEscolhido
                             )
-                            RepositorioPersonagensComunidade.adicionar(novoCenario)
-                            onConcluido(novoCenario)
-                            Toast.makeText(contexto, "História '$finalNome' publicada com sucesso!", Toast.LENGTH_LONG).show()
+                            vm.publicarCenario(novoCenario) { cenarioSalvo ->
+                                onConcluido(cenarioSalvo)
+                                Toast.makeText(contexto, "História '$finalNome' publicada com sucesso!", Toast.LENGTH_LONG).show()
+                            }
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1301,9 +1303,10 @@ fun ModalModoManual(
                                 saves = 0,
                                 modoJogo = modoJogoEscolhido
                             )
-                            RepositorioPersonagensComunidade.adicionar(novoCenario)
-                            onConcluido(novoCenario)
-                            Toast.makeText(contexto, "Narrativa publicada com sucesso!", Toast.LENGTH_LONG).show()
+                            vm.publicarCenario(novoCenario) { cenarioSalvo ->
+                                onConcluido(cenarioSalvo)
+                                Toast.makeText(contexto, "Narrativa publicada com sucesso!", Toast.LENGTH_LONG).show()
+                            }
                         },
                         modifier = Modifier
                             .fillMaxWidth()

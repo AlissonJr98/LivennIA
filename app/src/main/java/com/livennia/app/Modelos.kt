@@ -119,6 +119,20 @@ data class CenarioDto(
     val tagsSeguras: List<String> get() = tags ?: emptyList()
 }
 
+data class NovoCenarioRequest(
+    val id: String? = null,
+    val nome: String,
+    val subtitulo: String? = "",
+    val emoji: String? = "🎭",
+    val genero: String? = "Aventura",
+    val tags: List<String> = emptyList(),
+    val sinopse: String? = "",
+    val abertura: String? = "",
+    @SerializedName("prompt_secreto") val promptSecreto: String? = "",
+    @SerializedName("estilo_imagem") val estiloImagem: String? = "semi_realistic",
+    @SerializedName("modo_jogo") val modoJogo: String? = "historia"
+)
+
 
 
 // Motores de IA LivennIA com custo em Livens e categoria.

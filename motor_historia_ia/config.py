@@ -33,6 +33,8 @@ FIREBASE_SERVICE_ACCOUNT = os.environ.get("FIREBASE_SERVICE_ACCOUNT")
 # Em produção (LIVENNIA_PRODUCAO=1) a página de testes /docs fica desligada.
 PRODUCAO = os.environ.get("LIVENNIA_PRODUCAO", "0") == "1"
 
+ADMINS = {"Alisson", "alisson", "Camila", "camila", "Mila", "mila", "334camila@gmail.com"}
+
 ARQUIVO_BANCO = os.environ.get(
     "LIVENNIA_BANCO", os.path.join(PASTA, "dados", "livennia.db")
 )
@@ -84,7 +86,7 @@ PROVEDORES_IMAGEM = [
 POLLINATIONS_URL = os.environ.get(
     "LIVENNIA_POLLINATIONS_URL", "https://image.pollinations.ai/prompt"
 )
-POLLINATIONS_MODELO = os.environ.get("LIVENNIA_POLLINATIONS_MODELO", "")
+POLLINATIONS_MODELO = os.environ.get("LIVENNIA_POLLINATIONS_MODELO", "flux")
 POLLINATIONS_LARGURA = _inteiro("LIVENNIA_POLLINATIONS_LARGURA", 768)
 POLLINATIONS_ALTURA = _inteiro("LIVENNIA_POLLINATIONS_ALTURA", 1024)
 TEMPO_LIMITE_BAIXO_IMAGEM_SEG = 60   # tempo máximo esperando um provedor grátis

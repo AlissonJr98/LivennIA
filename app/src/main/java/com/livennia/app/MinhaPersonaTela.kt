@@ -494,6 +494,13 @@ private fun FormularioPersona(
     var versaoRetratoLocal by remember(personaExistente) { mutableStateOf(personaExistente?.versaoRetrato ?: 0) }
     var personaIdLocal by remember(personaExistente) { mutableStateOf(personaExistente?.id) }
     var gerandoRetratoLocal by remember { mutableStateOf(false) }
+    var mostrarExemploEstilo by remember { mutableStateOf(!temRetratoLocal) }
+
+    LaunchedEffect(vm.ocupado) {
+        if (!vm.ocupado && gerandoRetratoLocal) {
+            gerandoRetratoLocal = false
+        }
+    }
 
     val generos = listOf("Feminino", "Masculino", "Outro")
 
@@ -557,7 +564,7 @@ private fun FormularioPersona(
                     modifier = Modifier.size(102.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (temRetratoLocal && personaIdLocal != null && personaIdLocal!! > 0) {
+                    if (!mostrarExemploEstilo && temRetratoLocal && personaIdLocal != null && personaIdLocal!! > 0) {
                         RetratoPersona(
                             temRetrato = true,
                             emojiOuPadrao = "👤",
@@ -593,14 +600,16 @@ private fun FormularioPersona(
                 Spacer(Modifier.height(4.dp))
 
                 Surface(
-                    color = if (temRetratoLocal) OuroAmbar.copy(alpha = 0.15f) else RoxoPrimario.copy(alpha = 0.15f),
+                    color = if (!mostrarExemploEstilo && temRetratoLocal) OuroAmbar.copy(alpha = 0.15f) else RoxoPrimario.copy(alpha = 0.15f),
                     shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, if (temRetratoLocal) OuroAmbar.copy(alpha = 0.4f) else RoxoPrimario.copy(alpha = 0.4f)),
-                    modifier = Modifier.padding(bottom = 6.dp)
+                    border = BorderStroke(1.dp, if (!mostrarExemploEstilo && temRetratoLocal) OuroAmbar.copy(alpha = 0.4f) else RoxoPrimario.copy(alpha = 0.4f)),
+                    modifier = Modifier.padding(bottom = 6.dp).clickable(enabled = temRetratoLocal) {
+                        mostrarExemploEstilo = !mostrarExemploEstilo
+                    }
                 ) {
                     Text(
-                        if (temRetratoLocal) "✓ Ilustração Gerada" else "Estilo selecionado: ${ESTILOS_IMAGEM_PERSONA.firstOrNull { it.id == estiloImagem }?.nome ?: estiloImagem}",
-                        color = if (temRetratoLocal) OuroAmbar else TextoSecundario,
+                        if (!mostrarExemploEstilo && temRetratoLocal) "✓ Meu Retrato (toque p/ estilo)" else "🎨 Estilo: ${ESTILOS_IMAGEM_PERSONA.firstOrNull { it.id == estiloImagem }?.nome ?: estiloImagem}",
+                        color = if (!mostrarExemploEstilo && temRetratoLocal) OuroAmbar else Color.White,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
@@ -1016,7 +1025,10 @@ private fun FormularioPersona(
                                 .clickable(
                                     interactionSource = pressInteraction,
                                     indication = null
-                                ) { estiloImagem = estilo.id }
+                                ) { 
+                                    estiloImagem = estilo.id 
+                                    mostrarExemploEstilo = true
+                                }
                         ) {
                             Row(
                                 modifier = Modifier.padding(10.dp),

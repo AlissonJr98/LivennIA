@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 21,
-  "versaoNome": "1.6.0",
-  "notas": "Perfil admin liberado para 334camila@gmail.com, seletor de conexão em 1 clique (Nuvem / 4G vs Wi-Fi Local), aceitação de códigos admin e convites flexíveis e correções para conectividade entre diferentes celulares.",
+  "versaoCodigo": 22,
+  "versaoNome": "1.6.1",
+  "notas": "Persistência completa de histórias e bots criados pela comunidade no catálogo, chat instantâneo sem travamentos com prólogo oficial do personagem, retratos de persona e estilos com IA Flux de alta fidelidade visual, e modelos com estilos de escrita distintos (Liven Flash rápido e direto vs Liven Prime/Infinity literário profundo).",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

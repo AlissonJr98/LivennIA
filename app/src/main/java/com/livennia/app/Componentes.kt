@@ -73,6 +73,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 
 @Composable
@@ -516,7 +517,7 @@ fun RetratoPersona(
     ) {
         if (url != null) {
             val cabecalho = remember { ApiClient.cabecalhoAutorizacao() }
-            AsyncImage(
+            SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(url)
                     .apply { if (cabecalho != null) addHeader("Authorization", cabecalho) }
@@ -524,10 +525,20 @@ fun RetratoPersona(
                     .build(),
                 contentDescription = "Retrato da Persona",
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                loading = {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().background(Color(0xFF161824))) {
+                        CircularProgressIndicator(modifier = Modifier.size((tamanho * 0.35).dp), strokeWidth = 2.dp, color = Color(0xFFF5C842))
+                    }
+                },
+                error = {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().background(Color(0xFF1E2235))) {
+                        Text(emojiOuPadrao.ifBlank { "👤" }, fontSize = (tamanho * 0.45).sp)
+                    }
+                }
             )
         } else {
-            Box(contentAlignment = Alignment.Center) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().background(Color(0xFF161824))) {
                 Text(emojiOuPadrao.ifBlank { "👤" }, fontSize = (tamanho * 0.45).sp)
             }
         }
@@ -552,17 +563,27 @@ fun PreviaEstiloImagem(
         modifier = modifier
     ) {
         if (url != null) {
-            AsyncImage(
+            SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(url)
                     .crossfade(true)
                     .build(),
                 contentDescription = "Exemplo do estilo $estiloId",
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                loading = {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().background(Color(0xFF1B1D2A))) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Color(0xFF8B5CF6))
+                    }
+                },
+                error = {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().background(Color(0xFF222638))) {
+                        Text("🎨", fontSize = 18.sp)
+                    }
+                }
             )
         } else {
-            Box(contentAlignment = Alignment.Center) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().background(Color(0xFF1B1D2A))) {
                 Text("🎨", fontSize = 16.sp)
             }
         }

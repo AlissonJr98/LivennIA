@@ -498,6 +498,21 @@ class CenarioOut(BaseModel):
     modoJogo: str = "historia"
 
 
+class NovoCenarioIn(BaseModel):
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
+    id: Optional[str] = None
+    nome: str
+    subtitulo: Optional[str] = ""
+    emoji: Optional[str] = "🎭"
+    genero: Optional[str] = "Aventura"
+    tags: list[str] = []
+    sinopse: Optional[str] = ""
+    abertura: Optional[str] = ""
+    prompt_secreto: Optional[str] = ""
+    estilo_imagem: Optional[str] = "semi_realistic"
+    modo_jogo: Optional[str] = "historia"
+
+
 class CerebroOut(BaseModel):
     id: str
     nome: str
@@ -742,12 +757,72 @@ def listar_generos():
 
 @app.get("/catalogo", response_model=list[CenarioOut])
 def listar_catalogo(jogador=Depends(jogador_atual)):
-    """A vitrine da aba Explorar: os cenários oficiais, sem os prompts secretos."""
+    """A vitrine da aba Explorar: cenários da comunidade + cenários oficiais."""
     itens = []
+    # 1. Cenários criados por usuários (mais recentes primeiro)
+    for c_user in banco.listar_cenarios_usuario():
+        itens.append(CenarioOut(
+            id=c_user["id"],
+            nome=c_user["nome"],
+            subtitulo=c_user.get("subtitulo") or "",
+            emoji=c_user.get("emoji") or "🎭",
+            genero=c_user.get("genero") or "Aventura",
+            tags=list(c_user.get("tags") or []),
+            sinopse=c_user.get("sinopse") or "",
+            abertura=c_user.get("abertura") or "",
+            capa=tem_capa(c_user["id"]),
+            criadoPorUsuario=True,
+            autorNome=c_user.get("autor_nome") or c_user.get("autorNome") or "Comunidade",
+            autorAvatar=c_user.get("autorAvatar") or c_user.get("emoji") or "🎭",
+            chats=int(c_user.get("chats") or 0),
+            saves=int(c_user.get("saves") or 0),
+            modoJogo=c_user.get("modo_jogo") or c_user.get("modoJogo") or "historia",
+        ))
+    # 2. Cenários oficiais do catálogo
     for item in catalogo.CENARIOS:
         publico = catalogo.cenario_publico(item)
         itens.append(CenarioOut(**publico, capa=tem_capa(item["id"])))
     return itens
+
+
+@app.post("/catalogo/cenarios", response_model=CenarioOut, status_code=201)
+def criar_cenario_comunidade(dados: NovoCenarioIn, jogador=Depends(jogador_atual)):
+    """Salva uma nova história/personagem criada por usuário no banco permanente."""
+    c_id = dados.id or f"cenario_{int(time.time()*1000)}"
+    autor_nome = jogador.get("apelido") or "Comunidade"
+    banco.salvar_cenario_usuario(
+        cenario_id=c_id,
+        autor_id=jogador["id"],
+        autor_nome=autor_nome,
+        nome=dados.nome,
+        subtitulo=dados.subtitulo or "",
+        emoji=dados.emoji or "🎭",
+        genero=dados.genero or "Aventura",
+        tags=dados.tags or [],
+        sinopse=dados.sinopse or "",
+        abertura=dados.abertura or "",
+        prompt_secreto=dados.prompt_secreto or "",
+        estilo_imagem=dados.estilo_imagem or "semi_realistic",
+        modo_jogo=dados.modo_jogo or "historia",
+    )
+    c_salvo = banco.obter_cenario_usuario(c_id)
+    return CenarioOut(
+        id=c_salvo["id"],
+        nome=c_salvo["nome"],
+        subtitulo=c_salvo.get("subtitulo") or "",
+        emoji=c_salvo.get("emoji") or "🎭",
+        genero=c_salvo.get("genero") or "Aventura",
+        tags=list(c_salvo.get("tags") or []),
+        sinopse=c_salvo.get("sinopse") or "",
+        abertura=c_salvo.get("abertura") or "",
+        capa=tem_capa(c_salvo["id"]),
+        criadoPorUsuario=True,
+        autorNome=c_salvo.get("autorNome") or autor_nome,
+        autorAvatar=c_salvo.get("autorAvatar") or c_salvo.get("emoji") or "🎭",
+        chats=int(c_salvo.get("chats") or 0),
+        saves=int(c_salvo.get("saves") or 0),
+        modoJogo=c_salvo.get("modoJogo") or "historia",
+    )
 
 
 @app.get("/cerebros", response_model=list[CerebroOut])
@@ -964,7 +1039,13 @@ def criar_jogo(dados: NovoJogoIn, jogador=Depends(jogador_atual)):
     """Cria um personagem e já joga o primeiro turno (conta como 1 jogada)."""
     exigir_ritmo(jogador["id"])
     with uma_jogada_por_vez(jogador["id"]):
-        eh_dono = bool(jogador.get("apelido") in config.ADMINS or jogador.get("email") in config.ADMINS or jogador.get("dono"))
+        eh_dono = bool(
+            jogador.get("dono")
+            or (jogador.get("apelido") or "").lower() in {"alisson", "camila", "mila"}
+            or (jogador.get("email") or "").lower() in {"334camila@gmail.com"}
+            or jogador.get("apelido") in config.ADMINS
+            or jogador.get("email") in config.ADMINS
+        )
         limite_jogos = 999999 if (eh_dono or jogador.get("premium")) else 20
         if banco.contar_jogos_ativos(jogador["id"]) >= limite_jogos:
             raise HTTPException(
@@ -1024,9 +1105,19 @@ def criar_jogo(dados: NovoJogoIn, jogador=Depends(jogador_atual)):
         if not persona:
             persona = banco.obter_persona_padrao(jogador["id"])
 
-        nome_usado = dados.nome_personagem
-        if persona and (not dados.nome_personagem or dados.nome_personagem == "Viajante"):
-            nome_usado = persona["nome"]
+        if item:
+            try:
+                banco.incrementar_chat_cenario_usuario(item["id"])
+            except Exception:
+                pass
+
+        if item and dados.modo == "historia":
+            # No Modo História, o Bot é o personagem do cenário!
+            nome_usado = item["nome"]
+        else:
+            nome_usado = dados.nome_personagem
+            if persona and (not dados.nome_personagem or dados.nome_personagem == "Viajante"):
+                nome_usado = persona["nome"]
 
         premissa = dados.premissa or (item["sinopse"] if item else None)
         estado = motor.novo_estado(
@@ -1039,12 +1130,36 @@ def criar_jogo(dados: NovoJogoIn, jogador=Depends(jogador_atual)):
             modo=dados.modo,
             temperatura=dados.temperatura,
         )
-        acao_inicial = item["abertura"] if item else motor.abertura_de(genero)
-        resultado = chamar_ia(jogador["id"], estado, acao_inicial)
-        saldo_livens = _cobrar_livens_do_modelo(jogador, estado.get("modelo"))
-        morreu = motor.registrar_turno(
-            estado, acao_inicial, resultado, _agora_ms(), _agora_ms()
-        )
+        if persona:
+            estado["persona"] = persona
+
+        if item and item.get("abertura"):
+            # Modo História com prólogo / abertura definida:
+            # O primeiro turno no chat É A FALA DE ABERTURA DO BOT!
+            # Sem chamada síncrona pesada à IA (início instantâneo em 0ms, sem falhas de cota ou rede).
+            abertura_bot = item["abertura"]
+            resultado = motor.ResultadoIA(
+                narrativa=abertura_bot,
+                opcoes=["Responder...", "Aproximar-se", "Observar em silêncio"],
+                mudancas={},
+                modelo=(cerebro.get("id") if cerebro else "abertura_catalogo"),
+                tokens_entrada=0,
+                tokens_saida=0,
+                segundos=0.01,
+                tentativas=1,
+                situacao=None,
+            )
+            morreu = motor.registrar_turno(
+                estado, "", resultado, _agora_ms(), _agora_ms()
+            )
+            saldo_livens = int(jogador.get("mochis") or 0)
+        else:
+            acao_inicial = motor.abertura_de(genero)
+            resultado = chamar_ia(jogador["id"], estado, acao_inicial)
+            saldo_livens = _cobrar_livens_do_modelo(jogador, estado.get("modelo"))
+            morreu = motor.registrar_turno(
+                estado, acao_inicial, resultado, _agora_ms(), _agora_ms()
+            )
         jogo_id = uuid.uuid4().hex
         banco.criar_jogo(jogo_id, jogador["id"], motor.estado_para_texto(estado), morreu)
     return montar_saida(jogo_id, estado, morreu, restantes - 1, mochis=saldo_livens)
@@ -1930,38 +2045,60 @@ def gerar_retrato_persona_id(persona_id: int, dados: PersonaRetratoIn, jogador=D
 @app.get("/personas/{persona_id}/retrato")
 def ver_retrato_persona_id(persona_id: int, token: Optional[str] = None, credenciais: Optional[HTTPAuthorizationCredentials] = Depends(esquema_bearer)):
     """Devolve a imagem da persona específica."""
-    jogador = None
-    if credenciais and credenciais.credentials:
-        jogador = banco.jogador_por_token_hash(hash_token(credenciais.credentials))
-    elif token:
-        jogador = banco.jogador_por_token_hash(hash_token(token))
-    if jogador is None:
-        raise HTTPException(401, "Não autenticado.")
+    caminho = None
+    # 1. Procura diretamente pelo ID global da persona no banco
+    try:
+        with banco.conexao() as c:
+            linha = c.execute("SELECT jogador_id FROM personas WHERE id = ?", (persona_id,)).fetchone()
+        if linha:
+            c1 = caminho_persona_retrato(linha["jogador_id"], persona_id)
+            if os.path.exists(c1):
+                caminho = c1
+    except Exception:
+        pass
 
-    caminho = caminho_persona_retrato(jogador["id"], persona_id)
-    if not os.path.exists(caminho):
-        # Fallback para retrato geral da conta se existir
-        caminho_geral = caminho_persona_retrato(jogador["id"])
-        if os.path.exists(caminho_geral):
-            return FileResponse(caminho_geral, media_type=tipo_de_imagem(caminho_geral), headers={"Cache-Control": "no-cache"})
+    # 2. Se não encontrou, tenta pelo jogador autenticado (se houver)
+    if not caminho:
+        jogador = None
+        if credenciais and credenciais.credentials:
+            jogador = banco.jogador_por_token_hash(hash_token(credenciais.credentials))
+        elif token:
+            jogador = banco.jogador_por_token_hash(hash_token(token))
+        if jogador:
+            c2 = caminho_persona_retrato(jogador["id"], persona_id)
+            if os.path.exists(c2):
+                caminho = c2
+            else:
+                c_geral = caminho_persona_retrato(jogador["id"])
+                if os.path.exists(c_geral):
+                    caminho = c_geral
+
+    if not caminho or not os.path.exists(caminho):
         raise HTTPException(404, "Esta persona ainda não possui retrato gerado.")
-    return FileResponse(caminho, media_type=tipo_de_imagem(caminho), headers={"Cache-Control": "no-cache"})
+    return FileResponse(caminho, media_type=tipo_de_imagem(caminho), headers={"Cache-Control": "public, max-age=86400"})
 
 
 @app.get("/estilos-imagem/{estilo_id}/exemplo")
 def ver_exemplo_estilo_imagem(estilo_id: str):
     """Devolve a imagem de exemplo oficial de um estilo de IA (para prévia visual)."""
-    estilo_limpo = estilo_id.strip().lower()
+    estilo_limpo = estilo_id.strip().lower().replace(" ", "_")
+    mapa_sinonimos = {
+        "anime": "vibrant_anime",
+        "realista": "photorealistic",
+        "cyberpunk": "dark_fantasy",
+        "manga": "manga_bw",
+        "vintage": "vintage_oil",
+    }
+    estilo_limpo = mapa_sinonimos.get(estilo_limpo, estilo_limpo)
     pasta = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dados", "estilos_exemplos")
     caminho = os.path.join(pasta, f"{estilo_limpo}.jpg")
     if os.path.exists(caminho):
         return FileResponse(caminho, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
-    # Procura qualquer exemplo disponível como fallback temporário
+    caminho_padrao = os.path.join(pasta, "semi_realistic.jpg")
+    if os.path.exists(caminho_padrao):
+        return FileResponse(caminho_padrao, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
     if os.path.exists(pasta):
         for f in os.listdir(pasta):
             if f.endswith(".jpg"):
                 return FileResponse(os.path.join(pasta, f), media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
     raise HTTPException(404, "Exemplo não encontrado.")
-    return FileResponse(
-        caminho, media_type=tipo_de_imagem(caminho), headers={"Cache-Control": "no-cache"}
-    )

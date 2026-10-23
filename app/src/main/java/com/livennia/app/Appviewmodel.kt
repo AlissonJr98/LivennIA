@@ -1000,10 +1000,35 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         carregarCatalogo()
     }
 
+    fun publicarCenario(cenario: CenarioDto, onSucesso: (CenarioDto) -> Unit = {}) {
+        executar("Publicando história no LivennIA...") { api ->
+            val salvo = api.criarCenario(
+                NovoCenarioRequest(
+                    id = cenario.id,
+                    nome = cenario.nome,
+                    subtitulo = cenario.subtitulo,
+                    emoji = cenario.emoji,
+                    genero = cenario.genero,
+                    tags = cenario.tags ?: emptyList(),
+                    sinopse = cenario.sinopse,
+                    abertura = cenario.abertura,
+                    modoJogo = cenario.modoJogo ?: "historia"
+                )
+            )
+            RepositorioPersonagensComunidade.adicionar(salvo)
+            carregarCatalogo()
+            onSucesso(salvo)
+        }
+    }
+
     fun criarPersonagem(nome: String) {
         val p = personaAtiva
-        val nomeLimpo = (p?.nome?.takeIf { it.isNotBlank() } ?: personaNome.trim().takeIf { it.isNotEmpty() } ?: nome.trim()).take(30).ifEmpty { "Viajante" }
         val cenario = cenarioSelecionado
+        val nomeLimpo = if (cenario != null) {
+            cenario.nome.trim().take(30).ifEmpty { "Personagem" }
+        } else {
+            (p?.nome?.takeIf { it.isNotBlank() } ?: personaNome.trim().takeIf { it.isNotEmpty() } ?: nome.trim()).take(30).ifEmpty { "Viajante" }
+        }
         val genero = cenario?.genero?.takeIf { it.isNotBlank() } ?: generoSelecionado.ifBlank { "Aventura" }
         val premissaLimpa = premissa.trim().take(500).takeIf { it.isNotEmpty() } ?: cenario?.sinopse?.take(500)
         

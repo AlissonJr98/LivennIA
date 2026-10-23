@@ -895,6 +895,19 @@ def cenario(cenario_id):
     for item in CENARIOS:
         if item["id"] == cenario_id:
             return dict(item)
+    try:
+        from . import banco
+        c_user = banco.obter_cenario_usuario(cenario_id)
+        if c_user:
+            return c_user
+    except Exception:
+        try:
+            import banco
+            c_user = banco.obter_cenario_usuario(cenario_id)
+            if c_user:
+                return c_user
+        except Exception:
+            pass
     return None
 
 

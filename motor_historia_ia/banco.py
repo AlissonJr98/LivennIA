@@ -89,6 +89,26 @@ CREATE TABLE IF NOT EXISTS feedbacks (
     criado_em   TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS cenarios_usuario (
+    id              TEXT PRIMARY KEY,
+    autor_id        INTEGER NOT NULL REFERENCES jogadores(id) ON DELETE CASCADE,
+    autor_nome      TEXT NOT NULL,
+    nome            TEXT NOT NULL,
+    subtitulo       TEXT,
+    emoji           TEXT DEFAULT '🎭',
+    genero          TEXT NOT NULL DEFAULT 'Aventura',
+    tags            TEXT,
+    sinopse         TEXT,
+    abertura        TEXT,
+    prompt_secreto  TEXT,
+    estilo_imagem   TEXT DEFAULT 'semi_realistic',
+    chats           INTEGER NOT NULL DEFAULT 0,
+    saves           INTEGER NOT NULL DEFAULT 0,
+    modo_jogo       TEXT NOT NULL DEFAULT 'historia',
+    criado_em       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_cenarios_usuario_criado ON cenarios_usuario(criado_em DESC);
+
 CREATE TABLE IF NOT EXISTS denuncias (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     jogador_id  INTEGER REFERENCES jogadores(id) ON DELETE CASCADE,
@@ -247,7 +267,15 @@ def jogador_por_token_hash(token_hash):
     if not linha:
         return None
     d = dict(linha)
-    if d.get("dono"):
+    eh_admin = bool(
+        d.get("dono")
+        or (d.get("apelido") or "").lower() in {"alisson", "camila", "mila"}
+        or (d.get("email") or "").lower() in {"334camila@gmail.com"}
+        or d.get("apelido") in config.ADMINS
+        or d.get("email") in config.ADMINS
+    )
+    if eh_admin:
+        d["dono"] = 1
         d["premium"] = 1
         d["mochis"] = 999999
     d["livens"] = d.get("mochis", 0)
@@ -648,3 +676,71 @@ def deletar_persona(jogador_id, persona_id):
             proxima = c.execute("SELECT id FROM personas WHERE jogador_id = ? ORDER BY id ASC LIMIT 1", (jogador_id,)).fetchone()
             if proxima:
                 c.execute("UPDATE personas SET padrao = 1 WHERE id = ?", (proxima["id"],))
+
+
+def salvar_cenario_usuario(cenario_id, autor_id, autor_nome, nome, subtitulo, emoji, genero, tags, sinopse, abertura, prompt_secreto, estilo_imagem="semi_realistic", modo_jogo="historia"):
+    import json
+    tags_str = json.dumps(tags if isinstance(tags, list) else [])
+    with transacao() as c:
+        c.execute(
+            """INSERT INTO cenarios_usuario (
+                id, autor_id, autor_nome, nome, subtitulo, emoji, genero, tags, sinopse, abertura, prompt_secreto, estilo_imagem, modo_jogo, criado_em
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                nome=excluded.nome,
+                subtitulo=excluded.subtitulo,
+                emoji=excluded.emoji,
+                genero=excluded.genero,
+                tags=excluded.tags,
+                sinopse=excluded.sinopse,
+                abertura=excluded.abertura,
+                prompt_secreto=excluded.prompt_secreto,
+                estilo_imagem=excluded.estilo_imagem,
+                modo_jogo=excluded.modo_jogo
+            """,
+            (cenario_id, autor_id, autor_nome, nome, subtitulo, emoji, genero, tags_str, sinopse, abertura, prompt_secreto, estilo_imagem, modo_jogo, agora())
+        )
+    return cenario_id
+
+
+def listar_cenarios_usuario():
+    import json
+    with conexao() as c:
+        linhas = c.execute("SELECT * FROM cenarios_usuario ORDER BY criado_em DESC LIMIT 100").fetchall()
+    resultado = []
+    for l in linhas:
+        d = dict(l)
+        try:
+            d["tags"] = json.loads(d.get("tags") or "[]")
+        except Exception:
+            d["tags"] = []
+        d["criadoPorUsuario"] = True
+        d["autorNome"] = d.get("autor_nome") or "Comunidade"
+        d["autorAvatar"] = d.get("emoji") or "🎭"
+        d["modoJogo"] = d.get("modo_jogo") or "historia"
+        resultado.append(d)
+    return resultado
+
+
+def obter_cenario_usuario(cenario_id):
+    import json
+    with conexao() as c:
+        linha = c.execute("SELECT * FROM cenarios_usuario WHERE id = ?", (cenario_id,)).fetchone()
+    if not linha:
+        return None
+    d = dict(linha)
+    try:
+        d["tags"] = json.loads(d.get("tags") or "[]")
+    except Exception:
+        d["tags"] = []
+    d["criadoPorUsuario"] = True
+    d["autorNome"] = d.get("autor_nome") or "Comunidade"
+    d["autorAvatar"] = d.get("emoji") or "🎭"
+    d["modoJogo"] = d.get("modo_jogo") or "historia"
+    return d
+
+
+def incrementar_chat_cenario_usuario(cenario_id):
+    with transacao() as c:
+        c.execute("UPDATE cenarios_usuario SET chats = chats + 1 WHERE id = ?", (cenario_id,))
+

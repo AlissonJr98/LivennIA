@@ -46,6 +46,9 @@ interface LivennIAApi {
     @GET("catalogo")
     suspend fun catalogo(): List<CenarioDto>
 
+    @POST("catalogo/cenarios")
+    suspend fun criarCenario(@Body cenario: NovoCenarioRequest): CenarioDto
+
     @GET("cerebros")
     suspend fun cerebros(): List<CerebroDto>
 
