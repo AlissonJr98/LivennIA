@@ -4,8 +4,10 @@ import android.app.Application
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
@@ -176,7 +178,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     // Id do cérebro escolhido (nulo = o padrão do servidor).
     var cerebroSelecionado by mutableStateOf<String?>(null)
-        private set
+
+    val comentarios: SnapshotStateList<ComentarioDto> = mutableStateListOf()
+    var carregandoComentarios by mutableStateOf(false)
+    var perfilCriador by mutableStateOf<PerfilCriadorDto?>(null)
+    var carregandoPerfilCriador by mutableStateOf(false)
 
     // Muda quando alguma capa é gerada, para as imagens serem recarregadas.
     var capaVersao by mutableStateOf(0)
@@ -463,6 +469,128 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
 
+    fun carregarComentarios(cenarioId: String) {
+        val api = obterApi() ?: return
+        viewModelScope.launch {
+            carregandoComentarios = true
+            try {
+                val lista = api.listarComentarios(cenarioId)
+                comentarios.clear()
+                comentarios.addAll(lista)
+            } catch (_: Exception) {
+            } finally {
+                carregandoComentarios = false
+            }
+        }
+    }
+
+    fun enviarComentario(cenarioId: String, texto: String, onSucesso: () -> Unit = {}) {
+        if (texto.isBlank()) return
+        val api = obterApi() ?: return
+        viewModelScope.launch {
+            try {
+                val novo = api.criarComentario(cenarioId, NovoComentarioRequest(texto.trim()))
+                comentarios.add(0, novo)
+                onSucesso()
+            } catch (e: Exception) {
+                erro = e.message ?: "Não foi possível enviar o comentário."
+            }
+        }
+    }
+
+    fun editarComentario(cenarioId: String, comentarioId: Long, novoTexto: String, onSucesso: () -> Unit = {}) {
+        if (novoTexto.isBlank()) return
+        val api = obterApi() ?: return
+        viewModelScope.launch {
+            try {
+                val editado = api.editarComentario(cenarioId, comentarioId, NovoComentarioRequest(novoTexto.trim()))
+                val idx = comentarios.indexOfFirst { it.id == comentarioId }
+                if (idx != -1) {
+                    comentarios[idx] = editado
+                }
+                onSucesso()
+            } catch (e: Exception) {
+                erro = e.message ?: "Não foi possível editar o comentário."
+            }
+        }
+    }
+
+    fun excluirComentario(cenarioId: String, comentarioId: Long, onSucesso: () -> Unit = {}) {
+        val api = obterApi() ?: return
+        viewModelScope.launch {
+            try {
+                api.excluirComentario(cenarioId, comentarioId)
+                comentarios.removeAll { it.id == comentarioId }
+                onSucesso()
+            } catch (e: Exception) {
+                erro = e.message ?: "Não foi possível excluir o comentário."
+            }
+        }
+    }
+
+    fun curtirComentario(cenarioId: String, comentarioId: Long) {
+        val api = obterApi() ?: return
+        viewModelScope.launch {
+            try {
+                val resp = api.alternarLikeComentario(cenarioId, comentarioId)
+                val idx = comentarios.indexOfFirst { it.id == comentarioId }
+                if (idx != -1) {
+                    val atual = comentarios[idx]
+                    comentarios[idx] = atual.copy(likes = resp.likes, meuLike = resp.meuLike)
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun carregarPerfilCriador(criadorNome: String) {
+        val api = obterApi() ?: return
+        viewModelScope.launch {
+            carregandoPerfilCriador = true
+            try {
+                perfilCriador = api.obterPerfilCriador(criadorNome)
+            } catch (_: Exception) {
+                erro = "Não foi possível carregar o perfil do criador."
+            } finally {
+                carregandoPerfilCriador = false
+            }
+        }
+    }
+
+    fun alternarSeguirCriador(criadorNome: String) {
+        val api = obterApi() ?: return
+        viewModelScope.launch {
+            try {
+                val resp = api.alternarSeguirCriador(criadorNome)
+                perfilCriador?.let { atual ->
+                    perfilCriador = atual.copy(estaSeguindo = resp.estaSeguindo, seguidores = resp.totalSeguidores)
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun bloquearCriador(criadorNome: String, onSucesso: () -> Unit = {}) {
+        val api = obterApi() ?: return
+        viewModelScope.launch {
+            try {
+                api.bloquearCriador(criadorNome)
+                perfilCriador = perfilCriador?.copy(estaBloqueado = true)
+                aviso = "Criador $criadorNome bloqueado."
+                onSucesso()
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun denunciarCriador(criadorNome: String, motivo: String, onSucesso: () -> Unit = {}) {
+        val api = obterApi() ?: return
+        viewModelScope.launch {
+            try {
+                api.denunciarCriador(criadorNome, DenunciaCriadorRequest(motivo))
+                aviso = "Denúncia enviada para análise."
+                onSucesso()
+            } catch (_: Exception) {}
+        }
+    }
+
     fun limparFicha() {
         aparencia = ""
         descricao = ""
@@ -660,6 +788,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private fun aplicarJogoCompleto(resposta: JogoResponse) {
         jogoAtual = resposta
         chat = resposta.historico.orEmpty()
+        resposta.modelo?.id?.let { cerebroSelecionado = it }
         (resposta.livens ?: resposta.mochis)?.let { novoSaldo ->
             conta = conta?.copy(livens = novoSaldo)
         }
@@ -1200,6 +1329,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val id = jogoAtual?.jogoId ?: return
         executar("Atualizando cérebro de IA e temperatura...") { api ->
             val resposta = api.configurarModelo(id, ConfigModeloRequest(modeloId = modeloId, temperatura = temperatura))
+            cerebroSelecionado = modeloId
             aplicarJogoCompleto(resposta)
             aviso = "Modelo e temperatura atualizados!"
         }
@@ -1353,8 +1483,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun denunciar(motivo: String, detalhe: String) {
-        val id = jogoAtual?.jogoId ?: return
+    fun denunciar(motivo: String, detalhe: String, jogoId: String? = null) {
+        val id = jogoId ?: jogoAtual?.jogoId ?: return
         executar("Enviando denúncia...") { api ->
             val texto = detalhe.trim().takeIf { it.isNotEmpty() }
             api.denuncia(DenunciaRequest(id, motivo, texto)).garantir()

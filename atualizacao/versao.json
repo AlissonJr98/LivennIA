@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 22,
-  "versaoNome": "1.6.1",
-  "notas": "Persistência completa de histórias e bots criados pela comunidade no catálogo, chat instantâneo sem travamentos com prólogo oficial do personagem, retratos de persona e estilos com IA Flux de alta fidelidade visual, e modelos com estilos de escrita distintos (Liven Flash rápido e direto vs Liven Prime/Infinity literário profundo).",
+  "versaoCodigo": 23,
+  "versaoNome": "1.6.2",
+  "notas": "Atualização visual e social: tela de prévia completa da história com comentários reais, likes, edição e exclusão de comentários pelo próprio autor; tela de perfil do criador com grid de criações, botão de seguir, opções de denunciar perfil e bloquear; atualização em tempo real do modelo e temperatura escolhidos no chat; e fundo do chat imersivo personalizado com base no personagem.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

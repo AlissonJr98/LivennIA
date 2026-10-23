@@ -148,7 +148,9 @@ def caminho_capa(cenario_id):
 
 def tem_capa(cenario_id):
     try:
-        return os.path.exists(caminho_capa(cenario_id))
+        if os.path.exists(caminho_capa(cenario_id)):
+            return True
+        return catalogo.cenario(cenario_id) is not None
     except OSError:
         return False
 
@@ -565,8 +567,56 @@ class ContaOut(BaseModel):
     dono: bool = False
 
 
+class ComentarioIn(BaseModel):
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
+    texto: str = Field(min_length=1, max_length=500)
+
+
+class ComentarioOut(BaseModel):
+    id: int
+    cenario_id: str
+    jogador_id: int
+    autor_nome: str
+    autor_avatar: str = "👤"
+    texto: str
+    likes: int = 0
+    meu_like: bool = False
+    meu_comentario: bool = False
+    criado_em: str
+    editado_em: Optional[str] = None
+
+
+class LikeComentarioOut(BaseModel):
+    likes: int
+    meu_like: bool
+
+
+class PerfilCriadorOut(BaseModel):
+    nome: str
+    avatar: str = "🎭"
+    uid: str
+    chats: int = 0
+    saves: int = 0
+    seguidores: int = 0
+    seguindo: int = 1
+    esta_seguindo: bool = False
+    esta_bloqueado: bool = False
+    historias: list[CenarioOut] = []
+
+
+class SeguirOut(BaseModel):
+    esta_seguindo: bool
+    total_seguidores: int
+
+
+class DenunciaCriadorIn(BaseModel):
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
+    motivo: str = Field(min_length=1, max_length=300)
+    trecho: Optional[str] = None
+
+
 IdDoJogo = Annotated[str, Path(pattern=r"^[0-9a-f]{32}$")]
-IdDoCenario = Annotated[str, Path(pattern=r"^[a-z0-9-]{2,40}$")]
+IdDoCenario = Annotated[str, Path(pattern=r"^[a-zA-Z0-9_-]{2,64}$")]
 
 # ---------------------------------------------------------------
 # Autenticação
@@ -1380,14 +1430,35 @@ def gerar_capa_do_cenario(cenario_id: IdDoCenario, jogador=Depends(jogador_atual
 
 
 @app.get("/catalogo/{cenario_id}/capa")
-def ver_capa(cenario_id: IdDoCenario, jogador=Depends(jogador_atual)):
-    """Devolve a arte de capa de um cenário (se já foi gerada)."""
+def ver_capa(cenario_id: IdDoCenario):
+    """Devolve a arte de capa de um cenário (se já foi gerada ou fallback de estilo)."""
     item = catalogo.cenario(cenario_id)
     if item is None:
         raise HTTPException(404, "Cenário não encontrado.")
     caminho = caminho_capa(item["id"])
     if not os.path.exists(caminho):
-        raise HTTPException(404, "Este cenário ainda não tem capa.")
+        # Tenta gerar e salvar no disco
+        try:
+            os.makedirs(config.PASTA_CAPAS, exist_ok=True)
+            imagem = motor.gerar_capa(item)
+            with open(caminho, "wb") as f:
+                f.write(imagem)
+        except Exception:
+            # Fallback seguro para amostra do estilo de arte
+            estilo = str(item.get("estilo_imagem") or item.get("genero") or "semi_realistic").lower()
+            mapa = {
+                "anime": "vibrant_anime",
+                "realista": "photorealistic",
+                "cyberpunk": "dark_fantasy",
+            }
+            nome_arq = f"{mapa.get(estilo, estilo)}.jpg"
+            pasta_ex = os.path.join(os.path.dirname(__file__), "dados", "estilos_exemplos")
+            caminho_ex = os.path.join(pasta_ex, nome_arq)
+            if not os.path.exists(caminho_ex):
+                caminho_ex = os.path.join(pasta_ex, "semi_realistic.jpg")
+            if os.path.exists(caminho_ex):
+                return FileResponse(caminho_ex, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
+            raise HTTPException(404, "Este cenário ainda não tem capa.")
     return FileResponse(
         caminho, media_type=tipo_de_imagem(caminho), headers={"Cache-Control": "public, max-age=86400"}
     )
@@ -2106,3 +2177,93 @@ def ver_exemplo_estilo_imagem(estilo_id: str):
             if f.endswith(".jpg"):
                 return FileResponse(os.path.join(pasta, f), media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
     raise HTTPException(404, "Exemplo não encontrado.")
+
+
+# ---------------------------------------------------------------
+# Comentários e Social (Prévia da História e Perfil do Criador)
+# ---------------------------------------------------------------
+@app.get("/catalogo/{cenario_id}/comentarios", response_model=list[ComentarioOut])
+def listar_comentarios(cenario_id: IdDoCenario, jogador=Depends(jogador_atual)):
+    return banco.listar_comentarios_cenario(cenario_id, jogador["id"])
+
+
+@app.post("/catalogo/{cenario_id}/comentarios", response_model=ComentarioOut, status_code=201)
+def criar_comentario(cenario_id: IdDoCenario, dados: ComentarioIn, jogador=Depends(jogador_atual)):
+    autor = jogador.get("apelido") or "Jogador"
+    return banco.adicionar_comentario(
+        cenario_id=cenario_id,
+        jogador_id=jogador["id"],
+        autor_nome=autor,
+        autor_avatar=jogador.get("avatar") or "👤",
+        texto=dados.texto,
+    )
+
+
+@app.put("/catalogo/{cenario_id}/comentarios/{comentario_id}", response_model=ComentarioOut)
+def editar_comentario(cenario_id: IdDoCenario, comentario_id: int, dados: ComentarioIn, jogador=Depends(jogador_atual)):
+    return banco.editar_comentario(comentario_id, jogador["id"], dados.texto)
+
+
+@app.delete("/catalogo/{cenario_id}/comentarios/{comentario_id}", status_code=204)
+def excluir_comentario(cenario_id: IdDoCenario, comentario_id: int, jogador=Depends(jogador_atual)):
+    banco.excluir_comentario(comentario_id, jogador["id"])
+    return None
+
+
+@app.post("/catalogo/{cenario_id}/comentarios/{comentario_id}/like", response_model=LikeComentarioOut)
+def curtir_comentario(cenario_id: IdDoCenario, comentario_id: int, jogador=Depends(jogador_atual)):
+    return banco.alternar_like_comentario(comentario_id, jogador["id"])
+
+
+@app.get("/criadores/{criador_nome}", response_model=PerfilCriadorOut)
+def ver_perfil_criador(criador_nome: str, jogador=Depends(jogador_atual)):
+    dados = banco.obter_status_criador(criador_nome, jogador["id"])
+    cenarios_out = [
+        CenarioOut(
+            id=c["id"],
+            nome=c["nome"],
+            subtitulo=c.get("subtitulo") or "",
+            emoji=c.get("emoji") or "🎭",
+            genero=c.get("genero") or "Aventura",
+            tags=list(c.get("tags") or []),
+            sinopse=c.get("sinopse") or "",
+            abertura=c.get("abertura") or "",
+            capa=tem_capa(c["id"]),
+            criadoPorUsuario=True,
+            autorNome=c.get("autorNome") or criador_nome,
+            autorAvatar=c.get("autorAvatar") or "🎭",
+            chats=int(c.get("chats") or 0),
+            saves=int(c.get("saves") or 0),
+            modoJogo=c.get("modoJogo") or "historia",
+        )
+        for c in dados.get("historias", [])
+    ]
+    return PerfilCriadorOut(
+        nome=dados["nome"],
+        avatar=dados["avatar"],
+        uid=dados["uid"],
+        chats=dados["chats"],
+        saves=dados["saves"],
+        seguidores=dados["seguidores"],
+        seguindo=dados["seguindo"],
+        esta_seguindo=dados["esta_seguindo"],
+        esta_bloqueado=dados["esta_bloqueado"],
+        historias=cenarios_out,
+    )
+
+
+@app.post("/criadores/{criador_nome}/seguir", response_model=SeguirOut)
+def seguir_criador(criador_nome: str, jogador=Depends(jogador_atual)):
+    return banco.alternar_seguir_criador(jogador["id"], criador_nome)
+
+
+@app.post("/criadores/{criador_nome}/bloquear")
+def bloquear_criador(criador_nome: str, jogador=Depends(jogador_atual)):
+    banco.bloquear_criador(jogador["id"], criador_nome)
+    return {"status": "ok", "mensagem": f"Criador {criador_nome} bloqueado."}
+
+
+@app.post("/criadores/{criador_nome}/denunciar")
+def denunciar_criador(criador_nome: str, dados: DenunciaCriadorIn, jogador=Depends(jogador_atual)):
+    banco.denunciar_criador(jogador["id"], criador_nome, dados.motivo)
+    return {"status": "ok", "mensagem": "Denúncia registrada com sucesso."}

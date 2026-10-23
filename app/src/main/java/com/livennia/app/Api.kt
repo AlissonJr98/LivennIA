@@ -144,6 +144,35 @@ interface LivennIAApi {
 
     @POST("denuncias")
     suspend fun denuncia(@Body corpo: DenunciaRequest): Response<Unit>
+
+    // Comentários da História
+    @GET("catalogo/{id}/comentarios")
+    suspend fun listarComentarios(@Path("id") cenarioId: String): List<ComentarioDto>
+
+    @POST("catalogo/{id}/comentarios")
+    suspend fun criarComentario(@Path("id") cenarioId: String, @Body req: NovoComentarioRequest): ComentarioDto
+
+    @PUT("catalogo/{id}/comentarios/{comentarioId}")
+    suspend fun editarComentario(@Path("id") cenarioId: String, @Path("comentarioId") comentarioId: Long, @Body req: NovoComentarioRequest): ComentarioDto
+
+    @DELETE("catalogo/{id}/comentarios/{comentarioId}")
+    suspend fun excluirComentario(@Path("id") cenarioId: String, @Path("comentarioId") comentarioId: Long): Response<Unit>
+
+    @POST("catalogo/{id}/comentarios/{comentarioId}/like")
+    suspend fun alternarLikeComentario(@Path("id") cenarioId: String, @Path("comentarioId") comentarioId: Long): LikeComentarioResponse
+
+    // Perfil do Criador & Social
+    @GET("criadores/{nome}")
+    suspend fun obterPerfilCriador(@Path("nome") criadorNome: String): PerfilCriadorDto
+
+    @POST("criadores/{nome}/seguir")
+    suspend fun alternarSeguirCriador(@Path("nome") criadorNome: String): SeguirResponse
+
+    @POST("criadores/{nome}/bloquear")
+    suspend fun bloquearCriador(@Path("nome") criadorNome: String): Response<Unit>
+
+    @POST("criadores/{nome}/denunciar")
+    suspend fun denunciarCriador(@Path("nome") criadorNome: String, @Body req: DenunciaCriadorRequest): Response<Unit>
 }
 
 object ApiClient {

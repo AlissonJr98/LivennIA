@@ -40,6 +40,9 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.ui.graphics.RectangleShape
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.layout.ContentScale
 import android.widget.Toast
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -223,17 +226,36 @@ fun JogoTela(vm: AppViewModel) {
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Arte de Fundo Imersiva Full-Bleed do Cenário (RPG)
+        // Arte de Fundo Imersiva Full-Bleed do Cenário / Personagem (RPG)
         val cenarioId = jogo.cenario?.id
-        if (!cenarioId.isNullOrBlank()) {
-            CapaCenario(
-                cenarioId = cenarioId,
-                temCapa = jogo.cenario?.capa == true,
-                emoji = jogo.cenario?.emoji ?: "⚔️",
-                nome = jogo.cenario?.nome ?: jogo.personagem.nome,
-                versao = vm.capaVersao,
+        val urlFundo = remember(jogo.cenario, jogo.retrato, vm.capaVersao, vm.retratoVersao) {
+            val base = ApiClient.baseUrlAtual() ?: ""
+            when {
+                jogo.cenario?.capa == true && !cenarioId.isNullOrBlank() -> "${base}catalogo/$cenarioId/capa?v=${vm.capaVersao}"
+                jogo.retrato -> "${base}jogos/${jogo.jogoId}/retrato?v=${vm.retratoVersao}"
+                !cenarioId.isNullOrBlank() -> "${base}catalogo/$cenarioId/capa?v=${vm.capaVersao}"
+                else -> null
+            }
+        }
+        if (urlFundo != null) {
+            SubcomposeAsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(urlFundo)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
-                recorte = RectangleShape
+                loading = {
+                    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF090A0F)))
+                },
+                error = {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(brush = Brush.verticalGradient(colors = listOf(GradienteTopo, Fundo)))
+                    )
+                }
             )
         } else {
             Box(
@@ -922,17 +944,36 @@ private fun JogoModoHistoria(vm: AppViewModel) {
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Arte de Fundo Imersiva Full-Bleed do Cenário (Imagens 1 e 5)
+        // Arte de Fundo Imersiva Full-Bleed do Cenário / Personagem (Modo História)
         val cenarioId = jogo.cenario?.id
-        if (!cenarioId.isNullOrBlank()) {
-            CapaCenario(
-                cenarioId = cenarioId,
-                temCapa = jogo.cenario?.capa == true,
-                emoji = jogo.cenario?.emoji ?: "📖",
-                nome = jogo.cenario?.nome ?: jogo.personagem.nome,
-                versao = vm.capaVersao,
+        val urlFundo = remember(jogo.cenario, jogo.retrato, vm.capaVersao, vm.retratoVersao) {
+            val base = ApiClient.baseUrlAtual() ?: ""
+            when {
+                jogo.cenario?.capa == true && !cenarioId.isNullOrBlank() -> "${base}catalogo/$cenarioId/capa?v=${vm.capaVersao}"
+                jogo.retrato -> "${base}jogos/${jogo.jogoId}/retrato?v=${vm.retratoVersao}"
+                !cenarioId.isNullOrBlank() -> "${base}catalogo/$cenarioId/capa?v=${vm.capaVersao}"
+                else -> null
+            }
+        }
+        if (urlFundo != null) {
+            SubcomposeAsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(urlFundo)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
-                recorte = RectangleShape
+                loading = {
+                    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF090A0F)))
+                },
+                error = {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(brush = Brush.verticalGradient(colors = listOf(GradienteTopo, Fundo)))
+                    )
+                }
             )
         } else {
             Box(
@@ -1473,6 +1514,12 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                         }
 
                         // Pílula 2: Motor de IA / Cérebro Ativo
+                        val emojiAtual = jogo.modelo?.emoji?.ifBlank { "🧠" }
+                            ?: vm.cerebros.firstOrNull { it.id == vm.cerebroSelecionado }?.emoji?.ifBlank { "🧠" }
+                            ?: "🧠"
+                        val nomeAtual = jogo.modelo?.nome
+                            ?: vm.cerebros.firstOrNull { it.id == vm.cerebroSelecionado }?.nome
+                            ?: "Livenn Flash"
                         Surface(
                             color = Color.White.copy(alpha = 0.08f),
                             shape = RoundedCornerShape(50),
@@ -1483,10 +1530,10 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("🧠", fontSize = 12.sp)
+                                Text(emojiAtual, fontSize = 12.sp)
                                 Spacer(Modifier.width(4.dp))
                                 Text(
-                                    text = vm.cerebroSelecionado ?: "Livenn Flash",
+                                    text = nomeAtual,
                                     color = Color.White.copy(alpha = 0.85f),
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Medium
@@ -1644,8 +1691,12 @@ private fun BarraFerramentasLiven(
         }
 
         // Seletor de Sabor de Modelo e Temperatura
-        val emojiModelo = jogo.modelo?.emoji?.ifBlank { "🤖" } ?: "🤖"
-        val nomeModelo = jogo.modelo?.nome ?: "Modelo de IA"
+        val emojiModelo = jogo.modelo?.emoji?.ifBlank { "🤖" }
+            ?: vm.cerebros.firstOrNull { it.id == vm.cerebroSelecionado }?.emoji?.ifBlank { "🤖" }
+            ?: "🤖"
+        val nomeModelo = jogo.modelo?.nome
+            ?: vm.cerebros.firstOrNull { it.id == vm.cerebroSelecionado }?.nome
+            ?: "Modelo de IA"
         Surface(
             color = SuperficieAlta,
             shape = Cantos.pilula,
@@ -2331,8 +2382,8 @@ private fun GerenciadorDialogosJogo(
             )
         }
         DialogoAberto.ModeloIA -> {
-            var cerebroIdSelecionado by remember(jogo.modelo?.id) {
-                mutableStateOf(jogo.modelo?.id ?: vm.cerebros.firstOrNull()?.id ?: "")
+            var cerebroIdSelecionado by remember(jogo.modelo?.id, vm.cerebroSelecionado) {
+                mutableStateOf(jogo.modelo?.id ?: vm.cerebroSelecionado ?: vm.cerebros.firstOrNull()?.id ?: "")
             }
             var tempSelecionada by remember(jogo.temperatura) {
                 mutableFloatStateOf(jogo.temperatura)

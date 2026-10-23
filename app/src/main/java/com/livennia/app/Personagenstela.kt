@@ -393,17 +393,12 @@ fun PersonagensTela(vm: AppViewModel) {
 
 
     cenarioPreviaDetalhes?.let { cenario ->
-
         DetalhesPersonagemModal(
-
             cenario = cenario,
-
             versaoCapa = vm.capaVersao,
-
             apelidoUsuario = vm.apelido,
-
+            vm = vm,
             onFechar = { cenarioPreviaDetalhes = null },
-
             onIniciarChat = {
                 if (vm.personas.isEmpty()) {
                     Toast.makeText(contexto, "Você precisa criar sua Persona primeiro para que o Bot saiba quem você é!", Toast.LENGTH_LONG).show()
@@ -414,9 +409,7 @@ fun PersonagensTela(vm: AppViewModel) {
                     vm.iniciarHistoriaDireta(cenario, modo)
                 }
             }
-
         )
-
     }
 
     if (vm.mostrarModalPersonaObrigatorio) {
@@ -2210,8 +2203,7 @@ private fun AbaExplorar(
                         habilitado = !vm.ocupado,
 
                         onAbrir = {
-                            val modo = cenario.modoSeguro
-                            vm.iniciarHistoriaDireta(cenario, modo)
+                            onAbrirDetalhes(cenario)
                         },
 
                         onAbrirInfo = { onAbrirDetalhes(cenario) },

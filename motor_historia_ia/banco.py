@@ -118,6 +118,40 @@ CREATE TABLE IF NOT EXISTS denuncias (
     criado_em   TEXT NOT NULL,
     revisada    INTEGER NOT NULL DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS comentarios_cenario (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    cenario_id      TEXT NOT NULL,
+    jogador_id      INTEGER NOT NULL REFERENCES jogadores(id) ON DELETE CASCADE,
+    autor_nome      TEXT NOT NULL,
+    autor_avatar    TEXT DEFAULT '👤',
+    texto           TEXT NOT NULL,
+    likes           INTEGER NOT NULL DEFAULT 0,
+    criado_em       TEXT NOT NULL,
+    editado_em      TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_comentarios_cenario ON comentarios_cenario(cenario_id, criado_em DESC);
+
+CREATE TABLE IF NOT EXISTS likes_comentario (
+    comentario_id   INTEGER NOT NULL REFERENCES comentarios_cenario(id) ON DELETE CASCADE,
+    jogador_id      INTEGER NOT NULL REFERENCES jogadores(id) ON DELETE CASCADE,
+    criado_em       TEXT NOT NULL,
+    PRIMARY KEY (comentario_id, jogador_id)
+);
+
+CREATE TABLE IF NOT EXISTS seguidores (
+    seguidor_id     INTEGER NOT NULL REFERENCES jogadores(id) ON DELETE CASCADE,
+    criador_nome    TEXT NOT NULL,
+    criado_em       TEXT NOT NULL,
+    PRIMARY KEY (seguidor_id, criador_nome)
+);
+
+CREATE TABLE IF NOT EXISTS bloqueios_usuario (
+    jogador_id      INTEGER NOT NULL REFERENCES jogadores(id) ON DELETE CASCADE,
+    alvo_nome       TEXT NOT NULL,
+    criado_em       TEXT NOT NULL,
+    PRIMARY KEY (jogador_id, alvo_nome)
+);
 """
 
 
@@ -743,4 +777,206 @@ def obter_cenario_usuario(cenario_id):
 def incrementar_chat_cenario_usuario(cenario_id):
     with transacao() as c:
         c.execute("UPDATE cenarios_usuario SET chats = chats + 1 WHERE id = ?", (cenario_id,))
+
+
+def adicionar_comentario(cenario_id, jogador_id, autor_nome, autor_avatar, texto):
+    texto_limpo = (texto or "").strip()[:500]
+    if not texto_limpo:
+        raise ErroNegocio(400, "O comentário não pode ficar vazio.")
+    agora_iso = agora()
+    with transacao() as c:
+        cur = c.execute(
+            """INSERT INTO comentarios_cenario (cenario_id, jogador_id, autor_nome, autor_avatar, texto, criado_em)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (cenario_id, jogador_id, autor_nome, autor_avatar or "👤", texto_limpo, agora_iso),
+        )
+        cid = cur.lastrowid
+    return obter_comentario(cid, jogador_id)
+
+
+def obter_comentario(comentario_id, jogador_id=None):
+    with conexao() as c:
+        linha = c.execute(
+            "SELECT * FROM comentarios_cenario WHERE id = ?", (comentario_id,)
+        ).fetchone()
+        if not linha:
+            return None
+        d = dict(linha)
+        if jogador_id:
+            like = c.execute(
+                "SELECT 1 FROM likes_comentario WHERE comentario_id = ? AND jogador_id = ?",
+                (comentario_id, jogador_id),
+            ).fetchone()
+            d["meu_like"] = bool(like)
+            d["meu_comentario"] = (d["jogador_id"] == jogador_id)
+        else:
+            d["meu_like"] = False
+            d["meu_comentario"] = False
+        return d
+
+
+def listar_comentarios_cenario(cenario_id, jogador_id=None):
+    with conexao() as c:
+        linhas = c.execute(
+            "SELECT * FROM comentarios_cenario WHERE cenario_id = ? ORDER BY criado_em DESC LIMIT 100",
+            (cenario_id,),
+        ).fetchall()
+        resultado = []
+        for l in linhas:
+            d = dict(l)
+            if jogador_id:
+                like = c.execute(
+                    "SELECT 1 FROM likes_comentario WHERE comentario_id = ? AND jogador_id = ?",
+                    (d["id"], jogador_id),
+                ).fetchone()
+                d["meu_like"] = bool(like)
+                d["meu_comentario"] = (d["jogador_id"] == jogador_id)
+            else:
+                d["meu_like"] = False
+                d["meu_comentario"] = False
+            resultado.append(d)
+        return resultado
+
+
+def editar_comentario(comentario_id, jogador_id, novo_texto):
+    texto_limpo = (novo_texto or "").strip()[:500]
+    if not texto_limpo:
+        raise ErroNegocio(400, "O comentário não pode ficar vazio.")
+    coment = obter_comentario(comentario_id)
+    if not coment:
+        raise ErroNegocio(404, "Comentário não encontrado.")
+    if coment["jogador_id"] != jogador_id:
+        raise ErroNegocio(403, "Você só pode editar o seu próprio comentário.")
+    agora_iso = agora()
+    with transacao() as c:
+        c.execute(
+            "UPDATE comentarios_cenario SET texto = ?, editado_em = ? WHERE id = ? AND jogador_id = ?",
+            (texto_limpo, agora_iso, comentario_id, jogador_id),
+        )
+    return obter_comentario(comentario_id, jogador_id)
+
+
+def excluir_comentario(comentario_id, jogador_id):
+    coment = obter_comentario(comentario_id)
+    if not coment:
+        raise ErroNegocio(404, "Comentário não encontrado.")
+    if coment["jogador_id"] != jogador_id:
+        raise ErroNegocio(403, "Você só pode excluir o seu próprio comentário.")
+    with transacao() as c:
+        c.execute("DELETE FROM comentarios_cenario WHERE id = ?", (comentario_id,))
+        c.execute("DELETE FROM likes_comentario WHERE comentario_id = ?", (comentario_id,))
+    return True
+
+
+def alternar_like_comentario(comentario_id, jogador_id):
+    coment = obter_comentario(comentario_id)
+    if not coment:
+        raise ErroNegocio(404, "Comentário não encontrado.")
+    with transacao() as c:
+        ja_curtiu = c.execute(
+            "SELECT 1 FROM likes_comentario WHERE comentario_id = ? AND jogador_id = ?",
+            (comentario_id, jogador_id),
+        ).fetchone()
+        if ja_curtiu:
+            c.execute("DELETE FROM likes_comentario WHERE comentario_id = ? AND jogador_id = ?", (comentario_id, jogador_id))
+            c.execute("UPDATE comentarios_cenario SET likes = MAX(0, likes - 1) WHERE id = ?", (comentario_id,))
+            meu_like = False
+        else:
+            c.execute("INSERT INTO likes_comentario (comentario_id, jogador_id, criado_em) VALUES (?, ?, ?)", (comentario_id, jogador_id, agora()))
+            c.execute("UPDATE comentarios_cenario SET likes = likes + 1 WHERE id = ?", (comentario_id,))
+            meu_like = True
+        linha = c.execute("SELECT likes FROM comentarios_cenario WHERE id = ?", (comentario_id,)).fetchone()
+        likes_atualizados = int(linha["likes"]) if linha else 0
+    return {"likes": likes_atualizados, "meu_like": meu_like}
+
+
+def alternar_seguir_criador(seguidor_id, criador_nome):
+    nome_alvo = (criador_nome or "").strip()
+    if not nome_alvo:
+        raise ErroNegocio(400, "Nome do criador inválido.")
+    with transacao() as c:
+        ja_segue = c.execute(
+            "SELECT 1 FROM seguidores WHERE seguidor_id = ? AND criador_nome = ?",
+            (seguidor_id, nome_alvo),
+        ).fetchone()
+        if ja_segue:
+            c.execute("DELETE FROM seguidores WHERE seguidor_id = ? AND criador_nome = ?", (seguidor_id, nome_alvo))
+            esta_seguindo = False
+        else:
+            c.execute("INSERT INTO seguidores (seguidor_id, criador_nome, criado_em) VALUES (?, ?, ?)", (seguidor_id, nome_alvo, agora()))
+            esta_seguindo = True
+        cont = c.execute("SELECT COUNT(*) as tot FROM seguidores WHERE criador_nome = ?", (nome_alvo,)).fetchone()
+        total_seguidores = int(cont["tot"]) if cont else 0
+    return {"esta_seguindo": esta_seguindo, "total_seguidores": total_seguidores}
+
+
+def obter_status_criador(criador_nome, seguidor_id=None):
+    nome_alvo = (criador_nome or "").strip()
+    with conexao() as c:
+        cont_seg = c.execute("SELECT COUNT(*) as tot FROM seguidores WHERE criador_nome = ?", (nome_alvo,)).fetchone()
+        total_seguidores = int(cont_seg["tot"]) if cont_seg else 0
+        esta_seguindo = False
+        esta_bloqueado = False
+        if seguidor_id:
+            s = c.execute("SELECT 1 FROM seguidores WHERE seguidor_id = ? AND criador_nome = ?", (seguidor_id, nome_alvo)).fetchone()
+            esta_seguindo = bool(s)
+            b = c.execute("SELECT 1 FROM bloqueios_usuario WHERE jogador_id = ? AND alvo_nome = ?", (seguidor_id, nome_alvo)).fetchone()
+            esta_bloqueado = bool(b)
+        # Total de chats e saves dos cenários deste criador
+        stats = c.execute(
+            "SELECT SUM(chats) as total_chats, SUM(saves) as total_saves FROM cenarios_usuario WHERE autor_nome = ?",
+            (nome_alvo,)
+        ).fetchone()
+        chats = int(stats["total_chats"] or 0) if stats else 0
+        saves = int(stats["total_saves"] or 0) if stats else 0
+        # Histórias criadas por ele
+        linhas = c.execute(
+            "SELECT * FROM cenarios_usuario WHERE autor_nome = ? ORDER BY criado_em DESC",
+            (nome_alvo,)
+        ).fetchall()
+        import json
+        historias = []
+        for l in linhas:
+            d = dict(l)
+            try:
+                d["tags"] = json.loads(d.get("tags") or "[]")
+            except Exception:
+                d["tags"] = []
+            d["criadoPorUsuario"] = True
+            d["autorNome"] = d.get("autor_nome") or nome_alvo
+            d["autorAvatar"] = d.get("emoji") or "🎭"
+            d["modoJogo"] = d.get("modo_jogo") or "historia"
+            historias.append(d)
+
+    return {
+        "nome": nome_alvo,
+        "avatar": (historias[0]["autorAvatar"] if historias else "🎭"),
+        "uid": f"UID:@{nome_alvo}",
+        "chats": max(chats, 1),
+        "saves": max(saves, 0),
+        "seguidores": total_seguidores,
+        "seguindo": 1,
+        "esta_seguindo": esta_seguindo,
+        "esta_bloqueado": esta_bloqueado,
+        "historias": historias,
+    }
+
+
+def bloquear_criador(jogador_id, criador_nome):
+    nome_alvo = (criador_nome or "").strip()
+    with transacao() as c:
+        c.execute(
+            "INSERT OR REPLACE INTO bloqueios_usuario (jogador_id, alvo_nome, criado_em) VALUES (?, ?, ?)",
+            (jogador_id, nome_alvo, agora())
+        )
+    return True
+
+
+def denunciar_criador(jogador_id, criador_nome, motivo):
+    with transacao() as c:
+        c.execute(
+            "INSERT INTO denuncias (jogador_id, jogo_id, motivo, trecho, criado_em) VALUES (?, ?, ?, ?, ?)",
+            (jogador_id, f"perfil:{criador_nome}", motivo or "Perfil inapropriado", f"Denúncia do criador {criador_nome}", agora())
+        )
+    return True
 

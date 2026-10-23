@@ -655,3 +655,49 @@ data class RetratoResponse(val retrato: Boolean = true)
 
 
 data class AvatarResponse(@SerializedName("avatar_seed") val avatarSeed: Int)
+
+data class ComentarioDto(
+    val id: Long,
+    @SerializedName("cenario_id") val cenarioId: String,
+    @SerializedName("jogador_id") val jogadorId: Long,
+    @SerializedName("autor_nome") val autorNome: String,
+    @SerializedName("autor_avatar") val autorAvatar: String = "👤",
+    val texto: String,
+    val likes: Int = 0,
+    @SerializedName("meu_like") val meuLike: Boolean = false,
+    @SerializedName("meu_comentario") val meuComentario: Boolean = false,
+    @SerializedName("criado_em") val criadoEm: String,
+    @SerializedName("editado_em") val editadoEm: String? = null
+)
+
+data class NovoComentarioRequest(
+    val texto: String
+)
+
+data class LikeComentarioResponse(
+    val likes: Int,
+    @SerializedName("meu_like") val meuLike: Boolean
+)
+
+data class PerfilCriadorDto(
+    val nome: String,
+    val avatar: String = "🎭",
+    val uid: String,
+    val chats: Int = 0,
+    val saves: Int = 0,
+    val seguidores: Int = 0,
+    val seguindo: Int = 1,
+    @SerializedName("esta_seguindo") val estaSeguindo: Boolean = false,
+    @SerializedName("esta_bloqueado") val estaBloqueado: Boolean = false,
+    val historias: List<CenarioDto> = emptyList()
+)
+
+data class SeguirResponse(
+    @SerializedName("esta_seguindo") val estaSeguindo: Boolean,
+    @SerializedName("total_seguidores") val totalSeguidores: Int
+)
+
+data class DenunciaCriadorRequest(
+    val motivo: String,
+    val trecho: String? = null
+)

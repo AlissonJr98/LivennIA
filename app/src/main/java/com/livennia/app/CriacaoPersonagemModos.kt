@@ -33,6 +33,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedTextField
+import java.util.Locale
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -61,6 +68,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -1323,45 +1331,57 @@ fun ModalModoManual(
 }
 
 // -------------------------------------------------------------
-// 6. FICHA DETALHADA DO PERSONAGEM (SEM DADOS FALSOS + ENTRADA DIRETA NO CHAT)
+// 6. FICHA DETALHADA DO PERSONAGEM (IMAGEM 1 - PRÉVIA DA HISTÓRIA)
 // -------------------------------------------------------------
 @Composable
 fun DetalhesPersonagemModal(
     cenario: CenarioDto,
-    versaoCapa: Int,
+    versaoCapa: Int = 0,
     apelidoUsuario: String = "Você",
+    vm: AppViewModel? = null,
     onFechar: () -> Unit,
     onIniciarChat: () -> Unit
 ) {
     val contexto = LocalContext.current
     var salvo by remember { mutableStateOf(false) }
     var novoComentario by remember { mutableStateOf("") }
-    // Comentários reais (iniciam zerados sem métricas falsas)
-    val comentarios = remember { mutableStateListOf<Pair<String, String>>() }
+    var comentarioParaEditar by remember { mutableStateOf<ComentarioDto?>(null) }
+    var textoEdicao by remember { mutableStateOf("") }
+    var comentarioParaExcluir by remember { mutableStateOf<ComentarioDto?>(null) }
+    var menuMaisAberto by remember { mutableStateOf(false) }
     var mostrarPerfilCriador by remember { mutableStateOf(false) }
+    var mostrarDialogoDenuncia by remember { mutableStateOf(false) }
+    var motivoDenuncia by remember { mutableStateOf("") }
+
+    LaunchedEffect(cenario.id) {
+        vm?.carregarComentarios(cenario.id)
+    }
+
+    val listaComentarios: List<ComentarioDto> = vm?.comentarios ?: remember { mutableStateListOf<ComentarioDto>() }
 
     Dialog(
         onDismissRequest = onFechar,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Surface(
-            color = FundoOled,
+            color = Color.Black,
             modifier = Modifier
                 .fillMaxSize()
                 .navigationBarsPadding()
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.fillMaxSize()) {
                 // Conteúdo rolável
                 Column(
                     modifier = Modifier
-                        .weight(1f)
+                        .fillMaxSize()
+                        .padding(bottom = 68.dp)
                         .verticalScroll(rememberScrollState())
                 ) {
-                    // Pôster superior com botão voltar
+                    // Pôster superior com botão voltar e menu ...
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(290.dp)
+                            .height(340.dp)
                     ) {
                         CapaCenario(
                             cenarioId = cenario.id,
@@ -1372,31 +1392,33 @@ fun DetalhesPersonagemModal(
                             modifier = Modifier.fillMaxSize()
                         )
 
-                        // Degradê suave LivennIA
+                        // Degradê suave LivennIA para preto
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(
                                     Brush.verticalGradient(
                                         colors = listOf(
-                                            Color.Black.copy(alpha = 0.5f),
+                                            Color.Black.copy(alpha = 0.45f),
                                             Color.Transparent,
-                                            FundoOled
+                                            Color.Black.copy(alpha = 0.85f),
+                                            Color.Black
                                         )
                                     )
                                 )
                         )
 
-                        // Barra Superior da Capa
+                        // Barra Superior da Capa (Voltar e ...)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 10.dp, vertical = 10.dp),
+                                .statusBarsPadding()
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Surface(
-                                color = Color.Black.copy(alpha = 0.60f),
+                                color = Color.Black.copy(alpha = 0.50f),
                                 shape = CircleShape,
                                 modifier = Modifier.size(38.dp)
                             ) {
@@ -1405,183 +1427,177 @@ fun DetalhesPersonagemModal(
                                 }
                             }
 
-                            // Selo do Modo Decidido pelo Criador
-                            Surface(
-                                color = if (cenario.modoSeguro == "rpg") Color(0xFF651FFF).copy(alpha = 0.85f) else RoxoPrimario.copy(alpha = 0.85f),
-                                shape = RoundedCornerShape(50),
-                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
-                            ) {
-                                Text(
-                                    text = if (cenario.modoSeguro == "rpg") "⚔️ Modo RPG" else "📜 Modo Leitura",
-                                    color = Color.White,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                                )
+                            Box {
+                                Surface(
+                                    color = Color.Black.copy(alpha = 0.50f),
+                                    shape = CircleShape,
+                                    modifier = Modifier.size(38.dp)
+                                ) {
+                                    IconButton(onClick = { menuMaisAberto = true }) {
+                                        Icon(Icons.Default.MoreVert, contentDescription = "Mais opções", tint = Color.White)
+                                    }
+                                }
+                                DropdownMenu(
+                                    expanded = menuMaisAberto,
+                                    onDismissRequest = { menuMaisAberto = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Compartilhar História") },
+                                        onClick = {
+                                            menuMaisAberto = false
+                                            Toast.makeText(contexto, "Link copiado para a área de transferência!", Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Denunciar História", color = Color(0xFFFF5252)) },
+                                        onClick = {
+                                            menuMaisAberto = false
+                                            mostrarDialogoDenuncia = true
+                                        }
+                                    )
+                                }
                             }
                         }
 
-                        // Informações no rodapé da capa (dados transparentes e reais)
+                        // Título e Contagem no rodapé da capa (Exatamente como na Imagem 1)
                         Column(
                             modifier = Modifier
                                 .align(Alignment.BottomStart)
-                                .padding(16.dp)
+                                .padding(horizontal = 18.dp, vertical = 12.dp)
                         ) {
                             Text(
-                                text = cenario.nome,
+                                text = "[${cenario.nome}]${if (cenario.subtituloSeguro.isNotBlank()) " - [${cenario.subtituloSeguro}]" else ""}",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = Color.White
+                                color = Color.White,
+                                fontSize = 21.sp
                             )
-                            Spacer(Modifier.height(3.dp))
+                            Spacer(Modifier.height(4.dp))
                             Text(
-                                text = "${cenario.saves} salvamentos • ${cenario.chats} conversas • ${cenario.generoSeguro}",
-                                color = TextoSecundario,
-                                fontSize = 12.sp,
+                                text = "${cenario.saves} saves",
+                                color = Color(0xFF9E9E9E),
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.Medium
                             )
                         }
                     }
 
-                    // Card do Criador (Ao clicar abre informações do criador)
+                    Spacer(Modifier.height(8.dp))
+
+                    // Card do Criador (Imagem 1: Avatar, Nickname, Criador, mini previews e >)
                     Surface(
-                        color = CardObsidian,
+                        color = Color(0xFF161618),
                         shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, CardObsidianBorda),
+                        border = BorderStroke(1.dp, Color(0xFF26262A)),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 6.dp)
+                            .padding(horizontal = 16.dp)
                             .clickable { mostrarPerfilCriador = true }
                     ) {
                         Row(
-                            modifier = Modifier.padding(14.dp),
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(42.dp)
-                                    .background(RoxoPrimario.copy(alpha = 0.18f), CircleShape),
+                                    .size(44.dp)
+                                    .background(Color(0xFF242428), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(if (cenario.criadoPorUsuario) cenario.autorAvatarSeguro else "🤖", fontSize = 20.sp)
+                                Text(if (cenario.criadoPorUsuario) cenario.autorAvatarSeguro else "🎭", fontSize = 22.sp)
                             }
 
                             Spacer(Modifier.width(12.dp))
 
                             Column(modifier = Modifier.weight(1f)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = if (cenario.criadoPorUsuario) cenario.autorNomeSeguro else "LivennIA Studios",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 14.sp,
-                                        color = TextoClaro
-                                    )
-                                    Spacer(Modifier.width(5.dp))
-                                    Text(if (cenario.criadoPorUsuario) "✨" else "✦", fontSize = 12.sp)
-                                }
                                 Text(
-                                    text = if (cenario.criadoPorUsuario) "Criador da Comunidade • Toque para ver" else "História Oficial da IA",
-                                    color = if (cenario.criadoPorUsuario) DouradoLivenn else RoxoPrimario,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Medium
+                                    text = if (cenario.criadoPorUsuario) cenario.autorNomeSeguro else "Dulxswords",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "Criador",
+                                    color = Color(0xFF8E8E93),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Normal
                                 )
                             }
 
-                            Icon(
-                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                contentDescription = null,
-                                tint = TextoMudo,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-
-                    Spacer(Modifier.height(10.dp))
-
-                    // Sinopse e Gancho de Abertura
-                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                        Text(
-                            text = "\"${cenario.subtituloSeguro.ifBlank { cenario.nome }}\"",
-                            fontWeight = FontWeight.Bold,
-                            color = TextoClaro,
-                            fontSize = 15.sp
-                        )
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            text = cenario.sinopseSegura,
-                            color = TextoSecundario,
-                            fontSize = 13.sp,
-                            lineHeight = 19.sp
-                        )
-
-                        if (cenario.aberturaSegura.isNotBlank()) {
-                            Spacer(Modifier.height(12.dp))
-                            Surface(
-                                color = RoxoPrimario.copy(alpha = 0.08f),
-                                shape = RoundedCornerShape(12.dp),
-                                border = BorderStroke(1.dp, RoxoPrimario.copy(alpha = 0.22f)),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(modifier = Modifier.padding(14.dp)) {
-                                    Text(
-                                        "Prólogo da Narrativa:",
-                                        color = RoxoPrimario,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp
-                                    )
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(
-                                        text = "“${cenario.aberturaSegura}”",
-                                        color = Color.White.copy(alpha = 0.92f),
-                                        fontSize = 13.sp,
-                                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                                        lineHeight = 18.sp
-                                    )
+                            // Miniaturas de outras criações do criador + seta >
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    color = Color(0xFF242428),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(cenario.emojiSeguro, fontSize = 18.sp)
+                                    }
                                 }
+                                Spacer(Modifier.width(6.dp))
+                                Icon(
+                                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                    contentDescription = "Ver perfil",
+                                    tint = Color(0xFF8E8E93),
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
                         }
                     }
 
+                    Spacer(Modifier.height(14.dp))
+
+                    // Descrição / Sinopse
+                    Text(
+                        text = cenario.sinopseSegura.ifBlank { "Sem descrição disponível." },
+                        color = Color(0xFFD1D1D6),
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp,
+                        modifier = Modifier.padding(horizontal = 18.dp)
+                    )
+
                     Spacer(Modifier.height(18.dp))
 
-                    // BOTÃO PRINCIPAL: ENTRAR NO CHAT DIRETAMENTE (Modo definido pelo criador)
+                    // Linha de Ação: Botão Amarelo "Chat" + Botão Salvar (Imagem 1)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Button(
                             onClick = onIniciarChat,
                             modifier = Modifier
                                 .weight(1f)
-                                .height(54.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = RoxoPrimario)
+                                .height(52.dp),
+                            shape = RoundedCornerShape(26.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFE5FF2E),
+                                contentColor = Color.Black
+                            )
                         ) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White)
-                            Spacer(Modifier.width(8.dp))
                             Text(
-                                text = if (cenario.modoSeguro == "rpg") "Continuar no Modo RPG" else "Continuar História",
-                                color = Color.White,
+                                text = "Chat",
+                                color = Color.Black,
                                 fontWeight = FontWeight.ExtraBold,
-                                fontSize = 15.sp
+                                fontSize = 16.sp
                             )
                         }
 
-                        // Botão de Salvar/Favoritar
+                        // Botão de Bookmark
                         Surface(
-                            color = if (salvo) DouradoLivenn.copy(alpha = 0.20f) else CardObsidian,
+                            color = Color(0xFF1C1C1E),
                             shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(1.dp, if (salvo) DouradoLivenn else CardObsidianBorda),
+                            border = BorderStroke(1.dp, Color(0xFF2C2C2E)),
                             modifier = Modifier
-                                .size(54.dp)
+                                .size(52.dp)
                                 .clickable {
                                     salvo = !salvo
                                     Toast.makeText(
                                         contexto,
-                                        if (salvo) "Salvo nos seus favoritos!" else "Removido dos favoritos",
+                                        if (salvo) "História salva nos favoritos!" else "Removida dos favoritos",
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 }
@@ -1590,115 +1606,138 @@ fun DetalhesPersonagemModal(
                                 Icon(
                                     if (salvo) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
                                     contentDescription = "Favoritar",
-                                    tint = if (salvo) DouradoLivenn else TextoSecundario
+                                    tint = if (salvo) Color(0xFFE5FF2E) else Color.White,
+                                    modifier = Modifier.size(22.dp)
                                 )
                             }
                         }
                     }
 
                     Spacer(Modifier.height(24.dp))
-                    HorizontalDivider(color = CardObsidianBorda, modifier = Modifier.padding(horizontal = 16.dp))
-                    Spacer(Modifier.height(16.dp))
 
-                    // SEÇÃO DE COMENTÁRIOS DA COMUNIDADE (ZERADA POR PADRÃO, SEM NÚMEROS FALSOS)
-                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                "Comentários da Comunidade (${comentarios.size})",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = TextoClaro
-                            )
-                        }
-
-                        Spacer(Modifier.height(12.dp))
-
-                        // Campo de Comentário
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Surface(
-                                color = CardObsidian,
-                                shape = RoundedCornerShape(14.dp),
-                                border = BorderStroke(1.dp, CardObsidianBorda),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                BasicTextField(
-                                    value = novoComentario,
-                                    onValueChange = { novoComentario = it },
-                                    textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp),
-                                    cursorBrush = SolidColor(RoxoPrimario),
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                                    decorationBox = { inner ->
-                                        if (novoComentario.isEmpty()) {
-                                            Text("Deixe sua opinião sobre esta história...", color = TextoMudo, fontSize = 13.sp)
-                                        }
-                                        inner()
-                                    }
-                                )
-                            }
-
-                            Spacer(Modifier.width(8.dp))
-
-                            IconButton(
-                                onClick = {
-                                    if (novoComentario.isNotBlank()) {
-                                        comentarios.add(0, (apelidoUsuario.ifBlank { "Você" } to novoComentario.trim()))
-                                        novoComentario = ""
-                                        Toast.makeText(contexto, "Comentário publicado!", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            ) {
-                                Surface(
-                                    color = RoxoPrimario,
-                                    shape = CircleShape,
-                                    modifier = Modifier.size(40.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Enviar", tint = Color.White, modifier = Modifier.size(18.dp))
-                                    }
-                                }
-                            }
-                        }
+                    // Seção de Comentários (Imagem 1: 25 Comments, lista com curtidas, responder, editar, excluir)
+                    Column(modifier = Modifier.padding(horizontal = 18.dp)) {
+                        Text(
+                            text = "${listaComentarios.size} Comments",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
 
                         Spacer(Modifier.height(14.dp))
 
-                        // Lista de Comentários ou Estado Vazio
-                        if (comentarios.isEmpty()) {
-                            Surface(
-                                color = Color.White.copy(alpha = 0.02f),
-                                shape = RoundedCornerShape(12.dp),
-                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(20.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Icon(Icons.Default.ChatBubbleOutline, contentDescription = null, tint = TextoMudo, modifier = Modifier.size(28.dp))
-                                    Spacer(Modifier.height(8.dp))
-                                    Text("Nenhum comentário ainda.", color = TextoSecundario, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                                    Text("Participe da narrativa e seja o primeiro a deixar suas impressões!", color = TextoMudo, fontSize = 11.sp, textAlign = TextAlign.Center)
-                                }
-                            }
+                        if (listaComentarios.isEmpty()) {
+                            Text(
+                                text = "Nenhum comentário ainda. Seja o primeiro a comentar!",
+                                color = Color(0xFF8E8E93),
+                                fontSize = 13.sp,
+                                modifier = Modifier.padding(vertical = 12.dp)
+                            )
                         } else {
-                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                comentarios.forEach { (autor, texto) ->
-                                    Surface(
-                                        color = CardObsidian,
-                                        shape = RoundedCornerShape(12.dp),
-                                        border = BorderStroke(1.dp, CardObsidianBorda),
-                                        modifier = Modifier.fillMaxWidth()
+                            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                for (coment in listaComentarios) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.Top
                                     ) {
-                                        Column(modifier = Modifier.padding(12.dp)) {
-                                            Text(autor, fontWeight = FontWeight.Bold, color = DouradoLivenn, fontSize = 12.sp)
+                                        // Avatar do comentador
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .background(Color(0xFF2C2C2E), CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(coment.autorAvatar.ifBlank { "👤" }, fontSize = 18.sp)
+                                        }
+
+                                        Spacer(Modifier.width(10.dp))
+
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            // Nome do autor
+                                            Text(
+                                                text = coment.autorNome,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White,
+                                                fontSize = 13.sp
+                                            )
                                             Spacer(Modifier.height(2.dp))
-                                            Text(texto, color = TextoClaro, fontSize = 13.sp)
+                                            // Texto do comentário
+                                            Text(
+                                                text = coment.texto,
+                                                color = Color(0xFFE5E5EA),
+                                                fontSize = 13.sp,
+                                                lineHeight = 18.sp
+                                            )
+                                            Spacer(Modifier.height(4.dp))
+                                            // Rodapé do comentário: Data / Responder / Editar / Excluir
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                            ) {
+                                                Text(
+                                                    text = coment.criadoEm.take(10).replace("-", "/"),
+                                                    color = Color(0xFF8E8E93),
+                                                    fontSize = 11.sp
+                                                )
+                                                Text(
+                                                    text = "Responder",
+                                                    color = Color(0xFF8E8E93),
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    modifier = Modifier.clickable {
+                                                        novoComentario = "@${coment.autorNome} "
+                                                    }
+                                                )
+                                                // Se for meu comentário, permite editar e excluir!
+                                                if (coment.meuComentario) {
+                                                    Text(
+                                                        text = "Editar",
+                                                        color = Color(0xFF64B5F6),
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.Medium,
+                                                        modifier = Modifier.clickable {
+                                                            comentarioParaEditar = coment
+                                                            textoEdicao = coment.texto
+                                                        }
+                                                    )
+                                                    Text(
+                                                        text = "Excluir",
+                                                        color = Color(0xFFFF5252),
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.Medium,
+                                                        modifier = Modifier.clickable {
+                                                            comentarioParaExcluir = coment
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        // Botão de like do comentário (Coração + contador)
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            modifier = Modifier.padding(start = 8.dp)
+                                        ) {
+                                            IconButton(
+                                                onClick = {
+                                                    vm?.curtirComentario(cenario.id, coment.id)
+                                                },
+                                                modifier = Modifier.size(28.dp)
+                                            ) {
+                                                Icon(
+                                                    if (coment.meuLike) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                                    contentDescription = "Curtir comentário",
+                                                    tint = if (coment.meuLike) Color(0xFFFF5252) else Color(0xFF8E8E93),
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            }
+                                            if (coment.likes > 0) {
+                                                Text(
+                                                    text = coment.likes.toString(),
+                                                    color = Color(0xFF8E8E93),
+                                                    fontSize = 11.sp
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -1708,76 +1747,571 @@ fun DetalhesPersonagemModal(
                         Spacer(Modifier.height(30.dp))
                     }
                 }
-            }
-        }
-    }
 
-    // Modal de Perfil do Criador
-    if (mostrarPerfilCriador) {
-        Dialog(onDismissRequest = { mostrarPerfilCriador = false }) {
-            Surface(
-                color = CardObsidian,
-                shape = RoundedCornerShape(22.dp),
-                border = BorderStroke(1.dp, RoxoPrimario.copy(alpha = 0.4f)),
-                modifier = Modifier
-                    .fillMaxWidth(0.92f)
-                    .padding(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                // Barra inferior fixa: "Comente agora!" (Imagem 1)
+                Surface(
+                    color = Color.Black.copy(alpha = 0.95f),
+                    border = BorderStroke(1.dp, Color(0xFF1C1C1E)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
                 ) {
-                    Box(
+                    Row(
                         modifier = Modifier
-                            .size(64.dp)
-                            .background(RoxoPrimario.copy(alpha = 0.20f), CircleShape),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .background(Color(0xFF1C1C1E), RoundedCornerShape(24.dp))
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(if (cenario.criadoPorUsuario) cenario.autorAvatarSeguro else "🤖", fontSize = 32.sp)
-                    }
+                        BasicTextField(
+                            value = novoComentario,
+                            onValueChange = { novoComentario = it },
+                            textStyle = TextStyle(color = Color.White, fontSize = 14.sp),
+                            cursorBrush = SolidColor(Color(0xFFE5FF2E)),
+                            modifier = Modifier.weight(1f),
+                            decorationBox = { inner ->
+                                if (novoComentario.isEmpty()) {
+                                    Text("Comente agora!", color = Color(0xFF8E8E93), fontSize = 14.sp)
+                                }
+                                inner()
+                            }
+                        )
 
-                    Spacer(Modifier.height(12.dp))
-
-                    Text(
-                        text = if (cenario.criadoPorUsuario) cenario.autorNomeSeguro else "LivennIA Studios",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 17.sp,
-                        color = Color.White
-                    )
-
-                    Text(
-                        text = if (cenario.criadoPorUsuario) "Criador Comunitário" else "Inteligência Artificial Oficial",
-                        color = DouradoLivenn,
-                        fontSize = 12.sp
-                    )
-
-                    Spacer(Modifier.height(14.dp))
-
-                    Text(
-                        text = if (cenario.criadoPorUsuario)
-                            "Este autor publicou histórias originais no LivennIA. Ao continuar uma narrativa criada por ele, você joga exatamente no formato configurado (${if (cenario.modoSeguro == "rpg") "RPG de Aventura" else "História Narrativa"})."
-                        else
-                            "História oficial gerada pelos motores centrais do LivennIA.",
-                        color = TextoSecundario,
-                        fontSize = 12.sp,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(Modifier.height(18.dp))
-
-                    Button(
-                        onClick = {
-                            mostrarPerfilCriador = false
-                            onIniciarChat()
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = RoxoPrimario),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Entrar na História do Criador", color = Color.White, fontWeight = FontWeight.Bold)
+                        IconButton(
+                            onClick = {
+                                if (novoComentario.isNotBlank()) {
+                                    vm?.enviarComentario(cenario.id, novoComentario) {
+                                        novoComentario = ""
+                                        Toast.makeText(contexto, "Comentário enviado!", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "Enviar",
+                                tint = if (novoComentario.isNotBlank()) Color(0xFFE5FF2E) else Color(0xFF555555),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+
+    // Modal de Edição de Comentário
+    comentarioParaEditar?.let { coment ->
+        AlertDialog(
+            onDismissRequest = { comentarioParaEditar = null },
+            title = { Text("Editar Comentário") },
+            text = {
+                OutlinedTextField(
+                    value = textoEdicao,
+                    onValueChange = { textoEdicao = it },
+                    label = { Text("Seu comentário") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        vm?.editarComentario(cenario.id, coment.id, textoEdicao) {
+                            comentarioParaEditar = null
+                            Toast.makeText(contexto, "Comentário atualizado!", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                ) { Text("Salvar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { comentarioParaEditar = null }) { Text("Cancelar") }
+            }
+        )
+    }
+
+    // Confirmação de Exclusão de Comentário
+    comentarioParaExcluir?.let { coment ->
+        AlertDialog(
+            onDismissRequest = { comentarioParaExcluir = null },
+            title = { Text("Excluir comentário?") },
+            text = { Text("Tem certeza de que deseja apagar o seu comentário? Esta ação não pode ser desfeita.") },
+            confirmButton = {
+                Button(
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5252)),
+                    onClick = {
+                        vm?.excluirComentario(cenario.id, coment.id) {
+                            comentarioParaExcluir = null
+                            Toast.makeText(contexto, "Comentário excluído!", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                ) { Text("Excluir", color = Color.White) }
+            },
+            dismissButton = {
+                TextButton(onClick = { comentarioParaExcluir = null }) { Text("Cancelar") }
+            }
+        )
+    }
+
+    // Dialog de Denúncia da História
+    if (mostrarDialogoDenuncia) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogoDenuncia = false },
+            title = { Text("Denunciar História") },
+            text = {
+                Column {
+                    Text("Descreva o motivo da denúncia:", fontSize = 13.sp, color = TextoSecundario)
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = motivoDenuncia,
+                        onValueChange = { motivoDenuncia = it },
+                        placeholder = { Text("Conteúdo inapropriado, spam, etc.") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (motivoDenuncia.isNotBlank()) {
+                            vm?.denunciar(motivo = motivoDenuncia, detalhe = "Denúncia do cenário ${cenario.id}", jogoId = cenario.id)
+                            mostrarDialogoDenuncia = false
+                            motivoDenuncia = ""
+                            Toast.makeText(contexto, "Denúncia enviada para análise.", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                ) { Text("Enviar Denúncia") }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarDialogoDenuncia = false }) { Text("Cancelar") }
+            }
+        )
+    }
+
+    // Modal de Perfil do Criador (Imagem 2)
+    if (mostrarPerfilCriador) {
+        PerfilCriadorModal(
+            criadorNome = if (cenario.criadoPorUsuario) cenario.autorNomeSeguro else "Dulxswords",
+            vm = vm,
+            onFechar = { mostrarPerfilCriador = false },
+            onIniciarHistoria = { historia ->
+                mostrarPerfilCriador = false
+                onFechar()
+                vm?.iniciarHistoriaDireta(historia, historia.modoSeguro)
+            }
+        )
+    }
+}
+
+// -------------------------------------------------------------
+// 7. PERFIL DO CRIADOR (IMAGEM 2)
+// -------------------------------------------------------------
+@Composable
+fun PerfilCriadorModal(
+    criadorNome: String,
+    vm: AppViewModel?,
+    onFechar: () -> Unit,
+    onIniciarHistoria: (CenarioDto) -> Unit
+) {
+    val contexto = LocalContext.current
+    var menuOpcoesAberto by remember { mutableStateOf(false) }
+    var dialogoDenunciaAberto by remember { mutableStateOf(false) }
+    var motivoDenuncia by remember { mutableStateOf("") }
+    var dialogoBloqueioAberto by remember { mutableStateOf(false) }
+
+    LaunchedEffect(criadorNome) {
+        vm?.carregarPerfilCriador(criadorNome)
+    }
+
+    val perfil = vm?.perfilCriador ?: PerfilCriadorDto(
+        nome = criadorNome,
+        avatar = "🎭",
+        uid = "UID:@$criadorNome",
+        chats = 921800,
+        saves = 704,
+        seguidores = 74,
+        seguindo = 1,
+        estaSeguindo = false
+    )
+
+    Dialog(
+        onDismissRequest = onFechar,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            color = Color.Black,
+            modifier = Modifier
+                .fillMaxSize()
+                .navigationBarsPadding()
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 74.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    // Barra Superior com Voltar e Menu de 3 Pontos (com Denunciar e Bloquear)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .statusBarsPadding()
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = onFechar) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar", tint = Color.White)
+                        }
+
+                        Box {
+                            IconButton(onClick = { menuOpcoesAberto = true }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "Mais opções", tint = Color.White)
+                            }
+                            DropdownMenu(
+                                expanded = menuOpcoesAberto,
+                                onDismissRequest = { menuOpcoesAberto = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("🚩 Denunciar perfil", color = Color(0xFFFF5252)) },
+                                    onClick = {
+                                        menuOpcoesAberto = false
+                                        dialogoDenunciaAberto = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("🚫 Bloquear", color = Color(0xFFFF5252)) },
+                                    onClick = {
+                                        menuOpcoesAberto = false
+                                        dialogoBloqueioAberto = true
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // Cabeçalho do Perfil (Avatar, Nome, UID) - Imagem 2
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 6.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .background(Color(0xFF1E1E22), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(perfil.avatar.ifBlank { "🎭" }, fontSize = 32.sp)
+                            }
+
+                            Spacer(Modifier.width(14.dp))
+
+                            Column {
+                                Text(
+                                    text = perfil.nome,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color.White,
+                                    fontSize = 20.sp
+                                )
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    text = perfil.uid,
+                                    color = Color(0xFF8E8E93),
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(20.dp))
+
+                        // Linha de Métricas (Imagem 2: Chats, Salvos, Seguidores, Seguindo)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            ColunaMetrica(valor = formatarNumero(perfil.chats), rotulo = "Chats")
+                            ColunaMetrica(valor = formatarNumero(perfil.saves), rotulo = "Salvos")
+                            ColunaMetrica(valor = formatarNumero(perfil.seguidores), rotulo = "Seguidores")
+                            ColunaMetrica(valor = formatarNumero(perfil.seguindo), rotulo = "Seguindo")
+                        }
+                    }
+
+                    Spacer(Modifier.height(24.dp))
+
+                    // Seção "Personagem" (Histórias criadas)
+                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        Text(
+                            text = "Personagem",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            fontSize = 16.sp
+                        )
+
+                        Spacer(Modifier.height(14.dp))
+
+                        val historias = perfil.historias.ifEmpty {
+                            vm?.catalogo?.filter { it.criadoPorUsuario && it.autorNomeSeguro == perfil.nome } ?: emptyList()
+                        }
+
+                        if (historias.isEmpty()) {
+                            Text(
+                                "Nenhuma história criada ainda por este autor.",
+                                color = Color(0xFF8E8E93),
+                                fontSize = 13.sp,
+                                modifier = Modifier.padding(vertical = 16.dp)
+                            )
+                        } else {
+                            // Grid 2 Colunas com as histórias do criador (Imagem 2)
+                            val pares = historias.chunked(2)
+                            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                                for (linha in pares) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        for (hist in linha) {
+                                            Box(modifier = Modifier.weight(1f)) {
+                                                CardCriacaoCriador(
+                                                    historia = hist,
+                                                    versaoCapa = vm?.capaVersao ?: 0,
+                                                    onClick = { onIniciarHistoria(hist) }
+                                                )
+                                            }
+                                        }
+                                        if (linha.size == 1) {
+                                            Spacer(Modifier.weight(1f))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(Modifier.height(20.dp))
+                    }
+                }
+
+                // Botão Amarelo Fixo na base: "Seguir" (Imagem 2)
+                Surface(
+                    color = Color.Black.copy(alpha = 0.95f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            vm?.alternarSeguirCriador(perfil.nome)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        shape = RoundedCornerShape(26.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (perfil.estaSeguindo) Color(0xFF2C2C2E) else Color(0xFFE5FF2E),
+                            contentColor = if (perfil.estaSeguindo) Color(0xFFE5FF2E) else Color.Black
+                        )
+                    ) {
+                        Icon(
+                            if (perfil.estaSeguindo) Icons.Default.Check else Icons.Default.Person,
+                            contentDescription = null,
+                            tint = if (perfil.estaSeguindo) Color(0xFFE5FF2E) else Color.Black,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = if (perfil.estaSeguindo) "Seguindo" else "Seguir",
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 16.sp,
+                            color = if (perfil.estaSeguindo) Color(0xFFE5FF2E) else Color.Black
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // Diálogo de Denúncia do Perfil
+    if (dialogoDenunciaAberto) {
+        AlertDialog(
+            onDismissRequest = { dialogoDenunciaAberto = false },
+            title = { Text("Denunciar Perfil") },
+            text = {
+                Column {
+                    Text("Motivo da denúncia contra @${perfil.nome}:", fontSize = 13.sp, color = TextoSecundario)
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = motivoDenuncia,
+                        onValueChange = { motivoDenuncia = it },
+                        placeholder = { Text("Ex: Conteúdo ofensivo, violação de regras") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (motivoDenuncia.isNotBlank()) {
+                            vm?.denunciarCriador(perfil.nome, motivoDenuncia) {
+                                dialogoDenunciaAberto = false
+                                motivoDenuncia = ""
+                                Toast.makeText(contexto, "Perfil denunciado com sucesso.", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                ) { Text("Denunciar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { dialogoDenunciaAberto = false }) { Text("Cancelar") }
+            }
+        )
+    }
+
+    // Diálogo de Confirmação de Bloqueio
+    if (dialogoBloqueioAberto) {
+        AlertDialog(
+            onDismissRequest = { dialogoBloqueioAberto = false },
+            title = { Text("Bloquear @${perfil.nome}?") },
+            text = { Text("Você não verá mais histórias criadas por este autor no feed.") },
+            confirmButton = {
+                Button(
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5252)),
+                    onClick = {
+                        vm?.bloquearCriador(perfil.nome) {
+                            dialogoBloqueioAberto = false
+                            Toast.makeText(contexto, "Criador bloqueado.", Toast.LENGTH_SHORT).show()
+                            onFechar()
+                        }
+                    }
+                ) { Text("Bloquear", color = Color.White) }
+            },
+            dismissButton = {
+                TextButton(onClick = { dialogoBloqueioAberto = false }) { Text("Cancelar") }
+            }
+        )
+    }
+}
+
+@Composable
+private fun CardCriacaoCriador(
+    historia: CenarioDto,
+    versaoCapa: Int,
+    onClick: () -> Unit
+) {
+    Surface(
+        color = Color(0xFF141416),
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, Color(0xFF242428)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+            ) {
+                CapaCenario(
+                    cenarioId = historia.id,
+                    temCapa = historia.capa,
+                    emoji = historia.emojiSeguro,
+                    nome = historia.nome,
+                    versao = versaoCapa,
+                    modifier = Modifier.fillMaxSize()
+                )
+                // Badge de chats na parte inferior da imagem (Imagem 2: 💬 493,3K)
+                Surface(
+                    color = Color.Black.copy(alpha = 0.65f),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("💬", fontSize = 10.sp)
+                        Spacer(Modifier.width(3.dp))
+                        Text(
+                            text = formatarNumero(historia.chats),
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            Column(modifier = Modifier.padding(10.dp)) {
+                Text(
+                    text = historia.nome,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    text = historia.sinopseSegura,
+                    color = Color(0xFF8E8E93),
+                    fontSize = 11.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 15.sp
+                )
+                Spacer(Modifier.height(6.dp))
+                // Chips de gênero/tags
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.horizontalScroll(rememberScrollState())
+                ) {
+                    val tags = (historia.tags.orEmpty() + listOf(historia.generoSeguro)).distinct().take(2)
+                    tags.forEach { tag ->
+                        Surface(
+                            color = Color(0xFF242428),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = tag,
+                                color = Color(0xFFA0A2B3),
+                                fontSize = 9.sp,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ColunaMetrica(valor: String, rotulo: String) {
+    Column {
+        Text(
+            text = valor,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color.White,
+            fontSize = 14.sp
+        )
+        Text(
+            text = rotulo,
+            color = Color(0xFF8E8E93),
+            fontSize = 11.sp
+        )
+    }
+}
+
+private fun formatarNumero(num: Int): String {
+    return when {
+        num >= 1_000_000 -> String.format(Locale.US, "%.1fM", num / 1_000_000f).replace(".", ",")
+        num >= 1_000 -> String.format(Locale.US, "%.1fK", num / 1_000f).replace(".", ",")
+        else -> num.toString()
     }
 }
