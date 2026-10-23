@@ -7,6 +7,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,6 +19,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.MaterialTheme
@@ -110,6 +112,37 @@ fun LoginTela(vm: AppViewModel) {
             modifier = Modifier.fillMaxWidth()
         )
 
+        // Seletor rápido de Servidor (Nuvem / Local) para alternar em 1 toque
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val ehNuvem = vm.servidor.contains("trycloudflare") || vm.servidor.contains("https://")
+            FilterChip(
+                selected = ehNuvem,
+                onClick = { vm.usarServidorNuvem() },
+                label = { Text("🌐 Nuvem / 4G (Online)") },
+                modifier = Modifier.weight(1f)
+            )
+            FilterChip(
+                selected = !ehNuvem,
+                onClick = { vm.usarServidorLocal() },
+                label = { Text("📶 Wi-Fi Local (PC)") },
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        OutlinedTextField(
+            value = vm.servidor,
+            onValueChange = { vm.alterarServidor(it) },
+            shape = Cantos.campo,
+            label = { Text("Endereço do servidor") },
+            placeholder = { Text("https://...trycloudflare.com ou http://...") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
+            modifier = Modifier.fillMaxWidth()
+        )
+
         vm.erro?.let { AvisoCard(it, ehErro = true, onFechar = { vm.limparErro() }) }
         vm.aviso?.let { AvisoCard(it, ehErro = false, onFechar = { vm.limparAviso() }) }
         if (vm.ocupado) {
@@ -132,12 +165,10 @@ fun LoginTela(vm: AppViewModel) {
                     vm = vm,
                     codigoConvite = null,
                     onFallbackLegacy = {
-                        googleSignInClient.signOut().addOnCompleteListener {
-                            try {
-                                launcher.launch(googleSignInClient.signInIntent)
-                            } catch (e: Exception) {
-                                vm.definirErro("Não foi possível abrir o seletor Google: ${e.message}")
-                            }
+                        try {
+                            launcher.launch(googleSignInClient.signInIntent)
+                        } catch (e: Exception) {
+                            vm.definirErro("Não foi possível abrir o seletor Google: ${e.message}")
                         }
                     }
                 )

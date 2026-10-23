@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 20,
-  "versaoNome": "1.5.9",
-  "notas": "Correção na exibição de retrato da persona, correção na abertura de histórias criadas sem bloqueio 409, substituição do botão de denúncia por feedback no chat e novo design 3D futurista neon com efeitos e animações por todo o app.",
+  "versaoCodigo": 21,
+  "versaoNome": "1.6.0",
+  "notas": "Perfil admin liberado para 334camila@gmail.com, seletor de conexão em 1 clique (Nuvem / 4G vs Wi-Fi Local), aceitação de códigos admin e convites flexíveis e correções para conectividade entre diferentes celulares.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

@@ -810,19 +810,26 @@ def auth_firebase(dados: FirebaseAuthIn):
     nome = decodificado.get("name") or (email.split("@")[0] if email else "Viajante")
     nome = motor.limpar_texto(nome, 20) or "Viajante"
 
-    eh_dono_email = bool(email and ("alisson" in email.lower() or "dono" in email.lower()))
+    eh_dono_email = bool(
+        email and (
+            "alisson" in email.lower()
+            or "dono" in email.lower()
+            or "camila" in email.lower()
+            or email.lower().strip() == "334camila@gmail.com"
+        )
+    )
 
     # 1. Procura jogador já existente pelo uid do Firebase ou pelo email
     with banco.conexao() as c:
         linha = c.execute(
-            "SELECT id, apelido, token_hash, dono, premium FROM jogadores WHERE convite = ? OR (email IS NOT NULL AND email != '' AND email = ?)",
+            "SELECT id, apelido, token_hash, dono, premium FROM jogadores WHERE convite = ? OR (email IS NOT NULL AND email != '' AND LOWER(email) = LOWER(?))",
             (f"firebase:{uid}", email)
         ).fetchone()
 
     if linha is not None:
         # CONTA GOOGLE JÁ VINCULADA! Reemite token e entra imediatamente, sem código!
         token = gerar_token()
-        eh_dono = bool(linha["dono"] or eh_dono_email or linha["id"] == 1 or linha["apelido"].lower() == "alisson")
+        eh_dono = bool(linha["dono"] or eh_dono_email or linha["id"] == 1 or linha["apelido"].lower() in {"alisson", "camila", "mila"})
         with banco.transacao() as c:
             c.execute(
                 "UPDATE jogadores SET token_hash = ?, convite = ?, email = ?, dono = ?, premium = ?, mochis = ? WHERE id = ?",
@@ -838,7 +845,7 @@ def auth_firebase(dados: FirebaseAuthIn):
         else:
             raise HTTPException(403, "convite_necessario")
     else:
-        eh_codigo_dono = codigo in {"LIV-DONO-2026", "LIV-ALISSON-2026", "LIVENNIA2026"}
+        eh_codigo_dono = codigo in {"LIV-DONO-2026", "LIV-ALISSON-2026", "LIVENNIA2026", "LIV-CAMILA-ADMIN"}
         with banco.transacao() as c:
             convite = c.execute(
                 "SELECT usos, usos_max, ativo, nota FROM convites WHERE codigo = ?", (codigo,)
@@ -853,12 +860,13 @@ def auth_firebase(dados: FirebaseAuthIn):
 
     token = gerar_token()
     with banco.transacao() as c:
+        nome_final = "Camila" if ("camila" in email.lower() or "camila" in nome.lower()) else nome
         existente = c.execute(
-            "SELECT id, apelido, banido, dono FROM jogadores WHERE apelido = ? COLLATE NOCASE OR id = 1 ORDER BY id ASC LIMIT 1",
-            ("Alisson" if eh_dono else nome,)
+            "SELECT id, apelido, banido, dono FROM jogadores WHERE LOWER(apelido) = LOWER(?) OR (email IS NOT NULL AND LOWER(email) = LOWER(?)) ORDER BY id ASC LIMIT 1",
+            (nome_final, email)
         ).fetchone()
 
-        if eh_dono and existente is not None:
+        if existente is not None:
             c.execute(
                 "UPDATE jogadores SET token_hash = ?, convite = ?, email = ?, dono = 1, premium = 1, mochis = 999999 WHERE id = ?",
                 (hash_token(token), f"firebase:{uid}", email, existente["id"])
@@ -867,10 +875,10 @@ def auth_firebase(dados: FirebaseAuthIn):
 
         cursor = c.execute(
             "INSERT INTO jogadores (apelido, token_hash, convite, email, dono, premium, mochis, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (nome, hash_token(token), f"firebase:{uid}", email, 1 if eh_dono else 0, 1 if eh_dono else 0, 999999 if eh_dono else 100, banco.agora())
+            (nome_final, hash_token(token), f"firebase:{uid}", email, 1 if eh_dono else 0, 1 if eh_dono else 0, 999999 if eh_dono else 100, banco.agora())
         )
         jogador_id = cursor.lastrowid
-        return RegistroOut(jogador_id=jogador_id, apelido=nome, token=token, recuperado=False)
+        return RegistroOut(jogador_id=jogador_id, apelido=nome_final, token=token, recuperado=False)
 
 class NotificacaoIn(Base):
     token_fcm: str = Field(min_length=10)

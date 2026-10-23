@@ -770,7 +770,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 if (!ok && ultimoErro != null) {
                     val problema = ultimoErro!!.paraErroApp()
-                    erro = problema.mensagem
+                    if (ultimoErro is java.io.IOException && servidor.contains("192.168.")) {
+                        erro = "${problema.mensagem}\n\n💡 Dica: Se estiver em outro aparelho ou fora do mesmo Wi-Fi, toque em 'Nuvem / 4G (Online)'."
+                    } else {
+                        erro = problema.mensagem
+                    }
                     if (problema.sessaoInvalida) encerrarSessao()
                 }
             } finally {
@@ -842,6 +846,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val limpo = texto.trim()
         servidor = limpo
         prefs.servidor = limpo
+    }
+
+    fun usarServidorNuvem() {
+        alterarServidor(Preferencias.SERVIDOR_NUVEM)
+    }
+
+    fun usarServidorLocal() {
+        alterarServidor(Preferencias.SERVIDOR_LOCAL)
     }
 
     fun limparErro() {
