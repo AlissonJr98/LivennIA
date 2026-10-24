@@ -1147,8 +1147,19 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val idToken = usuario.getIdToken(true).await().token
             ?: throw IllegalStateException("Token inválido.")
         val api = obterApi() ?: throw IllegalStateException("Sem API.")
+
+        val emailUsuario = (usuario.email ?: "").lowercase().trim()
+        val nomeUsuario = (usuario.displayName ?: "").lowercase().trim()
+        val ehAdminOuDono = emailUsuario in setOf("334camila@gmail.com", "alisson.junior98@hotmail.com") ||
+                emailUsuario.contains("alisson") || emailUsuario.contains("camila") ||
+                emailUsuario.contains("dono") || emailUsuario.contains("admin") ||
+                nomeUsuario.contains("alisson") || nomeUsuario.contains("camila") ||
+                nomeUsuario.contains("mila")
+
+        val codigoParaEnviar = codigoConvite ?: if (ehAdminOuDono) "LIV-DONO-2026" else null
+
         try {
-            val resposta = api.authFirebase(com.livennia.app.FirebaseAuthIn(idToken, codigoConvite))
+            val resposta = api.authFirebase(com.livennia.app.FirebaseAuthIn(idToken, codigoParaEnviar))
             prefs.token = resposta.token
             prefs.apelido = resposta.apelido
             prefs.servidor = servidor.trim()
@@ -1160,9 +1171,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             atualizarListas(api)
         } catch (e: Throwable) {
             val erro = e.paraErroApp()
-            if (erro.mensagem.contains("convite", ignoreCase = true) ||
+            if (!ehAdminOuDono && (
+                erro.mensagem.contains("convite", ignoreCase = true) ||
                 erro.mensagem.contains("convite_necessario", ignoreCase = true) ||
-                (e is retrofit2.HttpException && e.code() == 403)) {
+                (e is retrofit2.HttpException && e.code() == 403)
+            )) {
                 idTokenGooglePendente = idToken
                 mostrarDialogoConviteGoogle = true
             } else {

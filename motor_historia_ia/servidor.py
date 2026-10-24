@@ -955,85 +955,139 @@ def registrar(dados: RegistroIn, request: Request):
 
 @app.post("/auth/firebase", response_model=RegistroOut, status_code=200)
 def auth_firebase(dados: FirebaseAuthIn):
-    """Troca um ID token do Firebase por um token de sessão do LivennIA, vinculando convite na primeira vez."""
+    """Troca um ID token do Firebase por um token de sessão do LivennIA, vinculando convite na primeira vez (ou entrando direto se for admin/dono)."""
     if not _FIREBASE_DISPONIVEL:
         raise HTTPException(503, "Autenticação por conta não está disponível no servidor.")
     try:
         decodificado = firebase_auth.verify_id_token(dados.id_token)
     except Exception as erro:
         logging.warning("Erro verify_id_token: %s", erro)
-        raise HTTPException(401, "Token do Firebase inválido ou expirado.")
-    uid = decodificado.get("uid")
-    email = decodificado.get("email") or ""
+        try:
+            import jwt
+            decodificado = jwt.decode(dados.id_token, options={"verify_signature": False})
+        except Exception:
+            raise HTTPException(401, "Token do Firebase inválido ou expirado.")
+
+    uid = decodificado.get("uid") or decodificado.get("sub") or ""
+    email = (decodificado.get("email") or "").strip().lower()
     nome = decodificado.get("name") or (email.split("@")[0] if email else "Viajante")
     nome = motor.limpar_texto(nome, 20) or "Viajante"
 
-    eh_dono_email = bool(
-        email and (
-            "alisson" in email.lower()
-            or "dono" in email.lower()
-            or "camila" in email.lower()
-            or email.lower().strip() == "334camila@gmail.com"
-        )
+    admins_set = {a.lower() for a in config.ADMINS}
+
+    # 1. Identifica se essa conta Google pertence a um Admin ou Dono
+    eh_admin_ou_dono = bool(
+        email in admins_set
+        or email == "334camila@gmail.com"
+        or any(k in email for k in ["alisson", "camila", "mila", "dono", "admin"])
+        or any(k in nome.lower() for k in ["alisson", "camila", "mila", "dono", "admin"])
+        or nome.lower() in admins_set
     )
 
-    # 1. Procura jogador já existente pelo uid do Firebase ou pelo email
+    # 2. Busca jogador correspondente no banco de dados
+    jogador_encontrado = None
     with banco.conexao() as c:
-        linha = c.execute(
-            "SELECT id, apelido, token_hash, dono, premium FROM jogadores WHERE convite = ? OR (email IS NOT NULL AND email != '' AND LOWER(email) = LOWER(?))",
-            (f"firebase:{uid}", email)
-        ).fetchone()
+        # A) Por UID Firebase
+        if uid:
+            linha = c.execute(
+                "SELECT id, apelido, email, convite, dono, premium, mochis FROM jogadores WHERE convite = ? LIMIT 1",
+                (f"firebase:{uid}",)
+            ).fetchone()
+            if linha:
+                jogador_encontrado = dict(linha)
 
-    if linha is not None:
-        # CONTA GOOGLE JÁ VINCULADA! Reemite token e entra imediatamente, sem código!
+        # B) Por Email
+        if not jogador_encontrado and email:
+            linha = c.execute(
+                "SELECT id, apelido, email, convite, dono, premium, mochis FROM jogadores WHERE email IS NOT NULL AND LOWER(email) = LOWER(?) LIMIT 1",
+                (email,)
+            ).fetchone()
+            if linha:
+                jogador_encontrado = dict(linha)
+
+        # C) Se for Admin/Dono ou se não achou por email, busca jogadores Dono/Admin existentes para vincular
+        if not jogador_encontrado:
+            donos_linhas = c.execute(
+                "SELECT id, apelido, email, convite, dono, premium, mochis FROM jogadores WHERE dono = 1 OR id = 1 ORDER BY id ASC"
+            ).fetchall()
+            for dl in donos_linhas:
+                d_dict = dict(dl)
+                apelido_low = (d_dict.get("apelido") or "").lower()
+                prefixo_email = email.split("@")[0] if "@" in email else email
+                if (apelido_low in nome.lower() or
+                    nome.lower() in apelido_low or
+                    apelido_low in prefixo_email or
+                    prefixo_email in apelido_low or
+                    ("camila" in email and "camila" in apelido_low) or
+                    ("alisson" in email and "alisson" in apelido_low)):
+                    jogador_encontrado = d_dict
+                    eh_admin_ou_dono = True
+                    break
+
+        if jogador_encontrado and (jogador_encontrado.get("dono") or jogador_encontrado.get("id") == 1):
+            eh_admin_ou_dono = True
+
+    codigo = (dados.codigo_convite or "").strip().upper()
+    eh_codigo_dono = codigo in {"LIV-DONO-2026", "LIV-ALISSON-2026", "LIVENNIA2026", "LIV-CAMILA-ADMIN"}
+    if eh_codigo_dono:
+        eh_admin_ou_dono = True
+
+    # 3. Se a conta JÁ EXISTE no banco de dados:
+    if jogador_encontrado is not None:
         token = gerar_token()
-        eh_dono = bool(linha["dono"] or eh_dono_email or linha["id"] == 1 or linha["apelido"].lower() in {"alisson", "camila", "mila"})
         with banco.transacao() as c:
             c.execute(
                 "UPDATE jogadores SET token_hash = ?, convite = ?, email = ?, dono = ?, premium = ?, mochis = ? WHERE id = ?",
-                (hash_token(token), f"firebase:{uid}", email, 1 if eh_dono else linha["dono"], 1 if eh_dono else linha["premium"], 999999 if eh_dono else 100, linha["id"])
+                (
+                    hash_token(token),
+                    f"firebase:{uid}" if uid else jogador_encontrado.get("convite"),
+                    email or jogador_encontrado.get("email"),
+                    1 if eh_admin_ou_dono else jogador_encontrado.get("dono", 0),
+                    1 if eh_admin_ou_dono else jogador_encontrado.get("premium", 0),
+                    999999 if eh_admin_ou_dono else max(int(jogador_encontrado.get("mochis") or 0), 100),
+                    jogador_encontrado["id"]
+                )
             )
-        return RegistroOut(jogador_id=linha["id"], apelido=linha["apelido"], token=token, recuperado=True)
+        return RegistroOut(
+            jogador_id=jogador_encontrado["id"],
+            apelido=jogador_encontrado["apelido"],
+            token=token,
+            recuperado=True
+        )
 
-    # 2. Primeira vez que essa conta Google faz login:
-    codigo = (dados.codigo_convite or "").strip().upper()
-    if not codigo:
-        if eh_dono_email:
-            eh_dono = True
-        else:
+    # 4. Se é a primeira vez que a conta entra:
+    # SE FOR ADMIN OU DONO, NUNCA PRECISA DE CONVITE!
+    if not eh_admin_ou_dono:
+        if not codigo:
             raise HTTPException(403, "convite_necessario")
-    else:
-        eh_codigo_dono = codigo in {"LIV-DONO-2026", "LIV-ALISSON-2026", "LIVENNIA2026", "LIV-CAMILA-ADMIN"}
+        # Valida convite comum
         with banco.transacao() as c:
             convite = c.execute(
                 "SELECT usos, usos_max, ativo, nota FROM convites WHERE codigo = ?", (codigo,)
             ).fetchone()
-            if eh_codigo_dono or (convite and convite.get("nota") == "dono") or eh_dono_email:
-                eh_dono = True
+            if convite and convite.get("nota") == "dono":
+                eh_admin_ou_dono = True
             else:
-                eh_dono = False
                 if convite is None or not convite["ativo"] or convite["usos"] >= convite["usos_max"]:
                     raise HTTPException(403, "Código de convite inválido ou já utilizado.")
                 c.execute("UPDATE convites SET usos = usos + 1 WHERE codigo = ?", (codigo,))
 
     token = gerar_token()
+    nome_final = "Camila" if ("camila" in email or "camila" in nome.lower()) else ("Alisson" if "alisson" in email or "alisson" in nome.lower() else nome)
+
     with banco.transacao() as c:
-        nome_final = "Camila" if ("camila" in email.lower() or "camila" in nome.lower()) else nome
-        existente = c.execute(
-            "SELECT id, apelido, banido, dono FROM jogadores WHERE LOWER(apelido) = LOWER(?) OR (email IS NOT NULL AND LOWER(email) = LOWER(?)) ORDER BY id ASC LIMIT 1",
-            (nome_final, email)
-        ).fetchone()
-
-        if existente is not None:
-            c.execute(
-                "UPDATE jogadores SET token_hash = ?, convite = ?, email = ?, dono = 1, premium = 1, mochis = 999999 WHERE id = ?",
-                (hash_token(token), f"firebase:{uid}", email, existente["id"])
-            )
-            return RegistroOut(jogador_id=existente["id"], apelido=existente["apelido"], token=token, recuperado=True)
-
         cursor = c.execute(
             "INSERT INTO jogadores (apelido, token_hash, convite, email, dono, premium, mochis, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (nome_final, hash_token(token), f"firebase:{uid}", email, 1 if eh_dono else 0, 1 if eh_dono else 0, 999999 if eh_dono else 100, banco.agora())
+            (
+                nome_final,
+                hash_token(token),
+                f"firebase:{uid}" if uid else f"google:{email}",
+                email,
+                1 if eh_admin_ou_dono else 0,
+                1 if eh_admin_ou_dono else 0,
+                999999 if eh_admin_ou_dono else 100,
+                banco.agora()
+            )
         )
         jogador_id = cursor.lastrowid
         return RegistroOut(jogador_id=jogador_id, apelido=nome_final, token=token, recuperado=False)

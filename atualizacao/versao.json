@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 25,
-  "versaoNome": "1.6.4",
-  "notas": "Correção do erro HTTP 500 na geração de retratos por IA. Sistema completo de seleção de personas e personagens baseado na engenharia reversa do Emochi: suporte a Persona Desativada (DisabledPersonaItem), carrossel com 19 modelos prontos do Emochi (PersonaSelectScreen com PersonaCard e faixa de miniaturas), tags categorizadas e gerador de 4 variações visuais.",
+  "versaoCodigo": 26,
+  "versaoNome": "1.6.5",
+  "notas": "Acesso direto com Google para contas de Admin e Dono sem exigir convite. Reconhecimento automático de perfil e vinculação imediata às contas de administrador (Alisson, Camila e admins cadastrados).",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }
