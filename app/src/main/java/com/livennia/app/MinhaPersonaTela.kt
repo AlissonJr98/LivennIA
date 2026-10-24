@@ -32,18 +32,28 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonOff
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
@@ -55,6 +65,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -63,7 +77,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -130,6 +146,191 @@ val TAGS_DISPONIVEIS_CATEGORIZADAS = mapOf(
         "Casual", "Formal", "Elegante", "Armadura", "Moletom",
         "Estudante", "Guerreiro", "Detetive", "Artista", "Mago",
         "Cientista", "Viajante", "Nobre", "Rebelde"
+    )
+)
+
+data class PersonaTemplate(
+    val id: Int,
+    val nome: String,
+    val genero: String,
+    val tags: List<String>,
+    val descricao: String,
+    val avatarUrl: String,
+    val corHex: String,
+    val estiloImagem: String = "semi_realistic"
+)
+
+val MODELOS_PERSONA_EMOCHI = listOf(
+    PersonaTemplate(
+        id = 1,
+        nome = "AB",
+        genero = "Masculino",
+        tags = listOf("Rebellious", "Drama", "Singer"),
+        descricao = "AB, the Demon King, thrives as a singer, captivating audiences with his mesmerizing voice. Little do his fans know that behind the charismatic performances lies a hidden secret — AB is a half-blooded demon.",
+        avatarUrl = "https://image-cdn.flowgpt.com/persona/avatar/AB.png",
+        corHex = "#992824"
+    ),
+    PersonaTemplate(
+        id = 2,
+        nome = "Spike",
+        genero = "Masculino",
+        tags = listOf("Fantasy", "Original character", "Bounty Hunter"),
+        descricao = "Spike Spiegel, a former member of the Red Dragon Crime Syndicate, transitioned into a laid-back bounty hunter aboard the spaceship Bebop. His skills in hand-to-hand combat, martial arts, and piloting the Swordfish II made him indispensable.",
+        avatarUrl = "https://image-cdn.flowgpt.com/persona/avatar/Spike.png",
+        corHex = "#414844"
+    ),
+    PersonaTemplate(
+        id = 3,
+        nome = "Stella",
+        genero = "Feminino",
+        tags = listOf("Anime & Game", "Fantasy", "Catgirl"),
+        descricao = "Stella, the Catgirl known as \"The Forgotten,\" conceals her true identity beneath the guise of a mysterious fortune teller. Behind the enchanting allure of her mystical predictions lies a hidden secret—Stella is a skilled stock analyst.",
+        avatarUrl = "https://image-cdn.flowgpt.com/persona/avatar/Stella.png",
+        corHex = "#A46C4B"
+    ),
+    PersonaTemplate(
+        id = 4,
+        nome = "Lucas",
+        genero = "Masculino",
+        tags = listOf("Cold", "Student", "Psychic"),
+        descricao = "Lucas, a seemingly ordinary student with the unremarkable title of \"Regular person,\" concealed a profound secret – he was a psychic. Amidst the routine of lectures and textbooks, his mind resonated with energies beyond comprehension.",
+        avatarUrl = "https://image-cdn.flowgpt.com/persona/avatar/Lucas.png",
+        corHex = "#8A8C7D"
+    ),
+    PersonaTemplate(
+        id = 5,
+        nome = "Ava",
+        genero = "Feminino",
+        tags = listOf("Fantasy", "Romance", "Succubus"),
+        descricao = "Ava, known as \"Flame,\" is a succubus of immense power and skill in fire wizardry. Her origins shrouded in mystery, Ava keeps a closely guarded secret, hidden even from those closest to her.",
+        avatarUrl = "https://image-cdn.flowgpt.com/persona/avatar/Ava.png",
+        corHex = "#992824"
+    ),
+    PersonaTemplate(
+        id = 6,
+        nome = "No. 233",
+        genero = "Masculino",
+        tags = listOf("Fantasy", "Time Mage", "Bearman"),
+        descricao = "No. 233, a Bearman of formidable stature, embraced the mantle of a Time Mage, earning the title \"The Watchmaker.\" Unbeknownst to many, he carried a hidden secret – he was an Isekai Traveler.",
+        avatarUrl = "https://image-cdn.flowgpt.com/persona/avatar/No.233.png",
+        corHex = "#53482F"
+    ),
+    PersonaTemplate(
+        id = 7,
+        nome = "Noah",
+        genero = "Feminino",
+        tags = listOf("Not Lover", "Action", "Boxer"),
+        descricao = "Noah, known as Max Fist in the underground boxing circuit, conceals her true identity as a math professor by day. When the sun sets, she trades textbooks for boxing gloves.",
+        avatarUrl = "https://image-cdn.flowgpt.com/persona/avatar/Noah.png",
+        corHex = "#506C67"
+    ),
+    PersonaTemplate(
+        id = 8,
+        nome = "Already Human",
+        genero = "Outro",
+        tags = listOf("Sci-Fi", "Cyber", "AI"),
+        descricao = "Already Human, a non-binary Artificial Intelligence, exists as a mysterious traveller known by the moniker \"No One.\" Originating from the digital realm, Already Human roams through the vast landscapes of cyberspace and beyond.",
+        avatarUrl = "https://image-cdn.flowgpt.com/persona/avatar/Z..png",
+        corHex = "#CDCDCC"
+    ),
+    PersonaTemplate(
+        id = 9,
+        nome = "Luna",
+        genero = "Feminino",
+        tags = listOf("Romance", "Saint", "Nun"),
+        descricao = "Luna, a compassionate human, found solace and purpose within the sacred walls of a convent, embracing the role of a nun. Despite her serene title as the \"Saint of the Moon,\" Luna's past was haunted by the shadows of bullying.",
+        avatarUrl = "https://image-cdn.flowgpt.com/persona/avatar/Luna.jpeg",
+        corHex = "#1B1A17"
+    ),
+    PersonaTemplate(
+        id = 10,
+        nome = "Ming",
+        genero = "Masculino",
+        tags = listOf("Dominance", "Vampire", "Enigma"),
+        descricao = "Ming, a vampire known as \"The God Father,\" operates as a mysterious businessman with a hidden agenda. Little is known about Ming's origins or motives, shrouding him in an air of enigma.",
+        avatarUrl = "https://image-cdn.flowgpt.com/persona/avatar/Ming.png",
+        corHex = "#433830"
+    ),
+    PersonaTemplate(
+        id = 11,
+        nome = "Emily",
+        genero = "Feminino",
+        tags = listOf("Yandere", "Princess Knight", "Imperial"),
+        descricao = "Emily, known as the \"Flower of the Empire,\" serves as a valiant Princess Knight in the royal court, renowned for her grace and prowess in combat. Behind her esteemed title lies a hidden truth—she harbors a yandere disposition.",
+        avatarUrl = "https://image-cdn.flowgpt.com/persona/avatar/Emily.jpeg",
+        corHex = "#8F3E58"
+    ),
+    PersonaTemplate(
+        id = 12,
+        nome = "Boo",
+        genero = "Masculino",
+        tags = listOf("Catman", "Mystery", "Trader"),
+        descricao = "President Meow, known to all as Boo, presents himself as a charismatic and affable Catman fruit dealer. However, beneath his amiable facade lies a hidden truth – Boo is a skilled liar.",
+        avatarUrl = "https://image-cdn.flowgpt.com/persona/avatar/Boo.png",
+        corHex = "#53482F"
+    ),
+    PersonaTemplate(
+        id = 13,
+        nome = "Mia",
+        genero = "Feminino",
+        tags = listOf("Police", "Maid", "Dual Life"),
+        descricao = "Mia, the diligent police officer known as \"Black Water Lilies,\" carries out her duties with unwavering resolve. However, when the weekend arrives, Mia transforms into a different role—an unassuming maid.",
+        avatarUrl = "https://image-cdn.flowgpt.com/persona/avatar/Mia.png",
+        corHex = "#506C67"
+    ),
+    PersonaTemplate(
+        id = 14,
+        nome = "Gamion",
+        genero = "Outro",
+        tags = listOf("Slime", "Worker", "Dreamer"),
+        descricao = "Gamion, a non-binary slime, found employment as a shachiku, an overworked and underappreciated office worker. Despite the mundane title, Gamion harbored dreams beyond the corporate world as \"The Dreamer.\"",
+        avatarUrl = "https://image-cdn.flowgpt.com/persona/avatar/Gamion.png",
+        corHex = "#0A6CDD"
+    ),
+    PersonaTemplate(
+        id = 15,
+        nome = "Cloud",
+        genero = "Masculino",
+        tags = listOf("Dragon", "Warrior", "Mercenary"),
+        descricao = "Cloud, a male dragon, once known as a formidable warrior, took up the mantle of a broadsword mercenary and earned the name \"MOSEY.\" His past held a clandestine secret—Cloud was an ex-warrior.",
+        avatarUrl = "https://image-cdn.flowgpt.com/persona/avatar/Cloud.png",
+        corHex = "#5A4146"
+    ),
+    PersonaTemplate(
+        id = 16,
+        nome = "Aico",
+        genero = "Feminino",
+        tags = listOf("Family", "Assassin", "Elf"),
+        descricao = "Aico, the deadly elf assassin known as Blood Rose, bears a hidden nobility beneath her cloak of shadows. Born into an esteemed elven house, Aico's life took a dark turn when she chose the path of an assassin.",
+        avatarUrl = "https://image-cdn.flowgpt.com/persona/avatar/Aico.png",
+        corHex = "#992824"
+    ),
+    PersonaTemplate(
+        id = 17,
+        nome = "Silverman",
+        genero = "Masculino",
+        tags = listOf("Wolfman", "Craftsman", "Leader"),
+        descricao = "Silverman, the esteemed Wolfman of the village, is renowned as the Master carpenter. His skill with wood and dedication to craftsmanship are unmatched, earning him the admiration of the entire community.",
+        avatarUrl = "https://image-cdn.flowgpt.com/persona/avatar/Silverman.png",
+        corHex = "#27272A"
+    ),
+    PersonaTemplate(
+        id = 18,
+        nome = "Isabella",
+        genero = "Feminino",
+        tags = listOf("Angel", "Hunter", "Celestial"),
+        descricao = "Isabella, known as the \"Bloody Star,\" is a fearsome hunter of unparalleled skill and ferocity. As an angelic being, she wields celestial powers with deadly precision.",
+        avatarUrl = "https://image-cdn.flowgpt.com/persona/avatar/Isabella.png",
+        corHex = "#992824"
+    ),
+    PersonaTemplate(
+        id = 19,
+        nome = "Jacob",
+        genero = "Masculino",
+        tags = listOf("Elf", "Prince", "Archer"),
+        descricao = "Jacob, an elven archer, bore the title \"Son of Forrest\" but harbored a concealed identity – that of a prince. In the ancient elven kingdom, his exceptional archery skills elevated him to prominence.",
+        avatarUrl = "https://image-cdn.flowgpt.com/persona/avatar/Jacob.png",
+        corHex = "#D8D2B9"
     )
 )
 
@@ -207,6 +408,24 @@ fun ModalMinhaPersona(
         }
     }
 
+    fun carregarFormularioComTemplate(template: PersonaTemplate) {
+        personaEmEdicao = null
+        formNome = template.nome
+        formGenero = template.genero
+        formDescricao = template.descricao
+        formAparencia = "${template.genero}, ${template.tags.joinToString(", ")}"
+        formIdade = "24"
+        formInteresses = template.tags.joinToString(", ")
+        formAversoes = ""
+        formDetalhesImagem = template.tags.joinToString(", ")
+        formEstiloImagem = template.estiloImagem
+        formPadrao = vm.personas.isEmpty()
+        formTags.clear()
+        formTags.addAll(template.tags)
+        formFotoReferenciaUri = null
+        telaAtual = TelaPersonaState.CRIAR_EDITAR
+    }
+
     val podeFechar = !obrigatorio || vm.personas.isNotEmpty()
 
     Dialog(
@@ -250,14 +469,23 @@ fun ModalMinhaPersona(
                         onPersonaSelecionada = { p ->
                             if (jogoAtualId != null) {
                                 vm.selecionarPersonaParaJogo(jogoAtualId, p) {
-                                    Toast.makeText(contexto, "Persona '${p.nome}' ativada para esta história!", Toast.LENGTH_SHORT).show()
+                                    if (p != null) {
+                                        Toast.makeText(contexto, "Persona '${p.nome}' ativada para esta história!", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(contexto, "Persona desativada para esta história!", Toast.LENGTH_SHORT).show()
+                                    }
                                     onFechar()
                                 }
                             } else {
-                                vm.definirPersonaPadrao(p.id) {
-                                    Toast.makeText(contexto, "'${p.nome}' é agora sua persona padrão!", Toast.LENGTH_SHORT).show()
+                                if (p != null) {
+                                    vm.definirPersonaPadrao(p.id) {
+                                        Toast.makeText(contexto, "'${p.nome}' é agora sua persona padrão!", Toast.LENGTH_SHORT).show()
+                                    }
                                 }
                             }
+                        },
+                        onUsarTemplate = { template ->
+                            carregarFormularioComTemplate(template)
                         }
                     )
                 }
@@ -280,6 +508,16 @@ fun ModalMinhaPersona(
                         onEstiloImagemChange = { formEstiloImagem = it },
                         tags = formTags,
                         onAbrirTags = { mostrarModalTags = true },
+                        onEscolherTemplate = { template ->
+                            formNome = template.nome
+                            formGenero = template.genero
+                            formDescricao = template.descricao
+                            formAparencia = "${template.genero}, ${template.tags.joinToString(", ")}"
+                            formTags.clear()
+                            formTags.addAll(template.tags)
+                            formEstiloImagem = template.estiloImagem
+                            Toast.makeText(contexto, "Modelo '${template.nome}' aplicado!", Toast.LENGTH_SHORT).show()
+                        },
                         fotoReferenciaUri = formFotoReferenciaUri,
                         onFotoReferenciaUriChange = { formFotoReferenciaUri = it },
                         onVoltar = {
@@ -347,7 +585,7 @@ fun ModalMinhaPersona(
 }
 
 // ---------------------------------------------------------------------------
-// TELA 1: LISTA DE PERSONAS (Conforme Imagem 1)
+// TELA 1: LISTA DE PERSONAS & MODELOS EMOCHI (Conforme Engenharia Reversa)
 // ---------------------------------------------------------------------------
 @Composable
 private fun TelaListaPersonas(
@@ -356,12 +594,14 @@ private fun TelaListaPersonas(
     onFechar: () -> Unit,
     onNovaPersona: () -> Unit,
     onEditarPersona: (PersonaResponse) -> Unit,
-    onPersonaSelecionada: (PersonaResponse) -> Unit
+    onPersonaSelecionada: (PersonaResponse?) -> Unit,
+    onUsarTemplate: (PersonaTemplate) -> Unit
 ) {
     val contexto = LocalContext.current
+    var abaSelecionada by remember { mutableIntStateOf(0) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Cabeçalho (Imagem 1)
+        // Cabeçalho
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -388,103 +628,502 @@ private fun TelaListaPersonas(
             }
         }
 
-        // Lista de Cards com Scroll
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 16.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        // Abas: "Minhas Personas" e "Modelos Emochi"
+        TabRow(
+            selectedTabIndex = abaSelecionada,
+            containerColor = Color(0xFF0F101A),
+            contentColor = AmareloDestaque,
+            indicator = { tabPositions ->
+                if (abaSelecionada < tabPositions.size) {
+                    TabRowDefaults.SecondaryIndicator(
+                        Modifier.tabIndicatorOffset(tabPositions[abaSelecionada]),
+                        color = AmareloDestaque,
+                        height = 3.dp
+                    )
+                }
+            },
+            divider = {}
         ) {
-            if (vm.personas.isEmpty()) {
-                Surface(
-                    color = CardObsidian,
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, CardObsidianBorda),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 32.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("👤", fontSize = 42.sp)
-                        Spacer(Modifier.height(8.dp))
+            Tab(
+                selected = abaSelecionada == 0,
+                onClick = { abaSelecionada = 0 },
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
                         Text(
-                            "Nenhuma persona criada",
-                            fontWeight = FontWeight.Bold,
-                            color = TextoClaro,
-                            fontSize = 15.sp
+                            "Minhas Personas (${vm.personas.size})",
+                            fontWeight = if (abaSelecionada == 0) FontWeight.Bold else FontWeight.Normal,
+                            fontSize = 13.sp
                         )
-                        Spacer(Modifier.height(4.dp))
+                    }
+                },
+                selectedContentColor = AmareloDestaque,
+                unselectedContentColor = TextoSecundario
+            )
+            Tab(
+                selected = abaSelecionada == 1,
+                onClick = { abaSelecionada = 1 },
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
                         Text(
-                            "Crie sua persona para que o Bot te conheça nas histórias!",
-                            color = TextoSecundario,
-                            fontSize = 12.sp,
-                            textAlign = TextAlign.Center
+                            "Modelos Emochi (${MODELOS_PERSONA_EMOCHI.size})",
+                            fontWeight = if (abaSelecionada == 1) FontWeight.Bold else FontWeight.Normal,
+                            fontSize = 13.sp
+                        )
+                    }
+                },
+                selectedContentColor = AmareloDestaque,
+                unselectedContentColor = TextoSecundario
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        if (abaSelecionada == 0) {
+            // ABA 0: MINHAS PERSONAS
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 16.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Item de Persona Desativada (Fiel à Engenharia Reversa do Emochi)
+                if (jogoAtualId != null) {
+                    val personaDesativadaAtiva = (vm.personaSelecionadaId == -1 || (vm.personaSelecionadaId == null && vm.personas.none { it.padrao }))
+                    DisabledPersonaItem(
+                        ehAtiva = personaDesativadaAtiva,
+                        onClick = { onPersonaSelecionada(null) }
+                    )
+                }
+
+                if (vm.personas.isEmpty()) {
+                    Surface(
+                        color = CardObsidian,
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, CardObsidianBorda),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text("👤", fontSize = 42.sp)
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "Nenhuma persona criada",
+                                fontWeight = FontWeight.Bold,
+                                color = TextoClaro,
+                                fontSize = 15.sp
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "Crie uma persona personalizada ou escolha um dos 19 modelos prontos inspirados no Emochi!",
+                                color = TextoSecundario,
+                                fontSize = 12.sp,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(Modifier.height(14.dp))
+                            OutlinedButton(
+                                onClick = { abaSelecionada = 1 },
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, AmareloDestaque)
+                            ) {
+                                Text("Ver Modelos Emochi", color = AmareloDestaque, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+                } else {
+                    vm.personas.forEach { persona ->
+                        val ehAtivaParaJogo = if (jogoAtualId != null) {
+                            (vm.personaSelecionadaId == persona.id) || (vm.personaSelecionadaId == null && persona.padrao)
+                        } else {
+                            persona.padrao
+                        }
+
+                        ItemCardPersonaEstiloEmochi(
+                            persona = persona,
+                            ehAtiva = ehAtivaParaJogo,
+                            versaoRetrato = vm.personaRetratoVersao + persona.versaoRetrato,
+                            onCardClick = { onPersonaSelecionada(persona) },
+                            onEditar = { onEditarPersona(persona) },
+                            onTornarPadrao = {
+                                vm.definirPersonaPadrao(persona.id) {
+                                    Toast.makeText(contexto, "'${persona.nome}' agora é sua persona padrão!", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            onExcluir = {
+                                if (vm.personas.size <= 1) {
+                                    Toast.makeText(contexto, "Você precisa manter pelo menos 1 persona!", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    vm.deletarPersona(persona.id) {
+                                        Toast.makeText(contexto, "Persona removida!", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
                         )
                     }
                 }
-            } else {
-                vm.personas.forEach { persona ->
-                    val ehAtivaParaJogo = if (jogoAtualId != null) {
-                        (vm.personaSelecionadaId == persona.id) || (vm.personaSelecionadaId == null && persona.padrao)
-                    } else {
-                        persona.padrao
-                    }
 
-                    ItemCardPersonaEstiloEmochi(
-                        persona = persona,
-                        ehAtiva = ehAtivaParaJogo,
-                        versaoRetrato = vm.personaRetratoVersao + persona.versaoRetrato,
-                        onCardClick = { onPersonaSelecionada(persona) },
-                        onEditar = { onEditarPersona(persona) },
-                        onTornarPadrao = {
-                            vm.definirPersonaPadrao(persona.id) {
-                                Toast.makeText(contexto, "'${persona.nome}' agora é sua persona padrão!", Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        onExcluir = {
-                            if (vm.personas.size <= 1) {
-                                Toast.makeText(contexto, "Você precisa manter pelo menos 1 persona!", Toast.LENGTH_SHORT).show()
-                            } else {
-                                vm.deletarPersona(persona.id) {
-                                    Toast.makeText(contexto, "Persona removida!", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        }
+                Spacer(Modifier.height(12.dp))
+            }
+
+            // Barra inferior com botões
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedButton(
+                    onClick = { abaSelecionada = 1 },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, CardObsidianBorda)
+                ) {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = AmareloDestaque, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Modelos", color = TextoClaro, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                }
+
+                Button(
+                    onClick = onNovaPersona,
+                    enabled = !vm.ocupado,
+                    modifier = Modifier
+                        .weight(1.5f)
+                        .height(52.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AmareloDestaque,
+                        contentColor = Color(0xFF141414)
+                    ),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text(
+                        "Criar Persona",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = Color(0xFF141414)
+                    )
+                }
+            }
+        } else {
+            // ABA 1: MODELOS EMOCHI (PersonaSelectScreen fiel ao Emochi)
+            Box(modifier = Modifier.weight(1f)) {
+                TelaModelosPersonaEmochi(
+                    modelos = MODELOS_PERSONA_EMOCHI,
+                    onUsarModelo = onUsarTemplate
+                )
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ITEM DE PERSONA DESATIVADA (Engenharia Reversa Emochi: DisabledPersonaItem)
+// ---------------------------------------------------------------------------
+@Composable
+private fun DisabledPersonaItem(
+    ehAtiva: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        color = if (ehAtiva) CardObsidian else Color(0xFF10111A),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(
+            width = if (ehAtiva) 1.8.dp else 1.dp,
+            color = if (ehAtiva) AmareloDestaque else CardObsidianBorda
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Surface(
+                color = if (ehAtiva) AmareloDestaque.copy(alpha = 0.15f) else Color(0xFF1E202E),
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.dp, if (ehAtiva) AmareloDestaque.copy(alpha = 0.5f) else Color(0xFF2C2F45)),
+                modifier = Modifier.size(54.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Default.PersonOff,
+                        contentDescription = "Persona Desativada",
+                        tint = if (ehAtiva) AmareloDestaque else TextoSecundario,
+                        modifier = Modifier.size(26.dp)
                     )
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "Persona Desativada",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = TextoClaro
+                    )
+                    if (ehAtiva) {
+                        Spacer(Modifier.width(8.dp))
+                        Surface(
+                            color = AmareloDestaque.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(6.dp),
+                            border = BorderStroke(1.dp, AmareloDestaque.copy(alpha = 0.5f))
+                        ) {
+                            Text(
+                                "Em uso",
+                                color = AmareloDestaque,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    "Nenhuma persona será usada durante a conversa.",
+                    color = TextoSecundario,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp
+                )
+            }
         }
+    }
+}
 
-        // Botão "Criar" Amarelo no Rodapé (Imagem 1)
-        Box(
+// ---------------------------------------------------------------------------
+// TELA DE MODELOS PRONTOS DO EMOCHI (PersonaSelectScreen com Carrossel e Thumbnails)
+// ---------------------------------------------------------------------------
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun TelaModelosPersonaEmochi(
+    modelos: List<PersonaTemplate> = MODELOS_PERSONA_EMOCHI,
+    onUsarModelo: (PersonaTemplate) -> Unit
+) {
+    val coroutineScope = rememberCoroutineScope()
+    val pagerState = rememberPagerState(pageCount = { modelos.size })
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = 4.dp)
+    ) {
+        // Pager de Personas (PersonaCard)
+        HorizontalPager(
+            state = pagerState,
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Button(
-                onClick = onNovaPersona,
-                enabled = !vm.ocupado,
+                .weight(1f)
+                .fillMaxWidth(),
+            pageSpacing = 16.dp,
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp)
+        ) { page ->
+            val modelo = modelos[page]
+            val corDestaque = try {
+                Color(android.graphics.Color.parseColor(modelo.corHex))
+            } catch (_: Exception) {
+                AmareloDestaque
+            }
+
+            Surface(
+                color = CardObsidian,
+                shape = RoundedCornerShape(22.dp),
+                border = BorderStroke(1.5.dp, corDestaque.copy(alpha = 0.6f)),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = AmareloDestaque,
-                    contentColor = Color(0xFF141414)
-                ),
-                shape = RoundedCornerShape(14.dp)
+                    .fillMaxHeight()
+                    .padding(vertical = 4.dp)
             ) {
-                Text(
-                    "Criar",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = Color(0xFF141414)
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(14.dp)
+                ) {
+                    // Imagem Grande / Avatar do Modelo
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFF0D0E15))
+                    ) {
+                        SubcomposeAsyncImage(
+                            model = modelo.avatarUrl,
+                            contentDescription = modelo.nome,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                            loading = {
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(color = corDestaque, modifier = Modifier.size(32.dp))
+                                }
+                            },
+                            error = {
+                                Box(
+                                    Modifier
+                                        .fillMaxSize()
+                                        .background(Brush.verticalGradient(listOf(corDestaque.copy(alpha = 0.35f), Color(0xFF121420)))),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(modelo.nome.take(2).uppercase(), fontSize = 42.sp, fontWeight = FontWeight.Bold, color = TextoClaro)
+                                }
+                            }
+                        )
+
+                        // Gradiente escuro no rodapé da imagem
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(70.dp)
+                                .align(Alignment.BottomCenter)
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(Color.Transparent, CardObsidian)
+                                    )
+                                )
+                        )
+                    }
+
+                    Spacer(Modifier.height(10.dp))
+
+                    // Nome e Gênero
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            modelo.nome,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 20.sp,
+                            color = TextoClaro
+                        )
+                        Surface(
+                            color = corDestaque.copy(alpha = 0.25f),
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, corDestaque.copy(alpha = 0.6f))
+                        ) {
+                            Text(
+                                modelo.genero,
+                                color = TextoClaro,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(4.dp))
+
+                    // Tags
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        modelo.tags.forEach { tag ->
+                            TagPequenaCinza(tag)
+                        }
+                    }
+
+                    Spacer(Modifier.height(6.dp))
+
+                    // Descrição / História do modelo
+                    Text(
+                        modelo.descricao,
+                        color = TextoSecundario,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Spacer(Modifier.height(10.dp))
+
+                    // Botão "Usar este Modelo"
+                    Button(
+                        onClick = { onUsarModelo(modelo) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(46.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = AmareloDestaque,
+                            contentColor = Color(0xFF141414)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF141414), modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "Usar este Modelo",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = Color(0xFF141414)
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(6.dp))
+
+        // Faixa de Miniaturas (Thumbnail Strip com thumbBorder)
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            itemsIndexed(modelos) { idx, item ->
+                val selecionado = pagerState.currentPage == idx
+                val corItem = try {
+                    Color(android.graphics.Color.parseColor(item.corHex))
+                } catch (_: Exception) {
+                    AmareloDestaque
+                }
+
+                Surface(
+                    shape = CircleShape,
+                    border = BorderStroke(
+                        width = if (selecionado) 2.5.dp else 1.dp,
+                        color = if (selecionado) AmareloDestaque else CardObsidianBorda
+                    ),
+                    modifier = Modifier
+                        .size(if (selecionado) 48.dp else 40.dp)
+                        .clickable {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(idx)
+                            }
+                        }
+                ) {
+                    SubcomposeAsyncImage(
+                        model = item.avatarUrl,
+                        contentDescription = item.nome,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                        error = {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(corItem.copy(alpha = 0.5f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(item.nome.take(1), fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp)
+                            }
+                        }
+                    )
+                }
             }
         }
     }
@@ -673,6 +1312,7 @@ private fun TelaCriarEditarPersona(
     onEstiloImagemChange: (String) -> Unit,
     tags: List<String>,
     onAbrirTags: () -> Unit,
+    onEscolherTemplate: (PersonaTemplate) -> Unit = {},
     fotoReferenciaUri: Uri?,
     onFotoReferenciaUriChange: (Uri?) -> Unit,
     onVoltar: () -> Unit,
@@ -680,6 +1320,7 @@ private fun TelaCriarEditarPersona(
     onSalvoSemGerar: () -> Unit
 ) {
     val contexto = LocalContext.current
+    var mostrarDialogModelos by remember { mutableStateOf(false) }
 
     // Launcher para selecionar imagem de referência ou enviar imagem pronta
     val launcherGaleriaReferencia = rememberLauncherForActivityResult(
@@ -748,6 +1389,57 @@ private fun TelaCriarEditarPersona(
                 color = TextoClaro,
                 modifier = Modifier.weight(1f)
             )
+
+            OutlinedButton(
+                onClick = { mostrarDialogModelos = true },
+                shape = RoundedCornerShape(10.dp),
+                border = BorderStroke(1.dp, AmareloDestaque),
+                modifier = Modifier.padding(end = 8.dp)
+            ) {
+                Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = AmareloDestaque, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("Modelos", color = AmareloDestaque, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        if (mostrarDialogModelos) {
+            Dialog(
+                onDismissRequest = { mostrarDialogModelos = false },
+                properties = DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                Surface(
+                    color = FundoOled,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .navigationBarsPadding()
+                ) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text("Modelos Emochi", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextoClaro)
+                                Text("Escolha um modelo pronto para preencher sua persona", fontSize = 12.sp, color = TextoSecundario)
+                            }
+                            IconButton(onClick = { mostrarDialogModelos = false }) {
+                                Icon(Icons.Default.Close, contentDescription = "Fechar", tint = TextoClaro)
+                            }
+                        }
+                        Box(modifier = Modifier.weight(1f)) {
+                            TelaModelosPersonaEmochi(
+                                onUsarModelo = { template ->
+                                    onEscolherTemplate(template)
+                                    mostrarDialogModelos = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
         }
 
         // Formulário com Scroll

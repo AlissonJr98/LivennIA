@@ -8,8 +8,11 @@ Página de testes (só fora de produção): http://127.0.0.1:8000/docs
 """
 import logging
 import os
+import random
 import threading
 import time
+import urllib.parse
+import urllib.request
 import uuid
 from contextlib import asynccontextmanager, contextmanager
 from logging.handlers import RotatingFileHandler
@@ -2348,6 +2351,12 @@ def trocar_persona_jogo(jogo_id: IdDoJogo, dados: TrocarPersonaJogoIn, jogador=D
     jogo = banco.obter_jogo(jogo_id, jogador["id"])
     if jogo is None:
         raise HTTPException(404, "Jogo não encontrado.")
+    if not dados.persona_id or dados.persona_id <= 0:
+        estado = carregar_estado_do_jogo(jogo)
+        estado.pop("persona", None)
+        banco.atualizar_jogo(jogo_id, jogador["id"], motor.estado_para_texto(estado), jogo["encerrado"])
+        return montar_saida(jogo_id, estado, jogo["encerrado"], restante_do_dia(jogador["id"]), mochis=int(jogador.get("mochis") or 0))
+
     persona = banco.obter_persona(jogador["id"], dados.persona_id)
     if not persona:
         raise HTTPException(404, "Persona não encontrada.")

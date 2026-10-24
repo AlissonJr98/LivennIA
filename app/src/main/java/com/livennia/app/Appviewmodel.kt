@@ -513,17 +513,24 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun selecionarPersonaParaJogo(
         jogoId: String,
-        persona: PersonaResponse,
+        persona: PersonaResponse?,
         onSucesso: () -> Unit = {}
     ) {
-        personaNome = persona.nome
-        personaAvatar = persona.genero
-        prefs.personaTemRetrato = persona.temRetrato
-        personaSelecionadaId = persona.id
+        if (persona != null) {
+            personaNome = persona.nome
+            personaAvatar = persona.genero
+            prefs.personaTemRetrato = persona.temRetrato
+            personaSelecionadaId = persona.id
+        } else {
+            personaNome = apelido.ifBlank { "Viajante" }
+            personaAvatar = "👤"
+            prefs.personaTemRetrato = false
+            personaSelecionadaId = -1
+        }
         val api = obterApi() ?: return
         viewModelScope.launch {
             try {
-                val jogoAtualizado = api.trocarPersonaJogo(jogoId, TrocarPersonaJogoRequest(persona.id))
+                val jogoAtualizado = api.trocarPersonaJogo(jogoId, TrocarPersonaJogoRequest(persona?.id ?: 0))
                 jogoAtual = jogoAtualizado
                 onSucesso()
             } catch (_: Exception) {
