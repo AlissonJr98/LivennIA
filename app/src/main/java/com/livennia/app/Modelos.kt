@@ -502,7 +502,7 @@ data class ResgateLivenResponse(
 
 
 
-typealias ResgateMochiResponse = ResgateLivenResponse
+
 
 
 

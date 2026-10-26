@@ -89,6 +89,11 @@ POLLINATIONS_URL = os.environ.get(
 POLLINATIONS_MODELO = os.environ.get("LIVENNIA_POLLINATIONS_MODELO", "flux")
 POLLINATIONS_LARGURA = _inteiro("LIVENNIA_POLLINATIONS_LARGURA", 768)
 POLLINATIONS_ALTURA = _inteiro("LIVENNIA_POLLINATIONS_ALTURA", 1024)
+# Chave opcional (pollen key). Com ela o limite grátis por IP deixa de existir e
+# as 4 variações podem ser geradas em paralelo. Sem ela, o servidor espaça os
+# pedidos (1 imagem a cada ~45 s por IP, regra do plano grátis).
+POLLINATIONS_TOKEN = os.environ.get("LIVENNIA_POLLINATIONS_TOKEN", "")
+INTERVALO_POLLINATIONS_SEG = _inteiro("LIVENNIA_INTERVALO_POLLINATIONS", 46)
 TEMPO_LIMITE_BAIXO_IMAGEM_SEG = 60   # tempo máximo esperando um provedor grátis
 
 # Quando um provedor responde "sem cota", fica de fora por este tempo antes de

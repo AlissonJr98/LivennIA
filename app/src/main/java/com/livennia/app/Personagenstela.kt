@@ -1766,7 +1766,7 @@ private fun AbaExplorar(
 
 
 
-                                // Métricas estilo Emochi (👤 saves / 💬 chats)
+                                // Métricas (👤 saves / 💬 chats)
 
                                 Row(verticalAlignment = Alignment.CenterVertically) {
 
@@ -2932,7 +2932,7 @@ private fun DialogoPreviaCenario(
 
 
 
-                    // Botões de Ação estilo Emochi / Talkie
+                    // Botões de Ação
 
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
 
@@ -3148,7 +3148,7 @@ private fun AbaPerfil(vm: AppViewModel) {
 
 
 
-                // Ícones de ação no topo direito (Matching Imagem 2 do Emochi com assinatura LivennIA)
+                // Ícones de ação no topo direito
 
                 Row(
 
@@ -3699,7 +3699,7 @@ private fun AbaPerfil(vm: AppViewModel) {
 
                 if (vm.jogos.isEmpty()) {
 
-                    // Ilustração da Caixa Surpresa 3D (Matching Imagem 2 do Emochi com assinatura LivennIA)
+                    // Ilustração da Caixa Surpresa 3D
 
                     Surface(
 

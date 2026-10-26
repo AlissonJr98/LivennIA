@@ -160,7 +160,7 @@ data class PersonaTemplate(
     val estiloImagem: String = "semi_realistic"
 )
 
-val MODELOS_PERSONA_EMOCHI = listOf(
+val MODELOS_PERSONA = listOf(
     PersonaTemplate(
         id = 1,
         nome = "AB",
@@ -478,8 +478,57 @@ fun ModalMinhaPersona(
                                 }
                             } else {
                                 if (p != null) {
+                                    vm.selecionarPersona(p.id)
                                     vm.definirPersonaPadrao(p.id) {
-                                        Toast.makeText(contexto, "'${p.nome}' é agora sua persona padrão!", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(contexto, "'${p.nome}' selecionada!", Toast.LENGTH_SHORT).show()
+                                        onFechar()
+                                    }
+                                } else {
+                                    vm.selecionarPersona(-1)
+                                    onFechar()
+                                }
+                            }
+                        },
+                        onSelecionarTemplate = { template ->
+                            val personaExistente = vm.personas.firstOrNull { it.nome.equals(template.nome, ignoreCase = true) }
+                            if (personaExistente != null) {
+                                if (jogoAtualId != null) {
+                                    vm.selecionarPersonaParaJogo(jogoAtualId, personaExistente) {
+                                        Toast.makeText(contexto, "Persona '${personaExistente.nome}' ativada!", Toast.LENGTH_SHORT).show()
+                                        onFechar()
+                                    }
+                                } else {
+                                    vm.selecionarPersona(personaExistente.id)
+                                    vm.definirPersonaPadrao(personaExistente.id) {
+                                        Toast.makeText(contexto, "Persona '${personaExistente.nome}' selecionada!", Toast.LENGTH_SHORT).show()
+                                        onFechar()
+                                    }
+                                }
+                            } else {
+                                val dados = PersonaIn(
+                                    nome = template.nome,
+                                    genero = template.genero,
+                                    descricao = template.descricao,
+                                    personalidade = template.descricao,
+                                    aparencia = "${template.genero}, ${template.tags.joinToString(", ")}",
+                                    idade = "24",
+                                    interesses = template.tags.joinToString(", "),
+                                    tags = template.tags,
+                                    estiloImagem = template.estiloImagem,
+                                    padrao = vm.personas.isEmpty()
+                                )
+                                vm.salvarPersona(null, dados) { novaPersona ->
+                                    if (jogoAtualId != null) {
+                                        vm.selecionarPersonaParaJogo(jogoAtualId, novaPersona) {
+                                            Toast.makeText(contexto, "Persona '${novaPersona.nome}' ativada!", Toast.LENGTH_SHORT).show()
+                                            onFechar()
+                                        }
+                                    } else {
+                                        vm.selecionarPersona(novaPersona.id)
+                                        vm.definirPersonaPadrao(novaPersona.id) {
+                                            Toast.makeText(contexto, "Persona '${novaPersona.nome}' selecionada!", Toast.LENGTH_SHORT).show()
+                                            onFechar()
+                                        }
                                     }
                                 }
                             }
@@ -585,7 +634,7 @@ fun ModalMinhaPersona(
 }
 
 // ---------------------------------------------------------------------------
-// TELA 1: LISTA DE PERSONAS & MODELOS EMOCHI (Conforme Engenharia Reversa)
+// TELA 1: LISTA DE PERSONAS & MODELOS PRONTOS
 // ---------------------------------------------------------------------------
 @Composable
 private fun TelaListaPersonas(
@@ -595,6 +644,7 @@ private fun TelaListaPersonas(
     onNovaPersona: () -> Unit,
     onEditarPersona: (PersonaResponse) -> Unit,
     onPersonaSelecionada: (PersonaResponse?) -> Unit,
+    onSelecionarTemplate: (PersonaTemplate) -> Unit = {},
     onUsarTemplate: (PersonaTemplate) -> Unit
 ) {
     val contexto = LocalContext.current
@@ -628,7 +678,7 @@ private fun TelaListaPersonas(
             }
         }
 
-        // Abas: "Minhas Personas" e "Modelos Emochi"
+        // Abas: "Minhas Personas" e "Modelos"
         TabRow(
             selectedTabIndex = abaSelecionada,
             containerColor = Color(0xFF0F101A),
@@ -669,7 +719,7 @@ private fun TelaListaPersonas(
                         Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            "Modelos Emochi (${MODELOS_PERSONA_EMOCHI.size})",
+                            "Modelos (${MODELOS_PERSONA.size})",
                             fontWeight = if (abaSelecionada == 1) FontWeight.Bold else FontWeight.Normal,
                             fontSize = 13.sp
                         )
@@ -691,7 +741,7 @@ private fun TelaListaPersonas(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Item de Persona Desativada (Fiel à Engenharia Reversa do Emochi)
+                // Item de Persona Desativada
                 if (jogoAtualId != null) {
                     val personaDesativadaAtiva = (vm.personaSelecionadaId == -1 || (vm.personaSelecionadaId == null && vm.personas.none { it.padrao }))
                     DisabledPersonaItem(
@@ -723,7 +773,7 @@ private fun TelaListaPersonas(
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                "Crie uma persona personalizada ou escolha um dos 19 modelos prontos inspirados no Emochi!",
+                                "Crie uma persona personalizada ou escolha um dos modelos prontos.",
                                 color = TextoSecundario,
                                 fontSize = 12.sp,
                                 textAlign = TextAlign.Center
@@ -734,7 +784,7 @@ private fun TelaListaPersonas(
                                 shape = RoundedCornerShape(10.dp),
                                 border = BorderStroke(1.dp, AmareloDestaque)
                             ) {
-                                Text("Ver Modelos Emochi", color = AmareloDestaque, fontWeight = FontWeight.SemiBold)
+                                Text("Ver Modelos", color = AmareloDestaque, fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }
@@ -746,7 +796,7 @@ private fun TelaListaPersonas(
                             persona.padrao
                         }
 
-                        ItemCardPersonaEstiloEmochi(
+                        ItemCardPersona(
                             persona = persona,
                             ehAtiva = ehAtivaParaJogo,
                             versaoRetrato = vm.personaRetratoVersao + persona.versaoRetrato,
@@ -814,10 +864,12 @@ private fun TelaListaPersonas(
                 }
             }
         } else {
-            // ABA 1: MODELOS EMOCHI (PersonaSelectScreen fiel ao Emochi)
+            // ABA 1: MODELOS
             Box(modifier = Modifier.weight(1f)) {
-                TelaModelosPersonaEmochi(
-                    modelos = MODELOS_PERSONA_EMOCHI,
+                TelaModelosPersona(
+                    modelos = MODELOS_PERSONA,
+                    personaAtivaNome = vm.personaAtiva?.nome,
+                    onSelecionarModelo = onSelecionarTemplate,
                     onUsarModelo = onUsarTemplate
                 )
             }
@@ -826,7 +878,7 @@ private fun TelaListaPersonas(
 }
 
 // ---------------------------------------------------------------------------
-// ITEM DE PERSONA DESATIVADA (Engenharia Reversa Emochi: DisabledPersonaItem)
+// ITEM DE PERSONA DESATIVADA
 // ---------------------------------------------------------------------------
 @Composable
 private fun DisabledPersonaItem(
@@ -903,12 +955,14 @@ private fun DisabledPersonaItem(
 }
 
 // ---------------------------------------------------------------------------
-// TELA DE MODELOS PRONTOS DO EMOCHI (PersonaSelectScreen com Carrossel e Thumbnails)
+// TELA DE MODELOS PRONTOS
 // ---------------------------------------------------------------------------
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun TelaModelosPersonaEmochi(
-    modelos: List<PersonaTemplate> = MODELOS_PERSONA_EMOCHI,
+private fun TelaModelosPersona(
+    modelos: List<PersonaTemplate> = MODELOS_PERSONA,
+    personaAtivaNome: String? = null,
+    onSelecionarModelo: ((PersonaTemplate) -> Unit)? = null,
     onUsarModelo: (PersonaTemplate) -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -934,11 +988,12 @@ private fun TelaModelosPersonaEmochi(
             } catch (_: Exception) {
                 AmareloDestaque
             }
+            val ehAtiva = personaAtivaNome != null && modelo.nome.equals(personaAtivaNome, ignoreCase = true)
 
             Surface(
                 color = CardObsidian,
                 shape = RoundedCornerShape(22.dp),
-                border = BorderStroke(1.5.dp, corDestaque.copy(alpha = 0.6f)),
+                border = BorderStroke(if (ehAtiva) 2.dp else 1.5.dp, if (ehAtiva) AmareloDestaque else corDestaque.copy(alpha = 0.6f)),
                 modifier = Modifier
                     .fillMaxWidth()
                     .fillMaxHeight()
@@ -991,6 +1046,23 @@ private fun TelaModelosPersonaEmochi(
                                     )
                                 )
                         )
+
+                        if (ehAtiva) {
+                            Surface(
+                                color = AmareloDestaque,
+                                shape = RoundedCornerShape(bottomEnd = 12.dp),
+                                modifier = Modifier.align(Alignment.TopStart)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF141414), modifier = Modifier.size(14.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Em Uso", color = Color(0xFF141414), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
                     }
 
                     Spacer(Modifier.height(10.dp))
@@ -1050,26 +1122,71 @@ private fun TelaModelosPersonaEmochi(
 
                     Spacer(Modifier.height(10.dp))
 
-                    // Botão "Usar este Modelo"
-                    Button(
-                        onClick = { onUsarModelo(modelo) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(46.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = AmareloDestaque,
-                            contentColor = Color(0xFF141414)
-                        ),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF141414), modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            "Usar este Modelo",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = Color(0xFF141414)
-                        )
+                    // Botões de Ação
+                    if (onSelecionarModelo != null) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = { onSelecionarModelo(modelo) },
+                                modifier = Modifier
+                                    .weight(1.4f)
+                                    .height(46.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (ehAtiva) Color(0xFF2E7D32) else AmareloDestaque,
+                                    contentColor = if (ehAtiva) Color.White else Color(0xFF141414)
+                                ),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    if (ehAtiva) "Selecionada" else "Selecionar Persona",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
+                                )
+                            }
+
+                            OutlinedButton(
+                                onClick = { onUsarModelo(modelo) },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(46.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, CardObsidianBorda)
+                            ) {
+                                Icon(Icons.Default.Edit, contentDescription = null, tint = AmareloDestaque, modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    "Personalizar",
+                                    color = TextoClaro,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                    } else {
+                        Button(
+                            onClick = { onUsarModelo(modelo) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(46.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = AmareloDestaque,
+                                contentColor = Color(0xFF141414)
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF141414), modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                "Usar este Modelo",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = Color(0xFF141414)
+                            )
+                        }
                     }
                 }
             }
@@ -1129,9 +1246,22 @@ private fun TelaModelosPersonaEmochi(
     }
 }
 
-// Card de Persona no formato fiel da Imagem 1
+// Card de Persona
 @Composable
-private fun ItemCardPersonaEstiloEmochi(
+private fun ItemCardPersona(
+    persona: PersonaResponse,
+    ehAtiva: Boolean,
+    versaoRetrato: Int,
+    onCardClick: () -> Unit,
+    onEditar: () -> Unit,
+    onTornarPadrao: () -> Unit,
+    onExcluir: () -> Unit
+) {
+    ItemCardPersonaInterno(persona, ehAtiva, versaoRetrato, onCardClick, onEditar, onTornarPadrao, onExcluir)
+}
+
+@Composable
+private fun ItemCardPersonaInterno(
     persona: PersonaResponse,
     ehAtiva: Boolean,
     versaoRetrato: Int,
@@ -1422,7 +1552,7 @@ private fun TelaCriarEditarPersona(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column {
-                                Text("Modelos Emochi", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextoClaro)
+                                Text("Modelos", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextoClaro)
                                 Text("Escolha um modelo pronto para preencher sua persona", fontSize = 12.sp, color = TextoSecundario)
                             }
                             IconButton(onClick = { mostrarDialogModelos = false }) {
@@ -1430,7 +1560,7 @@ private fun TelaCriarEditarPersona(
                             }
                         }
                         Box(modifier = Modifier.weight(1f)) {
-                            TelaModelosPersonaEmochi(
+                            TelaModelosPersona(
                                 onUsarModelo = { template ->
                                     onEscolherTemplate(template)
                                     mostrarDialogModelos = false
@@ -2129,11 +2259,14 @@ private fun CardCandidatoQuadrado(
     modifier: Modifier = Modifier
 ) {
     val base = remember { ApiClient.baseUrlAtual() }
-    val imageUrl = remember(candidato, loteId) {
-        if (candidato == null) null
-        else if (base != null) "${base}conta/persona/candidatos/$loteId/${candidato.indice}"
-        else candidato.urlDireta
+    val urlServidor = remember(candidato, loteId, base) {
+        if (candidato == null || base == null) null
+        else "${base}conta/persona/candidatos/$loteId/${candidato.indice}"
     }
+    val urlPrimaria = candidato?.urlDireta?.ifBlank { null } ?: urlServidor
+    val urlSecundaria = if (urlPrimaria == candidato?.urlDireta) urlServidor else candidato?.urlDireta
+    val cabecalho = remember { ApiClient.cabecalhoAutorizacao() }
+    val context = LocalContext.current
 
     Surface(
         color = CardObsidian,
@@ -2145,8 +2278,8 @@ private fun CardCandidatoQuadrado(
         modifier = modifier.clickable { onSelecionar() }
     ) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            if (carregando || candidato == null || imageUrl == null) {
-                // Estado de carregamento com porcentagem (Imagem 2)
+            if (carregando || candidato == null || urlPrimaria == null) {
+                // Estado de carregamento com porcentagem
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
@@ -2165,12 +2298,15 @@ private fun CardCandidatoQuadrado(
                     )
                 }
             } else {
-                // Imagem gerada (Imagem 5)
-                val cabecalho = remember { ApiClient.cabecalhoAutorizacao() }
+                // Imagem gerada com fallback inteligente
                 SubcomposeAsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(imageUrl)
-                        .apply { if (cabecalho != null) addHeader("Authorization", cabecalho) }
+                    model = ImageRequest.Builder(context)
+                        .data(urlPrimaria)
+                        .apply {
+                            if (!urlPrimaria.contains("pollinations.ai") && cabecalho != null) {
+                                addHeader("Authorization", cabecalho)
+                            }
+                        }
                         .crossfade(true)
                         .build(),
                     contentDescription = "Variação ${indice + 1}",
@@ -2182,23 +2318,36 @@ private fun CardCandidatoQuadrado(
                         }
                     },
                     error = {
-                        // Tenta fallback com URL direta
-                        SubcomposeAsyncImage(
-                            model = candidato.urlDireta,
-                            contentDescription = "Variação fallback",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                            loading = {
-                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().background(CardObsidian)) {
-                                    CircularProgressIndicator(modifier = Modifier.size(32.dp), color = AmareloDestaque, strokeWidth = 2.5.dp)
+                        if (!urlSecundaria.isNullOrBlank()) {
+                            SubcomposeAsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(urlSecundaria)
+                                    .apply {
+                                        if (!urlSecundaria.contains("pollinations.ai") && cabecalho != null) {
+                                            addHeader("Authorization", cabecalho)
+                                        }
+                                    }
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Variação ${indice + 1} (fallback)",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize(),
+                                loading = {
+                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().background(CardObsidian)) {
+                                        CircularProgressIndicator(modifier = Modifier.size(32.dp), color = AmareloDestaque, strokeWidth = 2.5.dp)
+                                    }
+                                },
+                                error = {
+                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().background(Color(0xFF1E2132))) {
+                                        Text("Erro", color = TextoMudo, fontSize = 12.sp)
+                                    }
                                 }
-                            },
-                            error = {
-                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().background(Color(0xFF1E2132))) {
-                                    Text("Erro", color = TextoMudo, fontSize = 12.sp)
-                                }
+                            )
+                        } else {
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().background(Color(0xFF1E2132))) {
+                                Text("Erro", color = TextoMudo, fontSize = 12.sp)
                             }
-                        )
+                        }
                     }
                 )
 

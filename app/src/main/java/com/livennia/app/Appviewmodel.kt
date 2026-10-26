@@ -415,6 +415,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 avatar = personaAvatar
             )
             atualizarListas(api)
+            personaSelecionadaId = personaId
             onSucesso()
         }
     }

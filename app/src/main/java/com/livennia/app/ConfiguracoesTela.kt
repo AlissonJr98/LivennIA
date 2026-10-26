@@ -170,7 +170,7 @@ fun ConfiguracoesTela(vm: AppViewModel) {
                 )
             }
 
-            // ---- Lista de seções estilo Emochi ----
+            // ---- Lista de seções ----
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -911,7 +911,7 @@ fun ConfiguracoesTela(vm: AppViewModel) {
     }
 }
 
-// Linha de configuração padrão com chevron à direita estilo Emochi
+// Linha de configuração padrão com chevron à direita
 @Composable
 private fun ItemConfigLinha(
     titulo: String,
@@ -950,7 +950,7 @@ private fun ItemConfigLinha(
     }
 }
 
-// Linha com Switch moderno estilo Emochi (fundo amarelo/ouro ativo)
+// Linha com Switch moderno (fundo amarelo/ouro ativo)
 @Composable
 private fun ItemConfigSwitchLinha(
     titulo: String,

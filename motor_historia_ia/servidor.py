@@ -129,6 +129,7 @@ def tem_persona_retrato(jogador_id, persona_id=None):
 
 # Lotes de candidatos a retrato de persona em memória
 _lotes_candidatos = {}
+_lock_candidatos = threading.Lock()
 
 
 def tem_retrato(jogo_id):
@@ -2265,30 +2266,42 @@ def gerar_candidatos_persona(dados: PersonaRetratoIn, jogador=Depends(jogador_at
             "estilo_imagem": dados.estilo_imagem or "semi_realistic",
         }
     }
-    prompt_en = motor.prompt_retrato_en(estado_persona)
+    prompt_base = motor.prompt_retrato_en(estado_persona)
     seeds = [random.randint(1, 2_000_000_000) for _ in range(4)]
     lote_id = uuid.uuid4().hex[:12]
 
-    agora_ts = time.time()
-    expirados = [k for k, v in _lotes_candidatos.items() if agora_ts - v.get("criado_em", 0) > 1800]
-    for k in expirados:
-        _lotes_candidatos.pop(k, None)
+    variacoes_estilo = [
+        "cinematic close-up portrait, direct eye contact, dramatic soft lighting, sharp focus",
+        "medium portrait, three-quarters angle, stylish outfit, beautiful ambient lighting",
+        "dynamic portrait, expressive face, slight profile angle, artistic lighting and depth",
+        "aesthetic portrait, cinematic pose, atmospheric background bokeh, detailed character art"
+    ]
+    prompts_en = [f"{prompt_base}, {variacoes_estilo[i]}" for i in range(4)]
 
-    _lotes_candidatos[lote_id] = {
-        "prompt_en": prompt_en,
-        "seeds": seeds,
-        "criado_em": agora_ts,
-        "jogador_id": jogador["id"],
-        "imagens": {}
-    }
+    agora_ts = time.time()
+    with _lock_candidatos:
+        expirados = [k for k, v in _lotes_candidatos.items() if agora_ts - v.get("criado_em", 0) > 1800]
+        for k in expirados:
+            _lotes_candidatos.pop(k, None)
+
+        _lotes_candidatos[lote_id] = {
+            "prompt_en": prompt_base,
+            "prompts_en": prompts_en,
+            "seeds": seeds,
+            "criado_em": agora_ts,
+            "jogador_id": jogador["id"],
+            "imagens": {}
+        }
 
     candidatos = []
     largura = config.POLLINATIONS_LARGURA or 768
     altura = config.POLLINATIONS_ALTURA or 1024
     modelo_flux = config.POLLINATIONS_MODELO or "flux"
     url_base_polli = config.POLLINATIONS_URL or "https://image.pollinations.ai/prompt"
+    token_polli = getattr(config, "POLLINATIONS_TOKEN", "") or ""
 
     for i, s in enumerate(seeds):
+        p_candidato = prompts_en[i]
         params = {
             "width": largura,
             "height": altura,
@@ -2296,7 +2309,10 @@ def gerar_candidatos_persona(dados: PersonaRetratoIn, jogador=Depends(jogador_at
             "model": modelo_flux,
             "nologo": "true"
         }
-        url_direta = f"{url_base_polli}/{urllib.parse.quote(prompt_en[:1400])}?{urllib.parse.urlencode(params)}"
+        if token_polli:
+            params["token"] = token_polli
+            params["key"] = token_polli
+        url_direta = f"{url_base_polli}/{urllib.parse.quote(p_candidato[:1400])}?{urllib.parse.urlencode(params)}"
         candidatos.append(CandidatoRetratoOut(
             indice=i,
             seed=s,
@@ -2310,19 +2326,23 @@ def gerar_candidatos_persona(dados: PersonaRetratoIn, jogador=Depends(jogador_at
 @app.get("/conta/persona/candidatos/{lote_id}/{indice}")
 def obter_candidato_imagem(lote_id: str, indice: int):
     """Devolve a imagem gerada para o candidato específico do lote."""
-    lote = _lotes_candidatos.get(lote_id)
+    with _lock_candidatos:
+        lote = _lotes_candidatos.get(lote_id)
     if not lote or indice not in range(len(lote["seeds"])):
         raise HTTPException(404, "Candidato não encontrado ou lote expirado.")
 
-    if indice in lote["imagens"]:
-        return Response(content=lote["imagens"][indice], media_type="image/jpeg", headers={"Cache-Control": "public, max-age=3600"})
+    with _lock_candidatos:
+        if indice in lote.get("imagens", {}):
+            dados_existentes = lote["imagens"][indice]
+            return Response(content=dados_existentes, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=3600"})
 
     seed = lote["seeds"][indice]
-    prompt_en = lote["prompt_en"]
+    prompt_en = lote.get("prompts_en", [lote["prompt_en"]] * 4)[indice]
     largura = config.POLLINATIONS_LARGURA or 768
     altura = config.POLLINATIONS_ALTURA or 1024
     modelo_flux = config.POLLINATIONS_MODELO or "flux"
     url_base_polli = config.POLLINATIONS_URL or "https://image.pollinations.ai/prompt"
+    token_polli = getattr(config, "POLLINATIONS_TOKEN", "") or ""
     params = {
         "width": largura,
         "height": altura,
@@ -2330,12 +2350,16 @@ def obter_candidato_imagem(lote_id: str, indice: int):
         "model": modelo_flux,
         "nologo": "true"
     }
+    if token_polli:
+        params["token"] = token_polli
+        params["key"] = token_polli
     url = f"{url_base_polli}/{urllib.parse.quote(prompt_en[:1400])}?{urllib.parse.urlencode(params)}"
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "LivennIA/1.0"})
-        with urllib.request.urlopen(req, timeout=35) as resp:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": "https://livennia.app/"})
+        with urllib.request.urlopen(req, timeout=45) as resp:
             dados_img = resp.read()
-        lote["imagens"][indice] = dados_img
+        with _lock_candidatos:
+            lote.setdefault("imagens", {})[indice] = dados_img
         return Response(content=dados_img, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=3600"})
     except Exception as e:
         logging.warning("Erro ao baixar candidato %s do lote %s: %s", indice, lote_id, e)
@@ -2349,23 +2373,29 @@ def confirmar_candidato_persona(persona_id: int, dados: ConfirmarCandidatoIn, jo
     if not existente:
         raise HTTPException(404, "Persona não encontrada.")
 
-    lote = _lotes_candidatos.get(dados.lote_id)
+    with _lock_candidatos:
+        lote = _lotes_candidatos.get(dados.lote_id)
     dados_img = None
     if lote and dados.indice in lote.get("imagens", {}):
         dados_img = lote["imagens"][dados.indice]
     elif lote and dados.indice in range(len(lote["seeds"])):
         seed = lote["seeds"][dados.indice]
-        prompt_en = lote["prompt_en"]
+        prompt_en = lote.get("prompts_en", [lote["prompt_en"]] * 4)[dados.indice]
         largura = config.POLLINATIONS_LARGURA or 768
         altura = config.POLLINATIONS_ALTURA or 1024
         modelo_flux = config.POLLINATIONS_MODELO or "flux"
         url_base_polli = config.POLLINATIONS_URL or "https://image.pollinations.ai/prompt"
+        token_polli = getattr(config, "POLLINATIONS_TOKEN", "") or ""
         params = {"width": largura, "height": altura, "seed": seed, "model": modelo_flux, "nologo": "true"}
+        if token_polli:
+            params["token"] = token_polli
+            params["key"] = token_polli
         url = f"{url_base_polli}/{urllib.parse.quote(prompt_en[:1400])}?{urllib.parse.urlencode(params)}"
-        req = urllib.request.Request(url, headers={"User-Agent": "LivennIA/1.0"})
-        with urllib.request.urlopen(req, timeout=35) as resp:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": "https://livennia.app/"})
+        with urllib.request.urlopen(req, timeout=50) as resp:
             dados_img = resp.read()
-        lote["imagens"][dados.indice] = dados_img
+        with _lock_candidatos:
+            lote.setdefault("imagens", {})[dados.indice] = dados_img
 
     if not dados_img:
         raise HTTPException(400, "Imagem do candidato não encontrada. Tente gerar novamente.")
