@@ -6,6 +6,7 @@ Rodar (na pasta do projeto):
 
 Página de testes (só fora de produção): http://127.0.0.1:8000/docs
 """
+import io
 import logging
 import os
 import random
@@ -17,6 +18,8 @@ import uuid
 from contextlib import asynccontextmanager, contextmanager
 from logging.handlers import RotatingFileHandler
 from typing import Annotated, Literal, Optional
+
+from PIL import Image
 
 from fastapi import Depends, FastAPI, HTTPException, Path, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -130,6 +133,8 @@ def tem_persona_retrato(jogador_id, persona_id=None):
 # Lotes de candidatos a retrato de persona em memória
 _lotes_candidatos = {}
 _lock_candidatos = threading.Lock()
+_ultimo_polli_ts = [0.0]
+_lock_pollinations = threading.Lock()
 
 
 def tem_retrato(jogo_id):
@@ -2249,7 +2254,7 @@ def ver_retrato_persona_id(persona_id: int, token: Optional[str] = None, credenc
 
 @app.post("/conta/persona/candidatos", response_model=CandidatosRetratoResponse)
 def gerar_candidatos_persona(dados: PersonaRetratoIn, jogador=Depends(jogador_atual)):
-    """Gera 4 sementes e links de candidatos a retrato para a persona."""
+    """Gera 4 sementes e imagens pré-cortadas de candidatos a retrato para a persona."""
     estado_persona = {
         "personagem": {"nome": dados.nome or jogador.get("apelido", "Viajante")},
         "genero": dados.genero or "Feminino",
@@ -2278,6 +2283,59 @@ def gerar_candidatos_persona(dados: PersonaRetratoIn, jogador=Depends(jogador_at
     ]
     prompts_en = [f"{prompt_base}, {variacoes_estilo[i]}" for i in range(4)]
 
+    # Tentativa de gerar o painel 2x2 com 4 variações em UMA única chamada (evita limite 402 do Pollinations)
+    grid_prompt = (
+        f"character concept sheet, 2x2 grid of 4 diverse portrait variations of {prompt_base[:380]}, "
+        f"four diverse angles, front view, side profile view, three-quarters view, expressive character face, "
+        f"cinematic studio lighting, masterpiece, 8k resolution, best quality"
+    )
+
+    url_base_polli = config.POLLINATIONS_URL or "https://image.pollinations.ai/prompt"
+    token_polli = getattr(config, "POLLINATIONS_TOKEN", "") or ""
+    imagens_cortadas = {}
+
+    with _lock_pollinations:
+        agora = time.time()
+        espera = max(0.0, _ultimo_polli_ts[0] + 46 - agora)
+        if 0 < espera <= 45:
+            time.sleep(espera)
+
+        params_grid = {
+            "width": 1024,
+            "height": 1024,
+            "seed": seeds[0],
+            "model": config.POLLINATIONS_MODELO or "flux",
+            "nologo": "true"
+        }
+        if token_polli:
+            params_grid["token"] = token_polli
+            params_grid["key"] = token_polli
+        url_grid = f"{url_base_polli}/{urllib.parse.quote(grid_prompt[:1400])}?{urllib.parse.urlencode(params_grid)}"
+
+        try:
+            req_grid = urllib.request.Request(url_grid, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": "https://livennia.app/"})
+            with urllib.request.urlopen(req_grid, timeout=40) as resp:
+                dados_grid = resp.read()
+            _ultimo_polli_ts[0] = time.time()
+
+            # Cortar em 4 quadrantes
+            img = Image.open(io.BytesIO(dados_grid))
+            w, h = img.size
+            mid_x, mid_y = w // 2, h // 2
+            boxes = [
+                (0, 0, mid_x, mid_y),
+                (mid_x, 0, w, mid_y),
+                (0, mid_y, mid_x, h),
+                (mid_x, mid_y, w, h)
+            ]
+            for idx, box in enumerate(boxes):
+                crop = img.crop(box)
+                buf = io.BytesIO()
+                crop.save(buf, format="JPEG", quality=95)
+                imagens_cortadas[idx] = buf.getvalue()
+        except Exception as e:
+            logging.warning("Grid 2x2 do lote %s não gerado imediatamente (%s); tentará sob demanda.", lote_id, e)
+
     agora_ts = time.time()
     with _lock_candidatos:
         expirados = [k for k, v in _lotes_candidatos.items() if agora_ts - v.get("criado_em", 0) > 1800]
@@ -2290,15 +2348,13 @@ def gerar_candidatos_persona(dados: PersonaRetratoIn, jogador=Depends(jogador_at
             "seeds": seeds,
             "criado_em": agora_ts,
             "jogador_id": jogador["id"],
-            "imagens": {}
+            "imagens": imagens_cortadas
         }
 
     candidatos = []
     largura = config.POLLINATIONS_LARGURA or 768
     altura = config.POLLINATIONS_ALTURA or 1024
     modelo_flux = config.POLLINATIONS_MODELO or "flux"
-    url_base_polli = config.POLLINATIONS_URL or "https://image.pollinations.ai/prompt"
-    token_polli = getattr(config, "POLLINATIONS_TOKEN", "") or ""
 
     for i, s in enumerate(seeds):
         p_candidato = prompts_en[i]
@@ -2336,6 +2392,7 @@ def obter_candidato_imagem(lote_id: str, indice: int):
             dados_existentes = lote["imagens"][indice]
             return Response(content=dados_existentes, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=3600"})
 
+    # Fallback se o quadrante não foi cortado no grid: busca individual com controle de taxa
     seed = lote["seeds"][indice]
     prompt_en = lote.get("prompts_en", [lote["prompt_en"]] * 4)[indice]
     largura = config.POLLINATIONS_LARGURA or 768
@@ -2354,16 +2411,23 @@ def obter_candidato_imagem(lote_id: str, indice: int):
         params["token"] = token_polli
         params["key"] = token_polli
     url = f"{url_base_polli}/{urllib.parse.quote(prompt_en[:1400])}?{urllib.parse.urlencode(params)}"
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": "https://livennia.app/"})
-        with urllib.request.urlopen(req, timeout=45) as resp:
-            dados_img = resp.read()
-        with _lock_candidatos:
-            lote.setdefault("imagens", {})[indice] = dados_img
-        return Response(content=dados_img, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=3600"})
-    except Exception as e:
-        logging.warning("Erro ao baixar candidato %s do lote %s: %s", indice, lote_id, e)
-        raise HTTPException(503, "Falha ao gerar esta variação de imagem.")
+
+    with _lock_pollinations:
+        agora = time.time()
+        espera = max(0.0, _ultimo_polli_ts[0] + 46 - agora)
+        if 0 < espera <= 45:
+            time.sleep(espera)
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": "https://livennia.app/"})
+            with urllib.request.urlopen(req, timeout=45) as resp:
+                dados_img = resp.read()
+            _ultimo_polli_ts[0] = time.time()
+            with _lock_candidatos:
+                lote.setdefault("imagens", {})[indice] = dados_img
+            return Response(content=dados_img, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=3600"})
+        except Exception as e:
+            logging.warning("Erro ao baixar candidato %s do lote %s: %s", indice, lote_id, e)
+            raise HTTPException(503, "Falha ao gerar esta variação de imagem.")
 
 
 @app.post("/personas/{persona_id}/confirmar-candidato", response_model=RetratoOut)
@@ -2391,11 +2455,13 @@ def confirmar_candidato_persona(persona_id: int, dados: ConfirmarCandidatoIn, jo
             params["token"] = token_polli
             params["key"] = token_polli
         url = f"{url_base_polli}/{urllib.parse.quote(prompt_en[:1400])}?{urllib.parse.urlencode(params)}"
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": "https://livennia.app/"})
-        with urllib.request.urlopen(req, timeout=50) as resp:
-            dados_img = resp.read()
-        with _lock_candidatos:
-            lote.setdefault("imagens", {})[dados.indice] = dados_img
+        with _lock_pollinations:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": "https://livennia.app/"})
+            with urllib.request.urlopen(req, timeout=50) as resp:
+                dados_img = resp.read()
+            _ultimo_polli_ts[0] = time.time()
+            with _lock_candidatos:
+                lote.setdefault("imagens", {})[dados.indice] = dados_img
 
     if not dados_img:
         raise HTTPException(400, "Imagem do candidato não encontrada. Tente gerar novamente.")

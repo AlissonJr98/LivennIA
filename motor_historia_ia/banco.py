@@ -1,6 +1,7 @@
 """
 Banco de dados (SQLite) do LivennIA: jogadores, convites, jogos, uso, feedbacks e denúncias.
 """
+import json
 import logging
 import os
 import sqlite3

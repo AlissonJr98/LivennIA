@@ -2263,8 +2263,8 @@ private fun CardCandidatoQuadrado(
         if (candidato == null || base == null) null
         else "${base}conta/persona/candidatos/$loteId/${candidato.indice}"
     }
-    val urlPrimaria = candidato?.urlDireta?.ifBlank { null } ?: urlServidor
-    val urlSecundaria = if (urlPrimaria == candidato?.urlDireta) urlServidor else candidato?.urlDireta
+    val urlPrimaria = urlServidor ?: candidato?.urlDireta
+    val urlSecundaria = if (urlPrimaria == urlServidor) candidato?.urlDireta else urlServidor
     val cabecalho = remember { ApiClient.cabecalhoAutorizacao() }
     val context = LocalContext.current
 

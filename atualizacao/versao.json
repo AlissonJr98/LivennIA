@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 27,
-  "versaoNome": "1.6.6",
-  "notas": "Seleção direta e ativação imediata de personas a partir dos modelos prontos; geração confiável e exibição instantânea das 4 variações de imagem na grade 2x2 com diferentes poses e iluminação; remoção completa de referências de nomes externos da interface; otimizações de conectividade e estabilidade.",
+  "versaoCodigo": 28,
+  "versaoNome": "1.6.7",
+  "notas": "Correção no salvamento e seleção de personas modelos; geração instantânea e estável das 4 variações da persona através de grade 2x2 pré-cortada no servidor sem limite de requisição por IP.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }
