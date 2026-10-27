@@ -515,6 +515,7 @@ fun ModalMinhaPersona(
                                     interesses = template.tags.joinToString(", "),
                                     tags = template.tags,
                                     estiloImagem = template.estiloImagem,
+                                    avatarUrl = template.avatarUrl,
                                     padrao = vm.personas.isEmpty()
                                 )
                                 vm.salvarPersona(null, dados) { novaPersona ->
@@ -2248,7 +2249,7 @@ private fun TelaSelecionarImagem(
 
 // Cada quadrado da grade 2x2
 @Composable
-private fun CardCandidatoQuadrado(
+fun CardCandidatoQuadrado(
     candidato: CandidatoRetratoDto?,
     indice: Int,
     loteId: String,

@@ -219,6 +219,7 @@ data class PersonaIn(
     val tags: List<String> = emptyList(),
     @SerializedName("estilo_imagem") val estiloImagem: String = "semi_realistic",
     @SerializedName("detalhes_imagem") val detalhesImagem: String = "",
+    @SerializedName("avatar_url") val avatarUrl: String? = null,
     val padrao: Boolean = false
 )
 
@@ -235,6 +236,7 @@ data class PersonaResponse(
     val tags: List<String> = emptyList(),
     @SerializedName("estilo_imagem") val estiloImagem: String = "semi_realistic",
     @SerializedName("detalhes_imagem") val detalhesImagem: String = "",
+    @SerializedName("avatar_url") val avatarUrl: String? = null,
     val padrao: Boolean = false,
     @SerializedName("tem_retrato") val temRetrato: Boolean = false,
     @SerializedName("versao_retrato", alternate = ["retrato_versao"]) val versaoRetrato: Int = 1,

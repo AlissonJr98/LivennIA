@@ -49,6 +49,12 @@ interface LivennIAApi {
     @POST("catalogo/cenarios")
     suspend fun criarCenario(@Body cenario: NovoCenarioRequest): CenarioDto
 
+    @PUT("catalogo/cenarios/{id}")
+    suspend fun editarCenario(@Path("id") id: String, @Body corpo: NovoCenarioRequest): CenarioDto
+
+    @DELETE("catalogo/cenarios/{id}")
+    suspend fun excluirCenario(@Path("id") id: String): Response<Unit>
+
     @GET("cerebros")
     suspend fun cerebros(): List<CerebroDto>
 
@@ -147,6 +153,12 @@ interface LivennIAApi {
 
     @POST("conta/persona/retrato")
     suspend fun gerarRetratoPersona(@Body dados: PersonaRetratoRequest): RetratoResponse
+
+    @POST("conta/persona/upload-retrato")
+    suspend fun uploadRetratoConta(@Body req: UploadRetratoRequest): RetratoResponse
+
+    @POST("conta/persona/confirmar-candidato")
+    suspend fun confirmarCandidatoConta(@Body req: ConfirmarCandidatoRequest): RetratoResponse
 
     @POST("jogos/{id}/avatar")
     suspend fun sortearAvatar(@Path("id") id: String): AvatarResponse

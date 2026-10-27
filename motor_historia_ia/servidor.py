@@ -446,6 +446,7 @@ class PersonaIn(BaseModel):
     detalhes_imagem: Optional[str] = Field(default="", max_length=1000)
     estilo_imagem: Optional[str] = Field(default="semi_realistic", max_length=100)
     avatar_emoji: Optional[str] = Field(default="👤", max_length=20)
+    avatar_url: Optional[str] = Field(default=None, max_length=1000)
     padrao: Optional[bool] = False
 
 
@@ -912,6 +913,73 @@ def criar_cenario_comunidade(dados: NovoCenarioIn, jogador=Depends(jogador_atual
         saves=int(c_salvo.get("saves") or 0),
         modoJogo=c_salvo.get("modoJogo") or "historia",
     )
+
+
+@app.put("/catalogo/cenarios/{cenario_id}", response_model=CenarioOut)
+def editar_cenario_comunidade(cenario_id: str, dados: NovoCenarioIn, jogador=Depends(jogador_atual)):
+    """Atualiza uma história/personagem existente criada pelo usuário."""
+    c_existente = banco.obter_cenario_usuario(cenario_id)
+    if not c_existente:
+        raise HTTPException(404, "História não encontrada.")
+    eh_autor = str(c_existente.get("autor_id")) == str(jogador["id"]) or c_existente.get("autorNome") == jogador.get("apelido")
+    eh_admin = bool(jogador.get("admin") or jogador.get("dono"))
+    if not eh_autor and not eh_admin:
+        raise HTTPException(403, "Você só pode editar histórias criadas por você.")
+
+    banco.salvar_cenario_usuario(
+        cenario_id=cenario_id,
+        autor_id=c_existente.get("autor_id") or jogador["id"],
+        autor_nome=c_existente.get("autorNome") or jogador.get("apelido") or "Comunidade",
+        nome=dados.nome,
+        subtitulo=dados.subtitulo or "",
+        emoji=dados.emoji or c_existente.get("emoji") or "🎭",
+        genero=dados.genero or c_existente.get("genero") or "Aventura",
+        tags=dados.tags or c_existente.get("tags") or [],
+        sinopse=dados.sinopse or "",
+        abertura=dados.abertura or "",
+        prompt_secreto=dados.prompt_secreto or c_existente.get("prompt_secreto") or "",
+        estilo_imagem=dados.estilo_imagem or c_existente.get("estilo_imagem") or "semi_realistic",
+        modo_jogo=dados.modo_jogo or c_existente.get("modoJogo") or "historia",
+    )
+    c_salvo = banco.obter_cenario_usuario(cenario_id)
+    return CenarioOut(
+        id=c_salvo["id"],
+        nome=c_salvo["nome"],
+        subtitulo=c_salvo.get("subtitulo") or "",
+        emoji=c_salvo.get("emoji") or "🎭",
+        genero=c_salvo.get("genero") or "Aventura",
+        tags=list(c_salvo.get("tags") or []),
+        sinopse=c_salvo.get("sinopse") or "",
+        abertura=c_salvo.get("abertura") or "",
+        capa=tem_capa(c_salvo["id"]),
+        criadoPorUsuario=True,
+        autorNome=c_salvo.get("autorNome") or jogador.get("apelido") or "Comunidade",
+        autorAvatar=c_salvo.get("autorAvatar") or c_salvo.get("emoji") or "🎭",
+        chats=int(c_salvo.get("chats") or 0),
+        saves=int(c_salvo.get("saves") or 0),
+        modoJogo=c_salvo.get("modoJogo") or "historia",
+    )
+
+
+@app.delete("/catalogo/cenarios/{cenario_id}", status_code=204)
+def excluir_cenario_comunidade(cenario_id: str, jogador=Depends(jogador_atual)):
+    """Exclui uma história/cenário criado pelo usuário."""
+    c_existente = banco.obter_cenario_usuario(cenario_id)
+    if not c_existente:
+        raise HTTPException(404, "História não encontrada.")
+    eh_autor = str(c_existente.get("autor_id")) == str(jogador["id"]) or c_existente.get("autorNome") == jogador.get("apelido")
+    eh_admin = bool(jogador.get("admin") or jogador.get("dono"))
+    if not eh_autor and not eh_admin:
+        raise HTTPException(403, "Você só pode excluir histórias criadas por você.")
+
+    banco.excluir_cenario_usuario(cenario_id, autor_id=None if eh_admin else jogador["id"])
+    caminho = caminho_capa(cenario_id)
+    if os.path.exists(caminho):
+        try:
+            os.remove(caminho)
+        except Exception:
+            pass
+    return Response(status_code=204)
 
 
 @app.get("/cerebros", response_model=list[CerebroOut])
@@ -2055,6 +2123,21 @@ def criar_persona(dados: PersonaIn, jogador=Depends(jogador_atual)):
         p_id = banco.salvar_persona(jogador["id"], dados_dict)
     except banco.ErroNegocio as erro:
         raise HTTPException(erro.status, erro.mensagem)
+
+    if dados.avatar_url and str(dados.avatar_url).startswith("http"):
+        try:
+            req_av = urllib.request.Request(dados.avatar_url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+            with urllib.request.urlopen(req_av, timeout=12) as resp_av:
+                dados_img_av = resp_av.read()
+            if dados_img_av and len(dados_img_av) > 100:
+                os.makedirs(config.PASTA_RETRATOS, exist_ok=True)
+                caminho_av = caminho_persona_retrato(jogador["id"], p_id)
+                with open(caminho_av, "wb") as f_av:
+                    f_av.write(dados_img_av)
+                banco.incrementar_retrato_persona(jogador["id"], p_id)
+        except Exception as e_av:
+            logging.warning("Falha ao baixar avatar_url da persona: %s", e_av)
+
     p = banco.obter_persona(jogador["id"], p_id)
     pers = p["personalidade"] or ""
     med = p["medos"] or ""
@@ -2147,6 +2230,11 @@ def marcar_como_padrao(persona_id: int, jogador=Depends(jogador_atual)):
     if not existente:
         raise HTTPException(404, "Persona não encontrada.")
     banco.definir_persona_padrao(jogador["id"], persona_id)
+    caminho_p = caminho_persona_retrato(jogador["id"], persona_id)
+    if os.path.exists(caminho_p):
+        import shutil
+        caminho_geral = caminho_persona_retrato(jogador["id"])
+        shutil.copyfile(caminho_p, caminho_geral)
     p = banco.obter_persona(jogador["id"], persona_id)
     pers = p["personalidade"] or ""
     med = p["medos"] or ""
@@ -2474,6 +2562,7 @@ def confirmar_candidato_persona(persona_id: int, dados: ConfirmarCandidatoIn, jo
     return RetratoOut(retrato=True)
 
 
+
 @app.post("/personas/{persona_id}/upload-retrato", response_model=RetratoOut)
 def upload_retrato_persona(persona_id: int, dados: UploadRetratoIn, jogador=Depends(jogador_atual)):
     """Salva uma imagem enviada pelo usuário da galeria como retrato da persona."""
@@ -2492,6 +2581,78 @@ def upload_retrato_persona(persona_id: int, dados: UploadRetratoIn, jogador=Depe
     with open(caminho, "wb") as f:
         f.write(dados_img)
     banco.incrementar_retrato_persona(jogador["id"], persona_id)
+    return RetratoOut(retrato=True)
+
+
+@app.post("/conta/persona/upload-retrato", response_model=RetratoOut)
+def upload_retrato_conta(dados: UploadRetratoIn, jogador=Depends(jogador_atual)):
+    """Salva uma imagem enviada pelo usuário da galeria como foto de perfil da conta."""
+    import base64
+    b64 = dados.imagem_base64
+    if "," in b64:
+        b64 = b64.split(",")[-1]
+    dados_img = base64.b64decode(b64)
+    if not dados_img or len(dados_img) < 100:
+        raise HTTPException(400, "Arquivo de imagem inválido.")
+    os.makedirs(config.PASTA_RETRATOS, exist_ok=True)
+    caminho_geral = caminho_persona_retrato(jogador["id"])
+    with open(caminho_geral, "wb") as f:
+        f.write(dados_img)
+
+    personas = banco.listar_personas(jogador["id"])
+    padrao = next((p for p in personas if p["padrao"]), None) or (personas[0] if personas else None)
+    if padrao:
+        caminho_p = caminho_persona_retrato(jogador["id"], padrao["id"])
+        with open(caminho_p, "wb") as f:
+            f.write(dados_img)
+        banco.incrementar_retrato_persona(jogador["id"], padrao["id"])
+    return RetratoOut(retrato=True)
+
+
+@app.post("/conta/persona/confirmar-candidato", response_model=RetratoOut)
+def confirmar_candidato_conta(dados: ConfirmarCandidatoIn, jogador=Depends(jogador_atual)):
+    """Salva a imagem do candidato escolhido como foto de perfil da conta."""
+    with _lock_candidatos:
+        lote = _lotes_candidatos.get(dados.lote_id)
+    dados_img = None
+    if lote and dados.indice in lote.get("imagens", {}):
+        dados_img = lote["imagens"][dados.indice]
+    elif lote and dados.indice in range(len(lote["seeds"])):
+        seed = lote["seeds"][dados.indice]
+        prompt_en = lote.get("prompts_en", [lote["prompt_en"]] * 4)[dados.indice]
+        largura = config.POLLINATIONS_LARGURA or 768
+        altura = config.POLLINATIONS_ALTURA or 1024
+        modelo_flux = config.POLLINATIONS_MODELO or "flux"
+        url_base_polli = config.POLLINATIONS_URL or "https://image.pollinations.ai/prompt"
+        token_polli = getattr(config, "POLLINATIONS_TOKEN", "") or ""
+        params = {"width": largura, "height": altura, "seed": seed, "model": modelo_flux, "nologo": "true"}
+        if token_polli:
+            params["token"] = token_polli
+            params["key"] = token_polli
+        url = f"{url_base_polli}/{urllib.parse.quote(prompt_en[:1400])}?{urllib.parse.urlencode(params)}"
+        with _lock_pollinations:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": "https://livennia.app/"})
+            with urllib.request.urlopen(req, timeout=50) as resp:
+                dados_img = resp.read()
+            _ultimo_polli_ts[0] = time.time()
+            with _lock_candidatos:
+                lote.setdefault("imagens", {})[dados.indice] = dados_img
+
+    if not dados_img:
+        raise HTTPException(400, "Imagem do candidato não encontrada. Tente gerar novamente.")
+
+    os.makedirs(config.PASTA_RETRATOS, exist_ok=True)
+    caminho_geral = caminho_persona_retrato(jogador["id"])
+    with open(caminho_geral, "wb") as f:
+        f.write(dados_img)
+
+    personas = banco.listar_personas(jogador["id"])
+    padrao = next((p for p in personas if p["padrao"]), None) or (personas[0] if personas else None)
+    if padrao:
+        caminho_p = caminho_persona_retrato(jogador["id"], padrao["id"])
+        with open(caminho_p, "wb") as f:
+            f.write(dados_img)
+        banco.incrementar_retrato_persona(jogador["id"], padrao["id"])
     return RetratoOut(retrato=True)
 
 

@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import java.util.Locale
 import androidx.compose.material.icons.Icons
@@ -1352,6 +1353,8 @@ fun DetalhesPersonagemModal(
     var mostrarPerfilCriador by remember { mutableStateOf(false) }
     var mostrarDialogoDenuncia by remember { mutableStateOf(false) }
     var motivoDenuncia by remember { mutableStateOf("") }
+    var mostrarDialogoEditar by remember { mutableStateOf(false) }
+    var mostrarDialogoExcluir by remember { mutableStateOf(false) }
 
     LaunchedEffect(cenario.id) {
         vm?.carregarComentarios(cenario.id)
@@ -1441,6 +1444,27 @@ fun DetalhesPersonagemModal(
                                     expanded = menuMaisAberto,
                                     onDismissRequest = { menuMaisAberto = false }
                                 ) {
+                                    val ehAutor = cenario.criadoPorUsuario && (
+                                        cenario.autorNomeSeguro.equals(apelidoUsuario, ignoreCase = true) ||
+                                        cenario.autorNomeSeguro.equals(vm?.apelido, ignoreCase = true) ||
+                                        vm?.conta?.dono == true
+                                    )
+                                    if (ehAutor) {
+                                        DropdownMenuItem(
+                                            text = { Text("✏️ Editar História") },
+                                            onClick = {
+                                                menuMaisAberto = false
+                                                mostrarDialogoEditar = true
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("🗑️ Excluir História", color = Color(0xFFFF5252)) },
+                                            onClick = {
+                                                menuMaisAberto = false
+                                                mostrarDialogoExcluir = true
+                                            }
+                                        )
+                                    }
                                     DropdownMenuItem(
                                         text = { Text("Compartilhar História") },
                                         onClick = {
@@ -1886,6 +1910,190 @@ fun DetalhesPersonagemModal(
                 TextButton(onClick = { mostrarDialogoDenuncia = false }) { Text("Cancelar") }
             }
         )
+    }
+
+    if (mostrarDialogoExcluir) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogoExcluir = false },
+            title = { Text("Excluir História", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "Tem certeza que deseja apagar a história '${cenario.nome}'? Esta ação é definitiva e removerá a história e seus comentários.",
+                    color = Color(0xFFCCCED9),
+                    fontSize = 14.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        mostrarDialogoExcluir = false
+                        vm?.excluirCenario(cenario.id) {
+                            Toast.makeText(contexto, "História '${cenario.nome}' excluída!", Toast.LENGTH_SHORT).show()
+                            onFechar()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5252))
+                ) {
+                    Text("Excluir", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarDialogoExcluir = false }) {
+                    Text("Cancelar", color = Color(0xFF8E8E93))
+                }
+            },
+            containerColor = Color(0xFF161618)
+        )
+    }
+
+    if (mostrarDialogoEditar) {
+        var edNome by remember { mutableStateOf(cenario.nome) }
+        var edSubtitulo by remember { mutableStateOf(cenario.subtituloSeguro) }
+        var edSinopse by remember { mutableStateOf(cenario.sinopseSegura) }
+        var edAbertura by remember { mutableStateOf(cenario.aberturaSegura) }
+        var edGenero by remember { mutableStateOf(cenario.generoSeguro) }
+        var edTags by remember { mutableStateOf(cenario.tags?.joinToString(", ") ?: "") }
+        var edEmoji by remember { mutableStateOf(cenario.emojiSeguro) }
+
+        Dialog(
+            onDismissRequest = { mostrarDialogoEditar = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                color = Color(0xFF141416),
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, Color(0xFF28282D)),
+                modifier = Modifier
+                    .fillMaxWidth(0.95f)
+                    .fillMaxHeight(0.90f)
+                    .padding(vertical = 16.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(20.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Editar História",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        IconButton(onClick = { mostrarDialogoEditar = false }) {
+                            Icon(Icons.Default.Close, contentDescription = "Fechar", tint = Color(0xFF8E8E93))
+                        }
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = edNome,
+                            onValueChange = { edNome = it.take(40) },
+                            label = { Text("Nome da História / Personagem") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = edSubtitulo,
+                            onValueChange = { edSubtitulo = it.take(60) },
+                            label = { Text("Subtítulo / Apelido") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = edEmoji,
+                                onValueChange = { edEmoji = it.take(4) },
+                                label = { Text("Emoji") },
+                                modifier = Modifier.weight(1f)
+                            )
+                            OutlinedTextField(
+                                value = edGenero,
+                                onValueChange = { edGenero = it.take(30) },
+                                label = { Text("Gênero") },
+                                modifier = Modifier.weight(2f)
+                            )
+                        }
+                        OutlinedTextField(
+                            value = edTags,
+                            onValueChange = { edTags = it.take(120) },
+                            label = { Text("Tags (separadas por vírgula)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = edSinopse,
+                            onValueChange = { edSinopse = it.take(800) },
+                            label = { Text("Sinopse / Contexto") },
+                            modifier = Modifier.fillMaxWidth(),
+                            minLines = 3,
+                            maxLines = 6
+                        )
+                        OutlinedTextField(
+                            value = edAbertura,
+                            onValueChange = { edAbertura = it.take(800) },
+                            label = { Text("Primeira Fala do Personagem (Abertura)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            minLines = 3,
+                            maxLines = 6
+                        )
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedButton(
+                            onClick = { mostrarDialogoEditar = false },
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Cancelar", color = Color(0xFF8E8E93))
+                        }
+                        Button(
+                            onClick = {
+                                if (edNome.isNotBlank()) {
+                                    val tagsLista = edTags.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                                    val atualizado = cenario.copy(
+                                        nome = edNome.trim(),
+                                        subtitulo = edSubtitulo.trim(),
+                                        emoji = edEmoji.ifBlank { "🎭" },
+                                        genero = edGenero.ifBlank { "Aventura" },
+                                        tags = tagsLista,
+                                        sinopse = edSinopse.trim(),
+                                        abertura = edAbertura.trim()
+                                    )
+                                    vm?.editarCenario(atualizado) {
+                                        Toast.makeText(contexto, "História atualizada!", Toast.LENGTH_SHORT).show()
+                                        mostrarDialogoEditar = false
+                                        onFechar()
+                                    }
+                                }
+                            },
+                            enabled = edNome.isNotBlank(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5C842)),
+                            modifier = Modifier.weight(1.5f).height(48.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Salvar Alterações", color = Color.Black, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // Modal de Perfil do Criador (Imagem 2)

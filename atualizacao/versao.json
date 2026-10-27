@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 28,
-  "versaoNome": "1.6.7",
-  "notas": "Correção no salvamento e seleção de personas modelos; geração instantânea e estável das 4 variações da persona através de grade 2x2 pré-cortada no servidor sem limite de requisição por IP.",
+  "versaoCodigo": 29,
+  "versaoNome": "1.6.8",
+  "notas": "Troca e personalização completa da foto de perfil: escolha fotos da galeria, gere 4 opções exclusivas com IA e estilos artísticos, selecione retratos das suas personas salvas ou escolha entre diversos emojis e ícones.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

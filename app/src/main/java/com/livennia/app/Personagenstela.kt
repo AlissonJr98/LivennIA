@@ -1,9 +1,10 @@
 package com.livennia.app
 
-
-
+import android.net.Uri
+import android.util.Base64
 import android.widget.Toast
-
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
 
 import androidx.compose.material3.AlertDialog
@@ -3082,6 +3083,8 @@ private fun AbaPerfil(vm: AppViewModel) {
 
     var mostrarEditarPerfil by rememberSaveable { mutableStateOf(false) }
 
+    var mostrarDialogoFotoPerfil by rememberSaveable { mutableStateOf(false) }
+
     var mostrarDialogoCarteira by rememberSaveable { mutableStateOf(false) }
 
     var mostrarDialogoVip by rememberSaveable { mutableStateOf(false) }
@@ -3242,7 +3245,7 @@ private fun AbaPerfil(vm: AppViewModel) {
 
                 Box(
 
-                    modifier = Modifier.clickable { mostrarEditarPerfil = true }
+                    modifier = Modifier.clickable { mostrarDialogoFotoPerfil = true }
 
                 ) {
 
@@ -3379,7 +3382,7 @@ private fun AbaPerfil(vm: AppViewModel) {
 
                             border = BorderStroke(1.dp, Color(0xFF26262A)),
 
-                            modifier = Modifier.clickable { mostrarEditarPerfil = true }
+                            modifier = Modifier.clickable { mostrarDialogoFotoPerfil = true }
 
                         ) {
 
@@ -3940,79 +3943,78 @@ private fun AbaPerfil(vm: AppViewModel) {
 
 
     // DIÁLOGOS DE APOIO
-
     if (mostrarEditarPerfil) {
-
         var novoNome by remember { mutableStateOf(vm.apelido) }
-
         AlertDialog(
-
             onDismissRequest = { mostrarEditarPerfil = false },
-
-            title = { Text("Editar Apelido", color = Color.White, fontWeight = FontWeight.Bold) },
-
+            title = { Text("Editar Perfil", color = Color.White, fontWeight = FontWeight.Bold) },
             text = {
-
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Box(
+                            modifier = Modifier.clickable {
+                                mostrarEditarPerfil = false
+                                mostrarDialogoFotoPerfil = true
+                            }
+                        ) {
+                            RetratoPersona(
+                                temRetrato = vm.personaTemRetrato,
+                                emojiOuPadrao = vm.personaAvatar.ifBlank { "👤" },
+                                tamanho = 68,
+                                versao = vm.personaRetratoVersao,
+                                recorte = CircleShape
+                            )
+                        }
+                    }
+                    TextButton(
+                        onClick = {
+                            mostrarEditarPerfil = false
+                            mostrarDialogoFotoPerfil = true
+                        },
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
+                        Text("📷 Trocar foto de perfil", color = Color(0xFFF5C842), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    }
 
                     Text("Escolha como os personagens e mestres chamarão você:", color = Color(0xFF8E8E93), fontSize = 13.sp)
-
                     OutlinedTextField(
-
                         value = novoNome,
-
                         onValueChange = { novoNome = it.take(25) },
-
                         modifier = Modifier.fillMaxWidth()
-
                     )
-
                 }
-
             },
-
             confirmButton = {
-
                 Button(
-
                     onClick = {
-
                         if (novoNome.isNotBlank()) {
-
                             vm.alterarApelido(novoNome)
-
                             Toast.makeText(contexto, "Perfil atualizado!", Toast.LENGTH_SHORT).show()
-
                         }
-
                         mostrarEditarPerfil = false
-
                     },
-
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5C842))
-
                 ) {
-
                     Text("Salvar", color = Color.Black, fontWeight = FontWeight.Bold)
-
                 }
-
             },
-
             dismissButton = {
-
                 TextButton(onClick = { mostrarEditarPerfil = false }) {
-
                     Text("Cancelar", color = Color(0xFF8E8E93))
-
                 }
-
             },
-
             containerColor = Color(0xFF161618)
-
         )
+    }
 
+    if (mostrarDialogoFotoPerfil) {
+        ModalTrocarFotoPerfil(
+            vm = vm,
+            onFechar = { mostrarDialogoFotoPerfil = false }
+        )
     }
 
 
@@ -4503,6 +4505,594 @@ private fun RowScope.ItemBarra(icone: ImageVector, rotulo: String, ativo: Boolea
             style = MaterialTheme.typography.labelSmall,
             color = if (ativo) Ouro else TextoSuave
         )
+    }
+}
+
+@Composable
+fun ModalTrocarFotoPerfil(
+    vm: AppViewModel,
+    onFechar: () -> Unit
+) {
+    val contexto = LocalContext.current
+    var abaSelecionada by rememberSaveable { mutableStateOf(0) }
+    var promptIa by rememberSaveable { mutableStateOf("") }
+    var estiloIa by rememberSaveable { mutableStateOf("semi_realistic") }
+    var indiceSelecionado by remember { mutableStateOf<Int?>(null) }
+
+    val launcherGaleria = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                val bytes = contexto.contentResolver.openInputStream(uri)?.readBytes()
+                if (bytes != null && bytes.isNotEmpty()) {
+                    val b64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                    vm.uploadFotoPerfil(
+                        imagemBase64 = b64,
+                        onSucesso = {
+                            Toast.makeText(contexto, "Foto de perfil atualizada!", Toast.LENGTH_SHORT).show()
+                            onFechar()
+                        },
+                        onError = { err ->
+                            Toast.makeText(contexto, err, Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                }
+            } catch (e: Exception) {
+                Toast.makeText(contexto, "Falha ao carregar imagem: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onFechar,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            color = Color(0xFF141416),
+            shape = RoundedCornerShape(24.dp),
+            border = BorderStroke(1.dp, Color(0xFF28282D)),
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .fillMaxHeight(0.88f)
+                .padding(vertical = 16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp)
+            ) {
+                // Cabeçalho com preview do avatar atual e botão fechar
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        RetratoPersona(
+                            temRetrato = vm.personaTemRetrato,
+                            emojiOuPadrao = vm.personaAvatar.ifBlank { "👤" },
+                            tamanho = 54,
+                            versao = vm.personaRetratoVersao,
+                            recorte = CircleShape
+                        )
+                        Column {
+                            Text(
+                                text = "Foto de Perfil",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "Personalize como você aparece no app",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF9E9E9E)
+                            )
+                        }
+                    }
+                    IconButton(onClick = onFechar) {
+                        Icon(Icons.Default.Close, contentDescription = "Fechar", tint = Color(0xFF9E9E9E))
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                // Edição de Apelido / Nome do Perfil
+                var novoApelido by remember { mutableStateOf(vm.apelido) }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = novoApelido,
+                        onValueChange = { novoApelido = it.take(25) },
+                        label = { Text("Seu Apelido / Nome", fontSize = 12.sp) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true
+                    )
+                    if (novoApelido.isNotBlank() && novoApelido != vm.apelido) {
+                        Spacer(Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                vm.alterarApelido(novoApelido)
+                                Toast.makeText(contexto, "Nome atualizado!", Toast.LENGTH_SHORT).show()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5C842)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Salvar", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                // Abas de navegação
+                val abas = listOf("📸 Galeria", "✨ Gerar com IA", "🎭 Personas", "😊 Emojis")
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    abas.forEachIndexed { index, titulo ->
+                        val ativo = abaSelecionada == index
+                        Surface(
+                            color = if (ativo) Color(0xFFF5C842) else Color(0xFF1E1E22),
+                            shape = RoundedCornerShape(20.dp),
+                            border = BorderStroke(1.dp, if (ativo) Color(0xFFF5C842) else Color(0xFF323238)),
+                            modifier = Modifier.clickable {
+                                abaSelecionada = index
+                                indiceSelecionado = null
+                            }
+                        ) {
+                            Text(
+                                text = titulo,
+                                color = if (ativo) Color.Black else Color.White,
+                                fontWeight = if (ativo) FontWeight.Bold else FontWeight.Medium,
+                                fontSize = 13.sp,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // Conteúdo da Aba Selecionada
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                ) {
+                    when (abaSelecionada) {
+                        0 -> {
+                            // ABA GALERIA
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(rememberScrollState()),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Surface(
+                                    color = Color(0xFF1C1C20),
+                                    shape = CircleShape,
+                                    border = BorderStroke(2.dp, Color(0xFFF5C842)),
+                                    modifier = Modifier.size(110.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        RetratoPersona(
+                                            temRetrato = vm.personaTemRetrato,
+                                            emojiOuPadrao = vm.personaAvatar.ifBlank { "👤" },
+                                            tamanho = 106,
+                                            versao = vm.personaRetratoVersao,
+                                            recorte = CircleShape
+                                        )
+                                    }
+                                }
+                                Spacer(Modifier.height(24.dp))
+                                Text(
+                                    text = "Sua Foto do Dispositivo",
+                                    fontSize = 17.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    text = "Escolha qualquer foto ou imagem da sua galeria para usar como seu retrato oficial.",
+                                    fontSize = 13.sp,
+                                    color = Color(0xFFA0A0A5),
+                                    modifier = Modifier.padding(horizontal = 24.dp),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                                Spacer(Modifier.height(28.dp))
+                                Button(
+                                    onClick = { launcherGaleria.launch("image/*") },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5C842)),
+                                    shape = RoundedCornerShape(14.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth(0.85f)
+                                        .height(50.dp)
+                                ) {
+                                    Text(
+                                        text = "📁 Escolher da Galeria",
+                                        color = Color.Black,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp
+                                    )
+                                }
+                            }
+                        }
+                        1 -> {
+                            // ABA GERAR COM IA
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(rememberScrollState())
+                            ) {
+                                Text(
+                                    text = "Descreva como você quer seu retrato:",
+                                    fontSize = 13.sp,
+                                    color = Color(0xFFA0A0A5),
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                OutlinedTextField(
+                                    value = promptIa,
+                                    onValueChange = { promptIa = it.take(200) },
+                                    placeholder = {
+                                        Text(
+                                            "Ex: Guerreiro cósmico com olhos brilhantes e armadura dourada...",
+                                            fontSize = 13.sp,
+                                            color = Color(0xFF6E6E73)
+                                        )
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+
+                                Spacer(Modifier.height(14.dp))
+                                Text(
+                                    text = "Estilo Artístico:",
+                                    fontSize = 13.sp,
+                                    color = Color(0xFFA0A0A5),
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    ESTILOS_IMAGEM_PERSONA.forEach { estilo ->
+                                        val sel = estilo.id == estiloIa
+                                        Surface(
+                                            color = if (sel) Color(0xFF2C2410) else Color(0xFF1E1E22),
+                                            shape = RoundedCornerShape(12.dp),
+                                            border = BorderStroke(1.dp, if (sel) Color(0xFFF5C842) else Color(0xFF323238)),
+                                            modifier = Modifier.clickable { estiloIa = estilo.id }
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+                                            ) {
+                                                Text(estilo.icone, fontSize = 14.sp)
+                                                Spacer(Modifier.width(6.dp))
+                                                Text(
+                                                    estilo.nome,
+                                                    fontSize = 12.sp,
+                                                    fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
+                                                    color = if (sel) Color(0xFFF5C842) else Color.White
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Spacer(Modifier.height(16.dp))
+
+                                // Botão Gerar / Candidatos
+                                if (vm.candidatosRetrato.isEmpty()) {
+                                    Button(
+                                        onClick = {
+                                            val req = PersonaRetratoRequest(
+                                                nome = vm.apelido.ifBlank { "Viajante" },
+                                                genero = vm.personaGenero.ifBlank { "Não informado" },
+                                                descricao = promptIa.ifBlank { "Retrato estiloso de ${vm.apelido}" },
+                                                aparencia = promptIa.ifBlank { "Herói lendário confiante" },
+                                                detalhesImagem = promptIa,
+                                                estiloImagem = estiloIa
+                                            )
+                                            vm.gerarCandidatosRetrato(
+                                                req = req,
+                                                onSucesso = {},
+                                                onError = { Toast.makeText(contexto, it, Toast.LENGTH_LONG).show() }
+                                            )
+                                        },
+                                        enabled = !vm.gerandoCandidatos && !vm.ocupado,
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5C842)),
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(48.dp)
+                                    ) {
+                                        if (vm.gerandoCandidatos) {
+                                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.Black, strokeWidth = 2.dp)
+                                            Spacer(Modifier.width(8.dp))
+                                            Text("Gerando 4 Opções...", color = Color.Black, fontWeight = FontWeight.Bold)
+                                        } else {
+                                            Text("✨ Gerar 4 Opções com IA", color = Color.Black, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                } else {
+                                    // Grade 2x2 com os 4 candidatos
+                                    Text(
+                                        text = "Toque na melhor imagem para escolher:",
+                                        fontSize = 12.sp,
+                                        color = Color(0xFFF5C842),
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Spacer(Modifier.height(10.dp))
+
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            val cand0 = vm.candidatosRetrato.getOrNull(0)
+                                            val cand1 = vm.candidatosRetrato.getOrNull(1)
+                                            CardCandidatoQuadrado(
+                                                candidato = cand0,
+                                                indice = 0,
+                                                loteId = vm.loteCandidatosId,
+                                                carregando = vm.gerandoCandidatos,
+                                                progresso = 100,
+                                                ehSelecionado = indiceSelecionado == 0,
+                                                onSelecionar = { indiceSelecionado = 0 },
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .aspectRatio(1f)
+                                            )
+                                            CardCandidatoQuadrado(
+                                                candidato = cand1,
+                                                indice = 1,
+                                                loteId = vm.loteCandidatosId,
+                                                carregando = vm.gerandoCandidatos,
+                                                progresso = 100,
+                                                ehSelecionado = indiceSelecionado == 1,
+                                                onSelecionar = { indiceSelecionado = 1 },
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .aspectRatio(1f)
+                                            )
+                                        }
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            val cand2 = vm.candidatosRetrato.getOrNull(2)
+                                            val cand3 = vm.candidatosRetrato.getOrNull(3)
+                                            CardCandidatoQuadrado(
+                                                candidato = cand2,
+                                                indice = 2,
+                                                loteId = vm.loteCandidatosId,
+                                                carregando = vm.gerandoCandidatos,
+                                                progresso = 100,
+                                                ehSelecionado = indiceSelecionado == 2,
+                                                onSelecionar = { indiceSelecionado = 2 },
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .aspectRatio(1f)
+                                            )
+                                            CardCandidatoQuadrado(
+                                                candidato = cand3,
+                                                indice = 3,
+                                                loteId = vm.loteCandidatosId,
+                                                carregando = vm.gerandoCandidatos,
+                                                progresso = 100,
+                                                ehSelecionado = indiceSelecionado == 3,
+                                                onSelecionar = { indiceSelecionado = 3 },
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .aspectRatio(1f)
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(Modifier.height(14.dp))
+
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        OutlinedButton(
+                                            onClick = {
+                                                indiceSelecionado = null
+                                                val req = PersonaRetratoRequest(
+                                                    nome = vm.apelido.ifBlank { "Viajante" },
+                                                    genero = vm.personaGenero.ifBlank { "Não informado" },
+                                                    descricao = promptIa.ifBlank { "Retrato estiloso de ${vm.apelido}" },
+                                                    aparencia = promptIa.ifBlank { "Herói lendário confiante" },
+                                                    detalhesImagem = promptIa,
+                                                    estiloImagem = estiloIa
+                                                )
+                                                vm.gerarCandidatosRetrato(
+                                                    req = req,
+                                                    onSucesso = {},
+                                                    onError = { Toast.makeText(contexto, it, Toast.LENGTH_SHORT).show() }
+                                                )
+                                            },
+                                            enabled = !vm.gerandoCandidatos && !vm.ocupado,
+                                            modifier = Modifier.weight(1f).height(48.dp),
+                                            shape = RoundedCornerShape(12.dp)
+                                        ) {
+                                            Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                            Spacer(Modifier.width(4.dp))
+                                            Text("Recriar", color = Color.White, fontSize = 13.sp)
+                                        }
+
+                                        Button(
+                                            onClick = {
+                                                val idx = indiceSelecionado
+                                                if (idx == null) {
+                                                    Toast.makeText(contexto, "Selecione uma imagem primeiro!", Toast.LENGTH_SHORT).show()
+                                                    return@Button
+                                                }
+                                                vm.confirmarFotoPerfil(
+                                                    loteId = vm.loteCandidatosId,
+                                                    indice = idx,
+                                                    onSucesso = {
+                                                        Toast.makeText(contexto, "Foto de perfil atualizada com sucesso!", Toast.LENGTH_SHORT).show()
+                                                        onFechar()
+                                                    },
+                                                    onError = { err ->
+                                                        Toast.makeText(contexto, err, Toast.LENGTH_SHORT).show()
+                                                    }
+                                                )
+                                            },
+                                            enabled = indiceSelecionado != null && !vm.gerandoCandidatos && !vm.ocupado,
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5C842)),
+                                            shape = RoundedCornerShape(12.dp),
+                                            modifier = Modifier.weight(1.3f).height(48.dp)
+                                        ) {
+                                            Text("Usar Esta Foto", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        2 -> {
+                            // ABA PERSONAS
+                            if (vm.personas.isEmpty()) {
+                                Column(
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Text("Nenhuma persona criada ainda", color = Color(0xFFA0A0A5), fontSize = 14.sp)
+                                    Spacer(Modifier.height(10.dp))
+                                    Text("Crie uma persona na aba Personagens para usar o retrato dela.", color = Color(0xFF6E6E73), fontSize = 12.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                                }
+                            } else {
+                                LazyColumn(
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    items(vm.personas) { p ->
+                                        val ehPadrao = p.padrao
+                                        Surface(
+                                            color = if (ehPadrao) Color(0xFF2C2410) else Color(0xFF1C1C20),
+                                            shape = RoundedCornerShape(14.dp),
+                                            border = BorderStroke(1.dp, if (ehPadrao) Color(0xFFF5C842) else Color(0xFF28282D)),
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable {
+                                                    vm.definirPersonaPadrao(p.id) {
+                                                        Toast.makeText(contexto, "Foto de perfil atualizada com a persona ${p.nome}!", Toast.LENGTH_SHORT).show()
+                                                        onFechar()
+                                                    }
+                                                }
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier.padding(12.dp)
+                                            ) {
+                                                RetratoPersona(
+                                                    temRetrato = p.temRetrato,
+                                                    emojiOuPadrao = p.genero.ifBlank { "👤" },
+                                                    tamanho = 48,
+                                                    versao = p.versaoRetrato,
+                                                    personaId = p.id,
+                                                    recorte = CircleShape
+                                                )
+                                                Spacer(Modifier.width(12.dp))
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        Text(p.nome, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp)
+                                                        if (ehPadrao) {
+                                                            Spacer(Modifier.width(6.dp))
+                                                            Surface(
+                                                                color = Color(0xFFF5C842),
+                                                                shape = RoundedCornerShape(6.dp)
+                                                            ) {
+                                                                Text("Ativa", color = Color.Black, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                                            }
+                                                        }
+                                                    }
+                                                    Text(p.descricao.ifBlank { p.aparencia.ifBlank { "Sem descrição" } }, color = Color(0xFF8E8E93), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                                }
+                                                Button(
+                                                    onClick = {
+                                                        vm.definirPersonaPadrao(p.id) {
+                                                            Toast.makeText(contexto, "Foto de perfil atualizada!", Toast.LENGTH_SHORT).show()
+                                                            onFechar()
+                                                        }
+                                                    },
+                                                    colors = ButtonDefaults.buttonColors(containerColor = if (ehPadrao) Color(0xFF333338) else Color(0xFFF5C842)),
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    modifier = Modifier.height(34.dp),
+                                                    contentPadding = PaddingValues(horizontal = 10.dp)
+                                                ) {
+                                                    Text(
+                                                        if (ehPadrao) "Em Uso" else "Usar",
+                                                        color = if (ehPadrao) Color(0xFFA0A0A5) else Color.Black,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 12.sp
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        3 -> {
+                            // ABA EMOJIS & ÍCONES
+                            val emojis = listOf(
+                                "👤", "🧙‍♂️", "🧝‍♀️", "🥷", "🦸‍♂️", "🤖", "👑", "🦊",
+                                "🐉", "⚔️", "🎭", "🌟", "🚀", "💀", "🐺", "🦁",
+                                "🔮", "⚡", "🌙", "🔥", "🐱", "🦅", "💎", "🛡️"
+                            )
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(4),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(emojis) { emoji ->
+                                    val sel = vm.personaAvatar == emoji && !vm.personaTemRetrato
+                                    Surface(
+                                        color = if (sel) Color(0xFF2C2410) else Color(0xFF1E1E22),
+                                        shape = RoundedCornerShape(16.dp),
+                                        border = BorderStroke(if (sel) 2.dp else 1.dp, if (sel) Color(0xFFF5C842) else Color(0xFF2D2D33)),
+                                        modifier = Modifier
+                                            .aspectRatio(1f)
+                                            .clickable {
+                                                vm.definirAvatarEmoji(emoji)
+                                                Toast.makeText(contexto, "Avatar atualizado!", Toast.LENGTH_SHORT).show()
+                                                onFechar()
+                                            }
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                            Text(emoji, fontSize = 28.sp)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

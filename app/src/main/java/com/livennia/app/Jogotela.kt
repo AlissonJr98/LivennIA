@@ -947,11 +947,13 @@ private fun JogoModoHistoria(vm: AppViewModel) {
     ) {
         // Arte de Fundo Imersiva Full-Bleed do Cenário / Personagem (Modo História)
         val cenarioId = jogo.cenario?.id
-        val urlFundo = remember(jogo.cenario, jogo.retrato, vm.capaVersao, vm.retratoVersao) {
+        val urlFundo = remember(jogo.cenario, jogo.retrato, vm.capaVersao, vm.retratoVersao, vm.personaAtiva) {
             val base = ApiClient.baseUrlAtual() ?: ""
+            val persona = vm.personaAtiva
             when {
                 jogo.cenario?.capa == true && !cenarioId.isNullOrBlank() -> "${base}catalogo/$cenarioId/capa?v=${vm.capaVersao}"
                 jogo.retrato -> "${base}jogos/${jogo.jogoId}/retrato?v=${vm.retratoVersao}"
+                persona != null && persona.temRetrato -> "${base}personas/${persona.id}/retrato?v=${persona.versaoRetrato}"
                 !cenarioId.isNullOrBlank() -> "${base}catalogo/$cenarioId/capa?v=${vm.capaVersao}"
                 else -> null
             }
@@ -1019,14 +1021,35 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             modifier = Modifier.size(20.dp)
                         )
                     }
-                    RetratoPersonagem(
-                        jogoId = jogo.jogoId,
-                        seed = jogo.avatarSeed,
-                        nome = jogo.personagem.nome,
-                        temRetrato = jogo.retrato,
-                        tamanho = 40,
-                        versao = vm.retratoVersao
-                    )
+                    val personaAtivaHeader = vm.personaAtiva
+                    if (jogo.retrato) {
+                        RetratoPersonagem(
+                            jogoId = jogo.jogoId,
+                            seed = jogo.avatarSeed,
+                            nome = jogo.personagem.nome,
+                            temRetrato = true,
+                            tamanho = 40,
+                            versao = vm.retratoVersao
+                        )
+                    } else if (personaAtivaHeader != null && personaAtivaHeader.temRetrato) {
+                        RetratoPersona(
+                            temRetrato = true,
+                            emojiOuPadrao = personaAtivaHeader.genero.ifBlank { "👤" },
+                            tamanho = 40,
+                            versao = personaAtivaHeader.versaoRetrato,
+                            personaId = personaAtivaHeader.id,
+                            recorte = CircleShape
+                        )
+                    } else {
+                        RetratoPersonagem(
+                            jogoId = jogo.jogoId,
+                            seed = jogo.avatarSeed,
+                            nome = jogo.personagem.nome,
+                            temRetrato = false,
+                            tamanho = 40,
+                            versao = vm.retratoVersao
+                        )
+                    }
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
@@ -1140,15 +1163,29 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                                         .padding(bottom = 3.dp, end = 4.dp)
                                         .clickable { mostrarPersonaModal = true }
                                 ) {
+                                    val personaAtivaMsg = vm.personaAtiva
+                                    val nomeExibicaoMsg = personaAtivaMsg?.nome?.ifBlank { null }
+                                        ?: vm.personaNome.ifBlank { null }
+                                        ?: vm.apelido.ifBlank { "Minha Persona" }
                                     Text(
-                                        text = vm.personaNome.ifBlank { vm.apelido.ifBlank { "Minha Persona" } },
+                                        text = nomeExibicaoMsg,
                                         color = Ouro.copy(alpha = 0.85f),
                                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
                                     )
                                     Spacer(Modifier.width(4.dp))
-                                    if (vm.personaTemRetrato) {
+                                    if (personaAtivaMsg != null && personaAtivaMsg.temRetrato) {
                                         RetratoPersona(
                                             temRetrato = true,
+                                            emojiOuPadrao = personaAtivaMsg.genero.ifBlank { "👤" },
+                                            tamanho = 14,
+                                            versao = personaAtivaMsg.versaoRetrato,
+                                            personaId = personaAtivaMsg.id,
+                                            recorte = CircleShape
+                                        )
+                                    } else if (vm.personaTemRetrato) {
+                                        RetratoPersona(
+                                            temRetrato = true,
+                                            emojiOuPadrao = vm.personaAvatar.ifBlank { "👤" },
                                             tamanho = 14,
                                             versao = vm.personaRetratoVersao,
                                             recorte = CircleShape
@@ -1518,9 +1555,20 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                if (vm.personaTemRetrato) {
+                                val personaAtivaRodape = vm.personaAtiva
+                                if (personaAtivaRodape != null && personaAtivaRodape.temRetrato) {
                                     RetratoPersona(
                                         temRetrato = true,
+                                        emojiOuPadrao = personaAtivaRodape.genero.ifBlank { "👤" },
+                                        tamanho = 18,
+                                        versao = personaAtivaRodape.versaoRetrato,
+                                        personaId = personaAtivaRodape.id,
+                                        recorte = CircleShape
+                                    )
+                                } else if (vm.personaTemRetrato) {
+                                    RetratoPersona(
+                                        temRetrato = true,
+                                        emojiOuPadrao = vm.personaAvatar.ifBlank { "👤" },
                                         tamanho = 18,
                                         versao = vm.personaRetratoVersao,
                                         recorte = CircleShape
@@ -1529,8 +1577,11 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                                     Text(vm.personaAvatar.ifBlank { "👤" }, fontSize = 12.sp)
                                 }
                                 Spacer(Modifier.width(5.dp))
+                                val nomeRodape = personaAtivaRodape?.nome?.ifBlank { null }
+                                    ?: vm.personaNome.ifBlank { null }
+                                    ?: vm.apelido.ifBlank { "Minha Persona" }
                                 Text(
-                                    text = vm.personaNome.ifBlank { vm.apelido.ifBlank { "Minha Persona" } },
+                                    text = nomeRodape,
                                     color = Color.White,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,

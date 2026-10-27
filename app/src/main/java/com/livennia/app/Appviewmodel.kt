@@ -414,6 +414,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 tags = p.tags.joinToString(", "),
                 avatar = personaAvatar
             )
+            prefs.personaTemRetrato = p.temRetrato
+            personaRetratoVersao++
             atualizarListas(api)
             personaSelecionadaId = personaId
             onSucesso()
@@ -506,6 +508,59 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 onSucesso()
             } catch (e: Exception) {
                 onError(e.message ?: "Falha ao enviar imagem")
+            } finally {
+                ocupado = false
+            }
+        }
+    }
+
+    fun definirAvatarEmoji(emoji: String) {
+        personaAvatar = emoji
+        prefs.personaAvatar = emoji
+        prefs.personaTemRetrato = false
+    }
+
+    fun uploadFotoPerfil(
+        imagemBase64: String,
+        onSucesso: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        val api = obterApi() ?: return
+        viewModelScope.launch {
+            ocupado = true
+            try {
+                api.uploadRetratoConta(UploadRetratoRequest(imagemBase64))
+                prefs.personaTemRetrato = true
+                personaRetratoVersao++
+                atualizarListas(api)
+                carregarPersonas()
+                onSucesso()
+            } catch (e: Exception) {
+                onError(e.message ?: "Falha ao enviar foto de perfil")
+            } finally {
+                ocupado = false
+            }
+        }
+    }
+
+    fun confirmarFotoPerfil(
+        loteId: String,
+        indice: Int,
+        onSucesso: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        val api = obterApi() ?: return
+        viewModelScope.launch {
+            ocupado = true
+            try {
+                api.confirmarCandidatoConta(ConfirmarCandidatoRequest(loteId, indice))
+                prefs.personaTemRetrato = true
+                personaRetratoVersao++
+                atualizarListas(api)
+                carregarPersonas()
+                onSucesso()
+            } catch (e: Exception) {
+                onError(e.message ?: "Falha ao confirmar foto de perfil")
             } finally {
                 ocupado = false
             }
@@ -1264,6 +1319,36 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             RepositorioPersonagensComunidade.adicionar(salvo)
             carregarCatalogo()
             onSucesso(salvo)
+        }
+    }
+
+    fun editarCenario(cenario: CenarioDto, onSucesso: (CenarioDto) -> Unit = {}) {
+        executar("Salvando alterações na história...") { api ->
+            val salvo = api.editarCenario(
+                id = cenario.id,
+                corpo = NovoCenarioRequest(
+                    id = cenario.id,
+                    nome = cenario.nome,
+                    subtitulo = cenario.subtitulo,
+                    emoji = cenario.emoji,
+                    genero = cenario.genero,
+                    tags = cenario.tags ?: emptyList(),
+                    sinopse = cenario.sinopse,
+                    abertura = cenario.abertura,
+                    modoJogo = cenario.modoJogo ?: "historia"
+                )
+            )
+            RepositorioPersonagensComunidade.adicionar(salvo)
+            carregarCatalogo()
+            onSucesso(salvo)
+        }
+    }
+
+    fun excluirCenario(cenarioId: String, onSucesso: () -> Unit = {}) {
+        executar("Excluindo história...") { api ->
+            api.excluirCenario(cenarioId)
+            carregarCatalogo()
+            onSucesso()
         }
     }
 

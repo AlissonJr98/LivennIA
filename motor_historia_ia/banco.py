@@ -809,6 +809,16 @@ def incrementar_chat_cenario_usuario(cenario_id):
         c.execute("UPDATE cenarios_usuario SET chats = chats + 1 WHERE id = ?", (cenario_id,))
 
 
+def excluir_cenario_usuario(cenario_id, autor_id=None):
+    with transacao() as c:
+        if autor_id:
+            c.execute("DELETE FROM cenarios_usuario WHERE id = ? AND autor_id = ?", (cenario_id, autor_id))
+        else:
+            c.execute("DELETE FROM cenarios_usuario WHERE id = ?", (cenario_id,))
+        c.execute("DELETE FROM comentarios_cenario WHERE cenario_id = ?", (cenario_id,))
+    return True
+
+
 def adicionar_comentario(cenario_id, jogador_id, autor_nome, autor_avatar, texto):
     texto_limpo = (texto or "").strip()[:500]
     if not texto_limpo:
