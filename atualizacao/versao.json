@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 29,
-  "versaoNome": "1.6.8",
-  "notas": "Troca e personalização completa da foto de perfil: escolha fotos da galeria, gere 4 opções exclusivas com IA e estilos artísticos, selecione retratos das suas personas salvas ou escolha entre diversos emojis e ícones.",
+  "versaoCodigo": 30,
+  "versaoNome": "1.7.0",
+  "notas": "Chat em Grupo e RPG de Mesa completo: suporte a companheiros de party e elenco ativo com balões de fala e avatares individuais, menções diretas com @Nome, e sistema interativo de rolagem de dados (d20, d100, etc.) com sucessos e desastres críticos!",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

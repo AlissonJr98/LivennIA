@@ -118,6 +118,18 @@ interface LivennIAApi {
     @DELETE("jogos/{id}")
     suspend fun apagarJogo(@Path("id") id: String): Response<Unit>
 
+    @GET("jogos/{id}/party")
+    suspend fun obterParty(@Path("id") id: String): List<MembroPartyDto>
+
+    @POST("jogos/{id}/party")
+    suspend fun adicionarMembroParty(@Path("id") id: String, @Body membro: MembroPartyDto): List<MembroPartyDto>
+
+    @DELETE("jogos/{id}/party/{nome}")
+    suspend fun removerMembroParty(@Path("id") id: String, @Path("nome") nome: String): List<MembroPartyDto>
+
+    @POST("jogos/{id}/dado")
+    suspend fun rolarDado(@Path("id") id: String, @Body corpo: DadoRequest): DadoResponse
+
     @POST("jogos/{id}/retrato")
     suspend fun gerarRetrato(@Path("id") id: String): RetratoResponse
 

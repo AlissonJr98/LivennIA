@@ -39,6 +39,9 @@ import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.border
 import androidx.compose.ui.graphics.RectangleShape
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
@@ -94,7 +97,9 @@ private enum class DialogoAberto {
     Cartas,
     Savepoints,
     ModeloIA,
-    Vinculo
+    Vinculo,
+    Party,
+    Dados
 }
 
 data class NivelVinculo(
@@ -210,6 +215,9 @@ fun JogoTela(vm: AppViewModel) {
     var acaoLivre by remember(jogo.turno) { mutableStateOf("") }
     var dialogo by remember { mutableStateOf<DialogoAberto?>(null) }
     var indiceEdicao by remember { mutableStateOf<Int?>(null) }
+    val corFala = MaterialTheme.colorScheme.onBackground
+    val corAcao = TextoSuave
+    val corNormal = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.90f)
 
     LaunchedEffect(chat.size, vm.ocupado, vm.acaoPendente) {
         // Itens extras no fim da lista: a fala já escolhida (enquanto a IA escreve a
@@ -341,6 +349,27 @@ fun JogoTela(vm: AppViewModel) {
                             )
                         }
                     }
+                    Surface(
+                        color = if (vm.partyAtiva.isNotEmpty()) Ouro.copy(alpha = 0.20f) else SuperficieAlta,
+                        shape = Cantos.pilula,
+                        border = BorderStroke(1.dp, if (vm.partyAtiva.isNotEmpty()) Ouro.copy(alpha = 0.60f) else Color.White.copy(alpha = 0.15f)),
+                        modifier = Modifier
+                            .clickable { dialogo = DialogoAberto.Party }
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                        ) {
+                            Text("👥", fontSize = 11.sp)
+                            Spacer(Modifier.width(3.dp))
+                            Text(
+                                if (vm.partyAtiva.isNotEmpty()) "Party (${vm.partyAtiva.size})" else "Party",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (vm.partyAtiva.isNotEmpty()) Ouro else TextoSuave
+                            )
+                        }
+                    }
+                    Spacer(Modifier.width(4.dp))
                     Surface(
                         color = SuperficieAlta,
                         shape = Cantos.pilula,
@@ -487,21 +516,72 @@ fun JogoTela(vm: AppViewModel) {
                                 hora = msg.emJogador
                             )
                         }
-                        BlocoNarrador(
-                            texto = textoMostrado,
-                            eventos = if (ehUltimo && !terminou) emptyList() else msg.eventos,
-                            clicavel = ehUltimo && !terminou,
-                            aoTocar = { visiveis = narrativaAtual.length },
-                            aoCopiar = { areaDeCopia.setText(AnnotatedString(msg.narrativa)) },
-                            tamanhoLetra = vm.tamanhoLetraNarrador,
-                            hora = msg.emNarrador,
-                            versoes = msg.versoes,
-                            versaoAtiva = msg.versaoAtiva,
-                            ehUltimo = ehUltimo && !vm.ocupado,
-                            aoTrocarVersao = { nova -> vm.trocarVersaoMensagem(indice, nova) },
-                            aoRegenerar = { vm.regenerarUltimaResposta() },
-                            aoEditar = { indiceEdicao = indice }
-                        )
+                        val blocos = remember(textoMostrado) { extrairBlocosFala(textoMostrado) }
+                        if (blocos.size > 1 || (blocos.size == 1 && blocos.first().personagem != null)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                blocos.forEachIndexed { bIdx, bloco ->
+                                    val ehUltimoBloco = bIdx == blocos.size - 1
+                                    CardFalaGrupo(
+                                        bloco = bloco,
+                                        party = vm.partyAtiva,
+                                        tamanhoLetra = vm.tamanhoLetraNarrador,
+                                        corFala = corFala,
+                                        corAcao = corAcao,
+                                        corNormal = corNormal,
+                                        clicavel = ehUltimo && !terminou,
+                                        aoTocar = { visiveis = narrativaAtual.length },
+                                        aoCopiar = { areaDeCopia.setText(AnnotatedString(bloco.texto)) },
+                                        aoOuvir = {
+                                            tts?.stop()
+                                            tts?.speak(bloco.texto, TextToSpeech.QUEUE_FLUSH, null, "fala_${indice}_$bIdx")
+                                        },
+                                        rodape = if (ehUltimoBloco) {
+                                            {
+                                                if (msg.eventos.isNotEmpty() && (!ehUltimo || terminou)) {
+                                                    Column(modifier = Modifier.padding(bottom = 6.dp)) {
+                                                        for (ev in msg.eventos) {
+                                                            val cor = when {
+                                                                ev.tipo == "vida" && ev.texto.contains("perdeu") -> MaterialTheme.colorScheme.error
+                                                                ev.tipo == "vida" -> Color(0xFF7BC47F)
+                                                                ev.tipo == "item_ganho" -> Ouro
+                                                                else -> TextoSuave
+                                                            }
+                                                            Text("• ${ev.texto}", color = cor, style = MaterialTheme.typography.labelSmall)
+                                                        }
+                                                    }
+                                                }
+                                                RodapeMensagemLiven(
+                                                    rotuloEsquerda = msg.emNarrador?.let { horaDaMensagem(it) } ?: "Turno ${indice + 1}",
+                                                    versoes = msg.versoes,
+                                                    versaoAtiva = msg.versaoAtiva,
+                                                    ehUltimo = ehUltimo && !vm.ocupado,
+                                                    aoTrocarVersao = { nova -> vm.trocarVersaoMensagem(indice, nova) },
+                                                    aoRegenerar = { vm.regenerarUltimaResposta() },
+                                                    aoEditar = { indiceEdicao = indice },
+                                                    aoCopiar = { areaDeCopia.setText(AnnotatedString(msg.narrativa)) }
+                                                )
+                                            }
+                                        } else null
+                                    )
+                                }
+                            }
+                        } else {
+                            BlocoNarrador(
+                                texto = textoMostrado,
+                                eventos = if (ehUltimo && !terminou) emptyList() else msg.eventos,
+                                clicavel = ehUltimo && !terminou,
+                                aoTocar = { visiveis = narrativaAtual.length },
+                                aoCopiar = { areaDeCopia.setText(AnnotatedString(msg.narrativa)) },
+                                tamanhoLetra = vm.tamanhoLetraNarrador,
+                                hora = msg.emNarrador,
+                                versoes = msg.versoes,
+                                versaoAtiva = msg.versaoAtiva,
+                                ehUltimo = ehUltimo && !vm.ocupado,
+                                aoTrocarVersao = { nova -> vm.trocarVersaoMensagem(indice, nova) },
+                                aoRegenerar = { vm.regenerarUltimaResposta() },
+                                aoEditar = { indiceEdicao = indice }
+                            )
+                        }
                     }
                 }
 
@@ -672,6 +752,12 @@ fun JogoTela(vm: AppViewModel) {
                             )
                             Spacer(Modifier.width(4.dp))
                             IconButton(
+                                onClick = { dialogo = DialogoAberto.Dados },
+                                enabled = !vm.ocupado
+                            ) {
+                                Text("🎲", fontSize = 20.sp)
+                            }
+                            IconButton(
                                 onClick = {
                                     val texto = acaoLivre
                                     acaoLivre = ""
@@ -722,7 +808,8 @@ fun JogoTela(vm: AppViewModel) {
         dialogo = dialogo,
         indiceEdicao = indiceEdicao,
         onFecharDialogo = { dialogo = null },
-        onFecharEdicao = { indiceEdicao = null }
+        onFecharEdicao = { indiceEdicao = null },
+        aoInserirNoChat = { texto -> acaoLivre = if (acaoLivre.isBlank()) texto else "$acaoLivre $texto" }
     )
 
     if (mostrarPersonaModal) {
@@ -859,6 +946,137 @@ private fun BlocoNarrador(
                     aoEditar = aoEditar,
                     aoCopiar = aoCopiar
                 )
+            }
+        }
+    }
+}
+
+// ---- Balão de fala de companheiro ou mestre em chat de grupo / RPG de mesa ----
+@Composable
+private fun CardFalaGrupo(
+    bloco: BlocoFalaPersonagem,
+    party: List<MembroPartyDto>,
+    tamanhoLetra: Float,
+    corFala: Color,
+    corAcao: Color,
+    corNormal: Color,
+    clicavel: Boolean = false,
+    aoTocar: () -> Unit = {},
+    aoCopiar: () -> Unit = {},
+    aoOuvir: (() -> Unit)? = null,
+    rodape: (@Composable () -> Unit)? = null
+) {
+    val membro = remember(bloco.personagem, party) {
+        party.firstOrNull { it.nome.equals(bloco.personagem, ignoreCase = true) }
+    }
+    val corDestaque = remember(bloco.personagem, bloco.isMestre) {
+        if (bloco.isMestre) Color(0xFFFFD54F) else corDoPersonagem(bloco.personagem)
+    }
+    val papel = membro?.papel ?: if (bloco.isMestre) "Mestre da Mesa" else "Personagem"
+    val avatarUrl = membro?.avatarUrl
+    val nomeExibicao = bloco.personagem ?: if (bloco.isMestre) "Mestre" else "Narrador"
+
+    Surface(
+        color = Color(0xFF13141F).copy(alpha = 0.92f),
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.2.dp, corDestaque.copy(alpha = 0.45f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = clicavel) { aoTocar() }
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            // Cabeçalho com Avatar, Nome, Papel e Áudio
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (!avatarUrl.isNullOrBlank()) {
+                    SubcomposeAsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(avatarUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = nomeExibicao,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .border(1.5.dp, corDestaque, CircleShape)
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(corDestaque.copy(alpha = 0.22f))
+                            .border(1.5.dp, corDestaque, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (bloco.isMestre) {
+                            Text("🎲", fontSize = 16.sp)
+                        } else {
+                            val emoji = membro?.emoji ?: bloco.personagem?.take(1)?.uppercase() ?: "👤"
+                            Text(emoji, fontSize = 15.sp)
+                        }
+                    }
+                }
+                Spacer(Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            color = corDestaque.copy(alpha = 0.18f),
+                            shape = RoundedCornerShape(6.dp),
+                            border = BorderStroke(1.dp, corDestaque.copy(alpha = 0.50f))
+                        ) {
+                            Text(
+                                text = nomeExibicao,
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                color = corDestaque,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                            )
+                        }
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = "• $papel",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TextoSuave
+                        )
+                    }
+                }
+                if (aoOuvir != null) {
+                    IconButton(
+                        onClick = aoOuvir,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = "Ouvir fala",
+                            tint = corDestaque.copy(alpha = 0.85f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            // Corpo da fala com estilo literário
+            Text(
+                text = parsearNarrativaLivro(
+                    texto = bloco.texto,
+                    corFala = corFala,
+                    corAcao = corAcao,
+                    corNormal = corNormal
+                ),
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontSize = tamanhoLetra.sp,
+                    lineHeight = (tamanhoLetra * 1.55f).sp
+                )
+            )
+
+            if (rodape != null) {
+                Spacer(Modifier.height(10.dp))
+                rodape()
             }
         }
     }
@@ -1089,6 +1307,27 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             )
                         }
                     }
+                    Surface(
+                        color = if (vm.partyAtiva.isNotEmpty()) Color(0xFF7C4DFF).copy(alpha = 0.25f) else SuperficieAlta,
+                        shape = Cantos.pilula,
+                        border = BorderStroke(1.dp, if (vm.partyAtiva.isNotEmpty()) Color(0xFFB388FF).copy(alpha = 0.60f) else Color.White.copy(alpha = 0.15f)),
+                        modifier = Modifier
+                            .clickable { dialogo = DialogoAberto.Party }
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                        ) {
+                            Text("👥", fontSize = 11.sp)
+                            Spacer(Modifier.width(3.dp))
+                            Text(
+                                if (vm.partyAtiva.isNotEmpty()) "Elenco (${vm.partyAtiva.size})" else "Elenco",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (vm.partyAtiva.isNotEmpty()) Color(0xFFB388FF) else TextoSuave
+                            )
+                        }
+                    }
+                    Spacer(Modifier.width(4.dp))
                     if (!ehHistoriaPura) {
                         Surface(
                             color = SuperficieAlta,
@@ -1230,80 +1469,117 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             }
                         }
 
-                        // Bloco literário da IA / Personagem com visual translúcido e botões de áudio e imagem
-                        Surface(
-                            color = Color(0xFF13141F).copy(alpha = 0.90f),
-                            shape = RoundedCornerShape(
-                                topStart = 6.dp,
-                                topEnd = 20.dp,
-                                bottomStart = 20.dp,
-                                bottomEnd = 20.dp
-                            ),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(enabled = ehUltimo && !terminou) {
-                                    visiveis = narrativaAtual.length
-                                }
-                        ) {
-                            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                                // Ações rápidas na bolha: Áudio e Ilustração de Cena
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    IconButton(
-                                        onClick = {
-                                            tts?.stop()
-                                            tts?.speak(msg.narrativa, TextToSpeech.QUEUE_FLUSH, null, "fala_$indice")
-                                        },
-                                        modifier = Modifier.size(28.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.AutoMirrored.Filled.VolumeUp,
-                                            contentDescription = "Ouvir",
-                                            tint = Color.White.copy(alpha = 0.75f),
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = {
-                                            Toast.makeText(contexto, "Gerando ilustração da cena com IA...", Toast.LENGTH_SHORT).show()
-                                        },
-                                        modifier = Modifier.size(28.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Image,
-                                            contentDescription = "Cena",
-                                            tint = Color.White.copy(alpha = 0.75f),
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                }
-                                Text(
-                                    text = parsearNarrativaLivro(
-                                        texto = textoMostrado,
+                        val blocos = remember(textoMostrado) { extrairBlocosFala(textoMostrado) }
+                        if (blocos.size > 1 || (blocos.size == 1 && blocos.first().personagem != null)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                blocos.forEachIndexed { bIdx, bloco ->
+                                    val ehUltimoBloco = bIdx == blocos.size - 1
+                                    CardFalaGrupo(
+                                        bloco = bloco,
+                                        party = vm.partyAtiva,
+                                        tamanhoLetra = vm.tamanhoLetraNarrador,
                                         corFala = corFala,
                                         corAcao = corAcao,
-                                        corNormal = corNormal
-                                    ),
-                                    style = MaterialTheme.typography.bodyLarge.copy(
-                                        fontSize = vm.tamanhoLetraNarrador.sp,
-                                        lineHeight = (vm.tamanhoLetraNarrador * 1.65f).sp
+                                        corNormal = corNormal,
+                                        clicavel = ehUltimo && !terminou,
+                                        aoTocar = { visiveis = narrativaAtual.length },
+                                        aoCopiar = { areaDeCopia.setText(AnnotatedString(bloco.texto)) },
+                                        aoOuvir = {
+                                            tts?.stop()
+                                            tts?.speak(bloco.texto, TextToSpeech.QUEUE_FLUSH, null, "fala_${indice}_$bIdx")
+                                        },
+                                        rodape = if (ehUltimoBloco) {
+                                            {
+                                                RodapeMensagemLiven(
+                                                    rotuloEsquerda = msg.emNarrador?.let { horaDaMensagem(it) } ?: "Cap. ${indice + 1}",
+                                                    versoes = msg.versoes,
+                                                    versaoAtiva = msg.versaoAtiva,
+                                                    ehUltimo = ehUltimo && !vm.ocupado,
+                                                    aoTrocarVersao = { nova -> vm.trocarVersaoMensagem(indice, nova) },
+                                                    aoRegenerar = { vm.regenerarUltimaResposta() },
+                                                    aoEditar = { indiceEdicao = indice },
+                                                    aoCopiar = { areaDeCopia.setText(AnnotatedString(msg.narrativa)) }
+                                                )
+                                            }
+                                        } else null
                                     )
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                RodapeMensagemLiven(
-                                    rotuloEsquerda = msg.emNarrador?.let { horaDaMensagem(it) } ?: "Cap. ${indice + 1}",
-                                    versoes = msg.versoes,
-                                    versaoAtiva = msg.versaoAtiva,
-                                    ehUltimo = ehUltimo && !vm.ocupado,
-                                    aoTrocarVersao = { nova -> vm.trocarVersaoMensagem(indice, nova) },
-                                    aoRegenerar = { vm.regenerarUltimaResposta() },
-                                    aoEditar = { indiceEdicao = indice },
-                                    aoCopiar = { areaDeCopia.setText(AnnotatedString(msg.narrativa)) }
-                                )
+                                }
+                            }
+                        } else {
+                            // Bloco literário clássico da IA / Personagem
+                            Surface(
+                                color = Color(0xFF13141F).copy(alpha = 0.90f),
+                                shape = RoundedCornerShape(
+                                    topStart = 6.dp,
+                                    topEnd = 20.dp,
+                                    bottomStart = 20.dp,
+                                    bottomEnd = 20.dp
+                                ),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(enabled = ehUltimo && !terminou) {
+                                        visiveis = narrativaAtual.length
+                                    }
+                            ) {
+                                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.End,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        IconButton(
+                                            onClick = {
+                                                tts?.stop()
+                                                tts?.speak(msg.narrativa, TextToSpeech.QUEUE_FLUSH, null, "fala_$indice")
+                                            },
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.AutoMirrored.Filled.VolumeUp,
+                                                contentDescription = "Ouvir",
+                                                tint = Color.White.copy(alpha = 0.75f),
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = {
+                                                Toast.makeText(contexto, "Gerando ilustração da cena com IA...", Toast.LENGTH_SHORT).show()
+                                            },
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Image,
+                                                contentDescription = "Cena",
+                                                tint = Color.White.copy(alpha = 0.75f),
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text = parsearNarrativaLivro(
+                                            texto = textoMostrado,
+                                            corFala = corFala,
+                                            corAcao = corAcao,
+                                            corNormal = corNormal
+                                        ),
+                                        style = MaterialTheme.typography.bodyLarge.copy(
+                                            fontSize = vm.tamanhoLetraNarrador.sp,
+                                            lineHeight = (vm.tamanhoLetraNarrador * 1.65f).sp
+                                        )
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    RodapeMensagemLiven(
+                                        rotuloEsquerda = msg.emNarrador?.let { horaDaMensagem(it) } ?: "Cap. ${indice + 1}",
+                                        versoes = msg.versoes,
+                                        versaoAtiva = msg.versaoAtiva,
+                                        ehUltimo = ehUltimo && !vm.ocupado,
+                                        aoTrocarVersao = { nova -> vm.trocarVersaoMensagem(indice, nova) },
+                                        aoRegenerar = { vm.regenerarUltimaResposta() },
+                                        aoEditar = { indiceEdicao = indice },
+                                        aoCopiar = { areaDeCopia.setText(AnnotatedString(msg.narrativa)) }
+                                    )
+                                }
                             }
                         }
                     }
@@ -1517,6 +1793,12 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                         )
                         Spacer(Modifier.width(6.dp))
                         IconButton(
+                            onClick = { dialogo = DialogoAberto.Dados },
+                            enabled = !vm.ocupado
+                        ) {
+                            Text("🎲", fontSize = 18.sp)
+                        }
+                        IconButton(
                             onClick = {
                                 val t = acaoLivre.trim()
                                 if (t.isNotEmpty() && !vm.ocupado) {
@@ -1631,6 +1913,44 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                                 Text("≡", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                             }
                         }
+
+                        // Pílula 4: Rolar Dados
+                        Surface(
+                            color = Color.White.copy(alpha = 0.08f),
+                            shape = RoundedCornerShape(50),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                            modifier = Modifier.clickable { dialogo = DialogoAberto.Dados }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("🎲", fontSize = 12.sp)
+                                Spacer(Modifier.width(4.dp))
+                                Text("Dados", color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp)
+                            }
+                        }
+
+                        // Pílula 5: Elenco / Party
+                        Surface(
+                            color = if (vm.partyAtiva.isNotEmpty()) Color(0xFF7C4DFF).copy(alpha = 0.25f) else Color.White.copy(alpha = 0.08f),
+                            shape = RoundedCornerShape(50),
+                            border = BorderStroke(1.dp, if (vm.partyAtiva.isNotEmpty()) Color(0xFFB388FF).copy(alpha = 0.60f) else Color.White.copy(alpha = 0.12f)),
+                            modifier = Modifier.clickable { dialogo = DialogoAberto.Party }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("👥", fontSize = 12.sp)
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    if (vm.partyAtiva.isNotEmpty()) "Elenco (${vm.partyAtiva.size})" else "Elenco",
+                                    color = if (vm.partyAtiva.isNotEmpty()) Color(0xFFB388FF) else Color.White.copy(alpha = 0.85f),
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -1643,7 +1963,8 @@ private fun JogoModoHistoria(vm: AppViewModel) {
         dialogo = dialogo,
         indiceEdicao = indiceEdicao,
         onFecharDialogo = { dialogo = null },
-        onFecharEdicao = { indiceEdicao = null }
+        onFecharEdicao = { indiceEdicao = null },
+        aoInserirNoChat = { texto -> acaoLivre = if (acaoLivre.isBlank()) texto else "$acaoLivre $texto" }
     )
 
     if (mostrarPersonaModal) {
@@ -2046,7 +2367,8 @@ private fun GerenciadorDialogosJogo(
     dialogo: DialogoAberto?,
     indiceEdicao: Int?,
     onFecharDialogo: () -> Unit,
-    onFecharEdicao: () -> Unit
+    onFecharEdicao: () -> Unit,
+    aoInserirNoChat: (String) -> Unit = {}
 ) {
     if (indiceEdicao != null && indiceEdicao in vm.chat.indices) {
         val msgAlvo = vm.chat[indiceEdicao]
@@ -2573,7 +2895,520 @@ private fun GerenciadorDialogosJogo(
                 }
             )
         }
+        DialogoAberto.Party -> DialogoParty(
+            vm = vm,
+            jogo = jogo,
+            onFechar = onFecharDialogo,
+            aoInserirNoChat = aoInserirNoChat
+        )
+        DialogoAberto.Dados -> DialogoRolagemDados(
+            vm = vm,
+            onFechar = onFecharDialogo,
+            aoInserirNoChat = aoInserirNoChat
+        )
         null -> Unit
     }
+}
+
+// ---- Diálogo de Gerenciamento de Grupo / Party / Elenco ----
+@Composable
+private fun DialogoParty(
+    vm: AppViewModel,
+    jogo: JogoResponse,
+    onFechar: () -> Unit,
+    aoInserirNoChat: (String) -> Unit
+) {
+    var abaAdicionar by remember { mutableIntStateOf(0) }
+    var nomeCustom by remember { mutableStateOf("") }
+    var papelCustom by remember { mutableStateOf("") }
+    var descCustom by remember { mutableStateOf("") }
+    val contexto = LocalContext.current
+
+    val arquetipos = remember {
+        listOf(
+            Triple("🛡️ Kaelen", "Paladino Protetor", "Leal, disciplinado e pronto para proteger o grupo."),
+            Triple("🔮 Lyra", "Maga Arcana", "Erudita, misteriosa e especialista em feitiços ancestrais."),
+            Triple("🗡️ Vael", "Ladino Sorrateiro", "Ágil, irônico e mestre em desarmar armadilhas."),
+            Triple("✨ Elena", "Curandeira da Luz", "Bondosa, empática e devota das artes de cura."),
+            Triple("🏹 Sylvan", "Arqueiro Élfico", "Observador silencioso de pontaria letal."),
+            Triple("👑 Julian", "Nobre Diplomata", "Persuasivo, estratégico e influente entre a nobreza.")
+        )
+    }
+
+    AlertDialog(
+        onDismissRequest = onFechar,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("👥", fontSize = 22.sp)
+                Spacer(Modifier.width(8.dp))
+                Column {
+                    Text("Party & Elenco do Grupo", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                    Text(
+                        "${vm.partyAtiva.size} companheiro(s) em cena",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextoSuave
+                    )
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    "Adicione companheiros de jornada ou personagens coadjuvantes. Na conversa, cada membro terá seu próprio balão com avatar, e você pode chamá-los com @Nome!",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextoSuave
+                )
+
+                // Lista de membros ativos
+                if (vm.partyAtiva.isNotEmpty()) {
+                    Text(
+                        "⚔️ INTEGRANTES ATIVOS",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = Ouro
+                    )
+                    vm.partyAtiva.forEach { membro ->
+                        val cor = corDoPersonagem(membro.nome)
+                        Surface(
+                            color = SuperficieAlta,
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, cor.copy(alpha = 0.45f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(cor.copy(alpha = 0.20f))
+                                        .border(1.5.dp, cor, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(membro.emoji.ifBlank { "👤" }, fontSize = 16.sp)
+                                }
+                                Spacer(Modifier.width(10.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        membro.nome,
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = cor
+                                    )
+                                    Text(
+                                        membro.papel,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = TextoSuave
+                                    )
+                                    if (membro.descricao.isNotBlank()) {
+                                        Text(
+                                            membro.descricao,
+                                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                            color = TextoSuave.copy(alpha = 0.75f),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+                                Spacer(Modifier.width(6.dp))
+                                Surface(
+                                    color = cor.copy(alpha = 0.18f),
+                                    shape = Cantos.pilula,
+                                    border = BorderStroke(1.dp, cor.copy(alpha = 0.40f)),
+                                    modifier = Modifier.clickable {
+                                        aoInserirNoChat("@${membro.nome} ")
+                                        Toast.makeText(contexto, "@${membro.nome} inserido no chat!", Toast.LENGTH_SHORT).show()
+                                        onFechar()
+                                    }
+                                ) {
+                                    Text(
+                                        "@Falar",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = cor,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                                Spacer(Modifier.width(4.dp))
+                                IconButton(
+                                    onClick = { vm.removerMembroParty(membro.nome) },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Delete,
+                                        contentDescription = "Remover",
+                                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.75f),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Surface(
+                        color = SuperficieAlta.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            "Nenhum companheiro em cena. Convide uma de suas Personas ou escolha um arquétipo abaixo!",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextoSuave,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "➕ ADICIONAR AO GRUPO",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = Ouro
+                )
+
+                // Seletor de abas
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf("Personas", "Arquétipos", "Criar Novo").forEachIndexed { index, aba ->
+                        val selecionada = abaAdicionar == index
+                        Surface(
+                            color = if (selecionada) Ouro.copy(alpha = 0.22f) else SuperficieAlta,
+                            shape = Cantos.pilula,
+                            border = BorderStroke(1.dp, if (selecionada) Ouro else Color.White.copy(alpha = 0.12f)),
+                            modifier = Modifier.weight(1f).clickable { abaAdicionar = index }
+                        ) {
+                            Text(
+                                aba,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (selecionada) Ouro else TextoSuave,
+                                modifier = Modifier.padding(vertical = 6.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                }
+
+                when (abaAdicionar) {
+                    0 -> { // Personas salvas
+                        if (vm.personas.isEmpty()) {
+                            Text("Você ainda não criou nenhuma Persona extra.", style = MaterialTheme.typography.bodySmall, color = TextoSuave)
+                        } else {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                vm.personas.forEach { p ->
+                                    val jaNaParty = vm.partyAtiva.any { it.nome.equals(p.nome, ignoreCase = true) }
+                                    Surface(
+                                        color = SuperficieAlta,
+                                        shape = RoundedCornerShape(10.dp),
+                                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(10.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(p.genero.ifBlank { "👤" }, fontSize = 20.sp)
+                                            Spacer(Modifier.width(10.dp))
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(p.nome, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
+                                                Text(p.descricao.ifBlank { "Persona salva" }, style = MaterialTheme.typography.labelSmall, color = TextoSuave, maxLines = 1)
+                                            }
+                                            Button(
+                                                onClick = {
+                                                    vm.adicionarMembroParty(
+                                                        nome = p.nome,
+                                                        papel = "Companheiro(a)",
+                                                        emoji = p.genero.ifBlank { "👤" },
+                                                        avatarUrl = p.avatarUrl,
+                                                        descricao = p.descricao
+                                                    )
+                                                },
+                                                enabled = !jaNaParty,
+                                                modifier = Modifier.height(32.dp),
+                                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+                                            ) {
+                                                Text(if (jaNaParty) "Na Party" else "+ Convidar", fontSize = 11.sp)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    1 -> { // Arquétipos prontos
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            arquetipos.forEach { (nome, papel, desc) ->
+                                val jaNaParty = vm.partyAtiva.any { it.nome.contains(nome.substringAfter(" ")) }
+                                Surface(
+                                    color = SuperficieAlta,
+                                    shape = RoundedCornerShape(10.dp),
+                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(nome.take(2), fontSize = 20.sp)
+                                        Spacer(Modifier.width(10.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(nome.substringAfter(" "), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
+                                            Text(papel, style = MaterialTheme.typography.labelSmall, color = Ouro)
+                                            Text(desc, style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp), color = TextoSuave, maxLines = 1)
+                                        }
+                                        Button(
+                                            onClick = {
+                                                vm.adicionarMembroParty(
+                                                    nome = nome.substringAfter(" "),
+                                                    papel = papel,
+                                                    emoji = nome.take(2).trim(),
+                                                    descricao = desc
+                                                )
+                                            },
+                                            enabled = !jaNaParty,
+                                            modifier = Modifier.height(32.dp),
+                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+                                        ) {
+                                            Text(if (jaNaParty) "Na Party" else "+ Adicionar", fontSize = 11.sp)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    2 -> { // Criar personalizado
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = nomeCustom,
+                                onValueChange = { nomeCustom = it.take(40) },
+                                label = { Text("Nome do Personagem") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                value = papelCustom,
+                                onValueChange = { papelCustom = it.take(40) },
+                                label = { Text("Papel / Classe (Ex: Mago, Rival, Detetive)") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                value = descCustom,
+                                onValueChange = { descCustom = it.take(150) },
+                                label = { Text("Breve Personalidade ou Descrição") },
+                                modifier = Modifier.fillMaxWidth(),
+                                maxLines = 2
+                            )
+                            Button(
+                                onClick = {
+                                    if (nomeCustom.isNotBlank()) {
+                                        vm.adicionarMembroParty(
+                                            nome = nomeCustom.trim(),
+                                            papel = papelCustom.ifBlank { "Companheiro" },
+                                            emoji = "👤",
+                                            descricao = descCustom.trim()
+                                        )
+                                        nomeCustom = ""
+                                        papelCustom = ""
+                                        descCustom = ""
+                                    }
+                                },
+                                enabled = nomeCustom.isNotBlank(),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Entrar na Party")
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onFechar) { Text("Fechar") }
+        }
+    )
+}
+
+// ---- Diálogo de Rolagem de Dados de RPG (d20, d100, etc.) ----
+@Composable
+private fun DialogoRolagemDados(
+    vm: AppViewModel,
+    onFechar: () -> Unit,
+    aoInserirNoChat: (String) -> Unit
+) {
+    var ladosSelecionados by remember { mutableIntStateOf(20) }
+    var modificador by remember { mutableIntStateOf(0) }
+    var motivo by remember { mutableStateOf("") }
+    var resultadoDado by remember { mutableStateOf<DadoResponse?>(null) }
+    var rolando by remember { mutableStateOf(false) }
+    val haptico = LocalHapticFeedback.current
+
+    val dadosDisponiveis = listOf(20, 100, 12, 10, 8, 6, 4)
+
+    AlertDialog(
+        onDismissRequest = onFechar,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("🎲", fontSize = 22.sp)
+                Spacer(Modifier.width(8.dp))
+                Text("Mesa de RPG • Rolar Dados", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    "Escolha o dado e modificadores. O resultado será interpretado pelo Mestre da Mesa na próxima rodada!",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextoSuave
+                )
+
+                // Seletor de Tipo de Dado
+                Text("TIPO DE DADO", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Ouro)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    dadosDisponiveis.forEach { d ->
+                        val selecionado = ladosSelecionados == d
+                        Surface(
+                            color = if (selecionado) Ouro else SuperficieAlta,
+                            shape = Cantos.pilula,
+                            border = BorderStroke(1.dp, if (selecionado) Ouro else Color.White.copy(alpha = 0.15f)),
+                            modifier = Modifier.weight(1f).clickable {
+                                ladosSelecionados = d
+                                resultadoDado = null
+                            }
+                        ) {
+                            Text(
+                                "d$d",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = if (selecionado) Color.Black else MaterialTheme.colorScheme.onBackground,
+                                modifier = Modifier.padding(vertical = 7.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                }
+
+                // Modificador de Atributo (+/-)
+                Text("MODIFICADOR DE ATRIBUTO", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Ouro)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    listOf(-5, -2, -1, 0, 1, 2, 3, 5).forEach { m ->
+                        val sel = modificador == m
+                        Surface(
+                            color = if (sel) Ouro.copy(alpha = 0.25f) else SuperficieAlta,
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, if (sel) Ouro else Color.White.copy(alpha = 0.10f)),
+                            modifier = Modifier
+                                .padding(horizontal = 2.dp)
+                                .clickable { modificador = m }
+                        ) {
+                            Text(
+                                if (m > 0) "+$m" else "$m",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = if (sel) Ouro else TextoSuave,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Motivo da rolagem (ex: Ataque, Furtividade)
+                OutlinedTextField(
+                    value = motivo,
+                    onValueChange = { motivo = it.take(50) },
+                    label = { Text("Ação / Teste (Ex: Ataque com Espada, Persuasão)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // Botão de Rolar
+                Button(
+                    onClick = {
+                        rolando = true
+                        haptico.performHapticFeedback(HapticFeedbackType.LongPress)
+                        vm.rolarDado(
+                            lados = ladosSelecionados,
+                            modificador = modificador,
+                            motivo = motivo.ifBlank { null }
+                        ) { res ->
+                            resultadoDado = res
+                            rolando = false
+                            haptico.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        if (rolando) "🎲 ROLANDO..." else "🎲 ROLAR d$ladosSelecionados",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+
+                // Exibição do Resultado
+                resultadoDado?.let { res ->
+                    val corStatus = when {
+                        res.critico -> Color(0xFFFFD54F) // Ouro radiante
+                        res.desastre -> MaterialTheme.colorScheme.error // Vermelho desastre
+                        res.total >= 10 -> Color(0xFF81C784) // Verde sucesso
+                        else -> Color(0xFFFFB74D) // Laranja falha
+                    }
+
+                    Surface(
+                        color = Color(0xFF13141F),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.5.dp, corStatus),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "${res.total}",
+                                fontSize = 42.sp,
+                                fontWeight = FontWeight.Black,
+                                color = corStatus
+                            )
+                            Text(
+                                text = res.textoFormatado,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = corStatus,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                            Spacer(Modifier.height(10.dp))
+                            Button(
+                                onClick = {
+                                    aoInserirNoChat(res.textoFormatado)
+                                    onFechar()
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("✦ Inserir Rolagem no Chat")
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onFechar) { Text("Fechar") }
+        }
+    )
 }
 

@@ -576,6 +576,8 @@ data class JogoResponse(
 
     val savepoints: List<SavepointDto> = emptyList(),
 
+    val party: List<MembroPartyDto> = emptyList(),
+
     @SerializedName("livens", alternate = ["mochis"]) val livens: Int? = null
 
 ) {
@@ -728,4 +730,28 @@ data class SeguirResponse(
 data class DenunciaCriadorRequest(
     val motivo: String,
     val trecho: String? = null
+)
+
+data class MembroPartyDto(
+    val nome: String,
+    val papel: String = "Companheiro",
+    val emoji: String = "👤",
+    @SerializedName("avatar_url") val avatarUrl: String? = null,
+    val descricao: String = ""
+)
+
+data class DadoRequest(
+    val lados: Int = 20,
+    val modificador: Int = 0,
+    val motivo: String? = null
+)
+
+data class DadoResponse(
+    val lados: Int,
+    val resultado: Int,
+    val modificador: Int,
+    val total: Int,
+    val critico: Boolean,
+    val desastre: Boolean,
+    @SerializedName("texto_formatado") val textoFormatado: String
 )

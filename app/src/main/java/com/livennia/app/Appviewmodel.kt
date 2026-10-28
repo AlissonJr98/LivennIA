@@ -929,6 +929,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     var acaoPendente by mutableStateOf<String?>(null)
         private set
 
+    // Grupo de companheiros / elenco ativo na aventura atual
+    var partyAtiva by mutableStateOf<List<MembroPartyDto>>(emptyList())
+        private set
+
     fun limparDano() {
         danoRecente = 0
     }
@@ -939,6 +943,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         danoRecente = (vidaAntes - resposta.personagem.vida).coerceAtLeast(0)
         jogoAtual = resposta
         chat = chat + resposta.historico.orEmpty()
+        partyAtiva = resposta.party
         (resposta.livens ?: resposta.mochis)?.let { novoSaldo ->
             conta = conta?.copy(livens = novoSaldo)
         }
@@ -947,9 +952,100 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private fun aplicarJogoCompleto(resposta: JogoResponse) {
         jogoAtual = resposta
         chat = resposta.historico.orEmpty()
+        partyAtiva = resposta.party
         resposta.modelo?.id?.let { cerebroSelecionado = it }
         (resposta.livens ?: resposta.mochis)?.let { novoSaldo ->
             conta = conta?.copy(livens = novoSaldo)
+        }
+    }
+
+    fun carregarParty(jogoId: String? = jogoAtual?.jogoId) {
+        val id = jogoId ?: return
+        val api = obterApi() ?: return
+        viewModelScope.launch {
+            try {
+                val lista = api.obterParty(id)
+                partyAtiva = lista
+            } catch (e: Exception) {
+                // mantém party atual
+            }
+        }
+    }
+
+    fun adicionarMembroParty(
+        nome: String,
+        papel: String = "Companheiro",
+        emoji: String = "👤",
+        avatarUrl: String? = null,
+        descricao: String = "",
+        aoConcluir: () -> Unit = {}
+    ) {
+        val id = jogoAtual?.jogoId ?: return
+        val api = obterApi() ?: return
+        viewModelScope.launch {
+            try {
+                val membro = MembroPartyDto(
+                    nome = nome,
+                    papel = papel,
+                    emoji = emoji,
+                    avatarUrl = avatarUrl,
+                    descricao = descricao
+                )
+                val lista = api.adicionarMembroParty(id, membro)
+                partyAtiva = lista
+                jogoAtual = jogoAtual?.copy(party = lista)
+                aoConcluir()
+            } catch (e: Exception) {
+                erro = "Erro ao adicionar à party: ${e.message}"
+            }
+        }
+    }
+
+    fun removerMembroParty(nome: String, aoConcluir: () -> Unit = {}) {
+        val id = jogoAtual?.jogoId ?: return
+        val api = obterApi() ?: return
+        viewModelScope.launch {
+            try {
+                val lista = api.removerMembroParty(id, nome)
+                partyAtiva = lista
+                jogoAtual = jogoAtual?.copy(party = lista)
+                aoConcluir()
+            } catch (e: Exception) {
+                erro = "Erro ao remover da party: ${e.message}"
+            }
+        }
+    }
+
+    fun rolarDado(
+        lados: Int = 20,
+        modificador: Int = 0,
+        motivo: String? = null,
+        aoRolar: (DadoResponse) -> Unit = {}
+    ) {
+        val id = jogoAtual?.jogoId ?: return
+        val api = obterApi()
+        viewModelScope.launch {
+            try {
+                val res = if (api != null) {
+                    api.rolarDado(id, DadoRequest(lados, modificador, motivo))
+                } else {
+                    throw IllegalStateException("API indisponível")
+                }
+                aoRolar(res)
+            } catch (e: Exception) {
+                val resultado = (1..lados).random()
+                val total = resultado + modificador
+                val critico = (lados == 20 && resultado == 20)
+                val desastre = (lados == 20 && resultado == 1)
+                val classif = when {
+                    critico -> " • Sucesso Crítico! 🌟"
+                    desastre -> " • Desastre Crítico! 💀"
+                    total >= 10 -> " • Sucesso"
+                    else -> " • Falha"
+                }
+                val formatado = "🎲 [d$lados: $resultado${if (modificador != 0) " + $modificador = $total" else ""}$classif]"
+                aoRolar(DadoResponse(lados, resultado, modificador, total, critico, desastre, formatado))
+            }
         }
     }
 

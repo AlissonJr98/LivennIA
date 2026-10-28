@@ -400,6 +400,39 @@ class CerebroDoJogoOut(BaseModel):
     categoria: str = "Geral"
 
 
+class MembroPartyOut(BaseModel):
+    nome: str
+    papel: str = "Companheiro"
+    emoji: str = "👤"
+    avatar_url: Optional[str] = None
+    descricao: str = ""
+
+
+class MembroPartyIn(BaseModel):
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
+    nome: str = Field(..., min_length=1, max_length=100)
+    papel: str = Field(default="Companheiro", max_length=100)
+    emoji: str = Field(default="👤", max_length=20)
+    avatar_url: Optional[str] = Field(default=None, max_length=1000)
+    descricao: Optional[str] = Field(default="", max_length=1000)
+
+
+class DadoIn(BaseModel):
+    lados: int = Field(default=20, ge=2, le=100)
+    modificador: int = Field(default=0, ge=-20, le=20)
+    motivo: Optional[str] = Field(default=None, max_length=100)
+
+
+class DadoOut(BaseModel):
+    lados: int
+    resultado: int
+    modificador: int
+    total: int
+    critico: bool
+    desastre: bool
+    texto_formatado: str
+
+
 class JogoOut(BaseModel):
     jogo_id: str
     modo: str = "rpg"
@@ -423,6 +456,7 @@ class JogoOut(BaseModel):
     diarios: list[DiarioOut] = []
     cartas: list[CartaOut] = []
     savepoints: list[SavepointOut] = []
+    party: list[MembroPartyOut] = []
     livens: Optional[int] = None
     mochis: Optional[int] = None
 
@@ -816,6 +850,7 @@ def montar_saida(jogo_id, estado, encerrado, restantes, completo=False, mochis=N
         diarios=[DiarioOut(**d) for d in (estado.get("diarios") or [])],
         cartas=[CartaOut(**c) for c in (estado.get("cartas") or [])],
         savepoints=_resumo_savepoints(estado),
+        party=[MembroPartyOut(**p) for p in (estado.get("party") or [])],
         livens=mochis,
         mochis=mochis,
     )
@@ -2043,6 +2078,99 @@ def apagar_savepoint_do_jogo(jogo_id: IdDoJogo, save_id: str, jogador=Depends(jo
             jogo_id, jogador["id"], motor.estado_para_texto(estado), bool(jogo["encerrado"])
         )
     return Response(status_code=204)
+
+
+@app.get("/jogos/{jogo_id}/party", response_model=list[MembroPartyOut])
+def listar_party_do_jogo(jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
+    jogo = banco.obter_jogo(jogo_id, jogador["id"])
+    if jogo is None:
+        raise HTTPException(404, "Jogo não encontrado.")
+    estado = carregar_estado_do_jogo(jogo)
+    return [MembroPartyOut(**p) for p in (estado.get("party") or [])]
+
+
+@app.post("/jogos/{jogo_id}/party", response_model=list[MembroPartyOut])
+def adicionar_ou_atualizar_party(dados: MembroPartyIn, jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
+    with uma_jogada_por_vez(jogador["id"]):
+        jogo = banco.obter_jogo(jogo_id, jogador["id"])
+        if jogo is None:
+            raise HTTPException(404, "Jogo não encontrado.")
+        estado = carregar_estado_do_jogo(jogo)
+        party = estado.get("party")
+        if not isinstance(party, list):
+            party = []
+        nome_novo = dados.nome.strip()
+        idx_existente = next((i for i, p in enumerate(party) if p.get("nome", "").strip().lower() == nome_novo.lower()), None)
+        novo_membro = {
+            "nome": nome_novo,
+            "papel": dados.papel.strip() or "Companheiro",
+            "emoji": dados.emoji.strip() or "👤",
+            "avatar_url": dados.avatar_url,
+            "descricao": dados.descricao.strip() or "",
+        }
+        if idx_existente is not None:
+            party[idx_existente] = novo_membro
+        else:
+            party.append(novo_membro)
+        estado["party"] = party
+        banco.atualizar_jogo(jogo_id, jogador["id"], motor.estado_para_texto(estado), bool(jogo["encerrado"]))
+    return [MembroPartyOut(**p) for p in party]
+
+
+@app.delete("/jogos/{jogo_id}/party/{nome}", response_model=list[MembroPartyOut])
+def remover_membro_party(jogo_id: IdDoJogo, nome: str, jogador=Depends(jogador_atual)):
+    with uma_jogada_por_vez(jogador["id"]):
+        jogo = banco.obter_jogo(jogo_id, jogador["id"])
+        if jogo is None:
+            raise HTTPException(404, "Jogo não encontrado.")
+        estado = carregar_estado_do_jogo(jogo)
+        party = [p for p in (estado.get("party") or []) if p.get("nome", "").strip().lower() != nome.strip().lower()]
+        estado["party"] = party
+        banco.atualizar_jogo(jogo_id, jogador["id"], motor.estado_para_texto(estado), bool(jogo["encerrado"]))
+    return [MembroPartyOut(**p) for p in party]
+
+
+@app.post("/jogos/{jogo_id}/dado", response_model=DadoOut)
+def rolar_dado_jogo(dados: DadoIn, jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
+    jogo = banco.obter_jogo(jogo_id, jogador["id"])
+    if jogo is None:
+        raise HTTPException(404, "Jogo não encontrado.")
+    lados = dados.lados
+    mod = dados.modificador
+    resultado = random.randint(1, lados)
+    total = resultado + mod
+    critico = (lados == 20 and resultado == 20) or (lados == 100 and resultado <= 5)
+    desastre = (lados == 20 and resultado == 1) or (lados == 100 and resultado >= 96)
+
+    sinal = f"+ {mod}" if mod > 0 else (f"- {abs(mod)}" if mod < 0 else "")
+    formula = f"d{lados}: {resultado} {sinal}".strip()
+    if mod != 0:
+        formula += f" = {total}"
+
+    classificacao = ""
+    if critico:
+        classificacao = " • Sucesso Crítico! 🌟"
+    elif desastre:
+        classificacao = " • Desastre Crítico! 💀"
+    elif total >= 15:
+        classificacao = " • Sucesso Alto"
+    elif total >= 10:
+        classificacao = " • Sucesso"
+    else:
+        classificacao = " • Falha"
+
+    motivo_txt = f" ({dados.motivo})" if dados.motivo else ""
+    texto_formatado = f"🎲 [{formula}{classificacao}]{motivo_txt}"
+
+    return DadoOut(
+        lados=lados,
+        resultado=resultado,
+        modificador=mod,
+        total=total,
+        critico=critico,
+        desastre=desastre,
+        texto_formatado=texto_formatado,
+    )
 
 
 @app.delete("/jogos/{jogo_id}", status_code=204)

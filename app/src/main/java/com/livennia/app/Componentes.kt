@@ -687,3 +687,84 @@ fun TituloSecao(texto: String, modifier: Modifier = Modifier) {
         Text(texto, style = MaterialTheme.typography.titleMedium)
     }
 }
+
+// =====================================================================
+// CHAT EM GRUPO / RPG DE MESA / MULTI-SPEAKER SUPPORT
+// =====================================================================
+
+data class BlocoFalaPersonagem(
+    val personagem: String?,
+    val texto: String,
+    val isMestre: Boolean = false
+)
+
+fun extrairBlocosFala(narrativa: String): List<BlocoFalaPersonagem> {
+    if (narrativa.isBlank()) return emptyList()
+    // Identifica cabeçalhos no formato [Nome]: ou [Nome]:
+    val regexMarcador = Regex("(?m)^\\[([^\\]]+)\\]:\\s*")
+    val matches = regexMarcador.findAll(narrativa).toList()
+    if (matches.isEmpty()) {
+        return listOf(BlocoFalaPersonagem(personagem = null, texto = narrativa.trim(), isMestre = false))
+    }
+
+    val blocos = mutableListOf<BlocoFalaPersonagem>()
+
+    // Se houver narração antes do primeiro personagem, inclui como mestre/narrador
+    if (matches.first().range.first > 0) {
+        val preTexto = narrativa.substring(0, matches.first().range.first).trim()
+        if (preTexto.isNotBlank()) {
+            blocos.add(BlocoFalaPersonagem(personagem = null, texto = preTexto, isMestre = true))
+        }
+    }
+
+    for (i in matches.indices) {
+        val match = matches[i]
+        val nomePersonagem = match.groupValues[1].trim()
+        val inicioConteudo = match.range.last + 1
+        val fimConteudo = if (i + 1 < matches.size) matches[i + 1].range.first else narrativa.length
+        val textoFala = narrativa.substring(inicioConteudo, fimConteudo).trim()
+
+        val isMestre = nomePersonagem.equals("Mestre", ignoreCase = true) ||
+                nomePersonagem.equals("Narrador", ignoreCase = true) ||
+                nomePersonagem.equals("Mestre da Mesa", ignoreCase = true) ||
+                nomePersonagem.equals("DM", ignoreCase = true) ||
+                nomePersonagem.equals("GM", ignoreCase = true)
+
+        if (textoFala.isNotBlank()) {
+            blocos.add(
+                BlocoFalaPersonagem(
+                    personagem = nomePersonagem,
+                    texto = textoFala,
+                    isMestre = isMestre
+                )
+            )
+        }
+    }
+
+    return if (blocos.isEmpty()) {
+        listOf(BlocoFalaPersonagem(personagem = null, texto = narrativa.trim(), isMestre = false))
+    } else {
+        blocos
+    }
+}
+
+fun corDoPersonagem(nome: String?): Color {
+    if (nome == null) return Color(0xFFFFD54F)
+    val n = nome.lowercase().trim()
+    if (n in listOf("mestre", "narrador", "mestre da mesa", "dm", "gm")) {
+        return Color(0xFFFFD54F)
+    }
+    val paleta = listOf(
+        Color(0xFF4DD0E1), // Ciano radiante
+        Color(0xFFBA68C8), // Violeta arcano
+        Color(0xFFFF8A80), // Coral rubi
+        Color(0xFF81C784), // Esmeralda florestal
+        Color(0xFFFFB74D), // Âmbar dourado
+        Color(0xFF64B5F6), // Azul celeste
+        Color(0xFFFF4081), // Rosa choque
+        Color(0xFF26A69A), // Verde turquesa
+        Color(0xFFAB47BC)  // Púrpura profundo
+    )
+    val hash = Math.abs(nome.hashCode())
+    return paleta[hash % paleta.size]
+}
