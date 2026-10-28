@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 30,
-  "versaoNome": "1.7.0",
-  "notas": "Chat em Grupo e RPG de Mesa completo: suporte a companheiros de party e elenco ativo com balões de fala e avatares individuais, menções diretas com @Nome, e sistema interativo de rolagem de dados (d20, d100, etc.) com sucessos e desastres críticos!",
+  "versaoCodigo": 31,
+  "versaoNome": "1.7.1",
+  "notas": "Separação estrita entre os modos RPG e História: dados exclusivos do Modo RPG (Mesa de RPG e combates) e Modo História 100% focado no elenco, diálogos e literatura sem dados.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

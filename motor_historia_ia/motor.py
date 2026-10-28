@@ -1173,16 +1173,29 @@ def _montar_prompt(estado, acao, escolha=False, historico_custom=None):
     instrucao_party = ""
     if party:
         nomes_party = ", ".join(p.get("nome", "") for p in party if p.get("nome"))
-        instrucao_party = (
-            f"\n\nDINÂMICA DE CHAT EM GRUPO / RPG DE MESA (COMPANHEIROS ATIVOS: {nomes_party}):\n"
-            "- Esta sessão possui múltiplos personagens em cena além do jogador e do mestre/narrador.\n"
-            "- FORMATO OBRIGATÓRIO DE CADA FALA OU PARÁGRAFO NA NARRATIVA:\n"
-            "  * Para a narração da cena, consequências ou mestre, inicie o parágrafo com: [Mestre]: Narração da cena...\n"
-            "  * Para a fala ou ação de um companheiro ou NPC, inicie o parágrafo com: [NomeDoPersonagem]: \"Fala...\" ou *ação*\n"
-            "- Dê voz e reações a 1 ou 2 membros relevantes por turno, criando interação viva entre o grupo e o jogador.\n"
-            "- Se a ação do jogador contiver @Nome (ex: @{party[0].get('nome', '')}), esse personagem DEVE responder diretamente!\n"
-            "- Se a ação do jogador contiver rolagem de dados (ex: 🎲 [d20: ...]), interprete o resultado e descreva o impacto imediato!\n"
-        )
+        if eh_historia:
+            instrucao_party = (
+                f"\n\nELENCO ATIVO NA HISTÓRIA / DIÁLOGO EM GRUPO ({nomes_party}):\n"
+                "- Esta cena possui múltiplos personagens no elenco interagindo com o protagonista.\n"
+                "- MODO HISTÓRIA / LIVRO: NÃO EXISTEM DADOS, NÃO EXISTE SISTEMA DE RPG.\n"
+                "- FORMATO OBRIGATÓRIO DE CADA FALA OU PARÁGRAFO NA NARRATIVA:\n"
+                "  * Para a narração literária, ambiente ou reações do mundo: inicie o parágrafo com [Narrador]: *ações e descrições*\n"
+                "  * Para a fala ou ação de cada personagem do elenco: inicie o parágrafo com [NomeDoPersonagem]: \"Fala...\" ou *ação*\n"
+                "- Mantenha a prosa literária, sensibilidade emocional e química entre os personagens.\n"
+                "- Dê voz a 1 ou 2 personagens relevantes por turno para avançar a conversa organicamente.\n"
+                "- Se o jogador mencionar @Nome (ex: @{party[0].get('nome', '')}), esse personagem DEVE responder diretamente!\n"
+            )
+        else:
+            instrucao_party = (
+                f"\n\nGRUPO / PARTY DE RPG DE MESA ATIVA ({nomes_party}):\n"
+                "- Esta sessão funciona como uma MESA DE RPG COM COMPANHEIROS DE AVENTURA.\n"
+                "- FORMATO OBRIGATÓRIO DE CADA FALA OU PARÁGRAFO NA NARRATIVA:\n"
+                "  * Para o Mestre da Mesa (narração do ambiente, desafios, monstros): inicie com [Mestre]: Narração da cena...\n"
+                "  * Para a fala ou ação de um companheiro da party: inicie com [NomeDoPersonagem]: \"Fala...\" ou *ação*\n"
+                "- Dê voz e reações aos companheiros da party, criando cooperação ou conflito tático em grupo.\n"
+                "- Se a ação do jogador contiver @Nome (ex: @{party[0].get('nome', '')}), esse companheiro DEVE responder diretamente!\n"
+                "- Se a ação do jogador contiver rolagem de dados (ex: 🎲 [d20: ...]), o Mestre DEVE interpretar o sucesso ou falha na cena!\n"
+            )
     return (
         "ESTADO ATUAL DO JOGO (dados confiáveis):\n"
         f"{json.dumps(contexto, ensure_ascii=False)}{instrucao_premissa}{instrucao_memoria}{instrucao_persona}{instrucao_party}\n\n"

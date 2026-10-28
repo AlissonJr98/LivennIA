@@ -2135,6 +2135,9 @@ def rolar_dado_jogo(dados: DadoIn, jogo_id: IdDoJogo, jogador=Depends(jogador_at
     jogo = banco.obter_jogo(jogo_id, jogador["id"])
     if jogo is None:
         raise HTTPException(404, "Jogo não encontrado.")
+    estado = carregar_estado_do_jogo(jogo)
+    if estado.get("modo") == "historia":
+        raise HTTPException(400, "Rolagem de dados é um recurso exclusivo do modo RPG.")
     lados = dados.lados
     mod = dados.modificador
     resultado = random.randint(1, lados)

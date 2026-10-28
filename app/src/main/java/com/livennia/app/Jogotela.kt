@@ -528,6 +528,7 @@ fun JogoTela(vm: AppViewModel) {
                                         corFala = corFala,
                                         corAcao = corAcao,
                                         corNormal = corNormal,
+                                        ehModoHistoria = false,
                                         clicavel = ehUltimo && !terminou,
                                         aoTocar = { visiveis = narrativaAtual.length },
                                         aoCopiar = { areaDeCopia.setText(AnnotatedString(bloco.texto)) },
@@ -960,6 +961,7 @@ private fun CardFalaGrupo(
     corFala: Color,
     corAcao: Color,
     corNormal: Color,
+    ehModoHistoria: Boolean = false,
     clicavel: Boolean = false,
     aoTocar: () -> Unit = {},
     aoCopiar: () -> Unit = {},
@@ -969,12 +971,20 @@ private fun CardFalaGrupo(
     val membro = remember(bloco.personagem, party) {
         party.firstOrNull { it.nome.equals(bloco.personagem, ignoreCase = true) }
     }
-    val corDestaque = remember(bloco.personagem, bloco.isMestre) {
-        if (bloco.isMestre) Color(0xFFFFD54F) else corDoPersonagem(bloco.personagem)
+    val corDestaque = remember(bloco.personagem, bloco.isMestre, ehModoHistoria) {
+        when {
+            bloco.isMestre && ehModoHistoria -> Color(0xFFB388FF)
+            bloco.isMestre -> Color(0xFFFFD54F)
+            else -> corDoPersonagem(bloco.personagem)
+        }
     }
-    val papel = membro?.papel ?: if (bloco.isMestre) "Mestre da Mesa" else "Personagem"
+    val papel = membro?.papel ?: if (bloco.isMestre) {
+        if (ehModoHistoria) "Narrador" else "Mestre da Mesa"
+    } else "Personagem"
     val avatarUrl = membro?.avatarUrl
-    val nomeExibicao = bloco.personagem ?: if (bloco.isMestre) "Mestre" else "Narrador"
+    val nomeExibicao = bloco.personagem ?: if (bloco.isMestre) {
+        if (ehModoHistoria) "Narrador" else "Mestre"
+    } else "Narrador"
 
     Surface(
         color = Color(0xFF13141F).copy(alpha = 0.92f),
@@ -1013,7 +1023,7 @@ private fun CardFalaGrupo(
                         contentAlignment = Alignment.Center
                     ) {
                         if (bloco.isMestre) {
-                            Text("🎲", fontSize = 16.sp)
+                            Text(if (ehModoHistoria) "📜" else "🎲", fontSize = 16.sp)
                         } else {
                             val emoji = membro?.emoji ?: bloco.personagem?.take(1)?.uppercase() ?: "👤"
                             Text(emoji, fontSize = 15.sp)
@@ -1481,6 +1491,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                                         corFala = corFala,
                                         corAcao = corAcao,
                                         corNormal = corNormal,
+                                        ehModoHistoria = true,
                                         clicavel = ehUltimo && !terminou,
                                         aoTocar = { visiveis = narrativaAtual.length },
                                         aoCopiar = { areaDeCopia.setText(AnnotatedString(bloco.texto)) },
@@ -1793,12 +1804,6 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                         )
                         Spacer(Modifier.width(6.dp))
                         IconButton(
-                            onClick = { dialogo = DialogoAberto.Dados },
-                            enabled = !vm.ocupado
-                        ) {
-                            Text("🎲", fontSize = 18.sp)
-                        }
-                        IconButton(
                             onClick = {
                                 val t = acaoLivre.trim()
                                 if (t.isNotEmpty() && !vm.ocupado) {
@@ -1914,24 +1919,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             }
                         }
 
-                        // Pílula 4: Rolar Dados
-                        Surface(
-                            color = Color.White.copy(alpha = 0.08f),
-                            shape = RoundedCornerShape(50),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                            modifier = Modifier.clickable { dialogo = DialogoAberto.Dados }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("🎲", fontSize = 12.sp)
-                                Spacer(Modifier.width(4.dp))
-                                Text("Dados", color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp)
-                            }
-                        }
-
-                        // Pílula 5: Elenco / Party
+                        // Pílula 4: Elenco
                         Surface(
                             color = if (vm.partyAtiva.isNotEmpty()) Color(0xFF7C4DFF).copy(alpha = 0.25f) else Color.White.copy(alpha = 0.08f),
                             shape = RoundedCornerShape(50),
@@ -2898,14 +2886,21 @@ private fun GerenciadorDialogosJogo(
         DialogoAberto.Party -> DialogoParty(
             vm = vm,
             jogo = jogo,
+            ehModoHistoria = jogo.modo == "historia",
             onFechar = onFecharDialogo,
             aoInserirNoChat = aoInserirNoChat
         )
-        DialogoAberto.Dados -> DialogoRolagemDados(
-            vm = vm,
-            onFechar = onFecharDialogo,
-            aoInserirNoChat = aoInserirNoChat
-        )
+        DialogoAberto.Dados -> {
+            if (jogo.modo == "rpg") {
+                DialogoRolagemDados(
+                    vm = vm,
+                    onFechar = onFecharDialogo,
+                    aoInserirNoChat = aoInserirNoChat
+                )
+            } else {
+                onFecharDialogo()
+            }
+        }
         null -> Unit
     }
 }
@@ -2915,6 +2910,7 @@ private fun GerenciadorDialogosJogo(
 private fun DialogoParty(
     vm: AppViewModel,
     jogo: JogoResponse,
+    ehModoHistoria: Boolean,
     onFechar: () -> Unit,
     aoInserirNoChat: (String) -> Unit
 ) {
@@ -2924,15 +2920,26 @@ private fun DialogoParty(
     var descCustom by remember { mutableStateOf("") }
     val contexto = LocalContext.current
 
-    val arquetipos = remember {
-        listOf(
-            Triple("🛡️ Kaelen", "Paladino Protetor", "Leal, disciplinado e pronto para proteger o grupo."),
-            Triple("🔮 Lyra", "Maga Arcana", "Erudita, misteriosa e especialista em feitiços ancestrais."),
-            Triple("🗡️ Vael", "Ladino Sorrateiro", "Ágil, irônico e mestre em desarmar armadilhas."),
-            Triple("✨ Elena", "Curandeira da Luz", "Bondosa, empática e devota das artes de cura."),
-            Triple("🏹 Sylvan", "Arqueiro Élfico", "Observador silencioso de pontaria letal."),
-            Triple("👑 Julian", "Nobre Diplomata", "Persuasivo, estratégico e influente entre a nobreza.")
-        )
+    val arquetipos = remember(ehModoHistoria) {
+        if (ehModoHistoria) {
+            listOf(
+                Triple("🌹 Evelyn", "Rival da Corte", "Sagaz, provocadora, refinada e estrategista."),
+                Triple("💼 Liam", "Parceiro Investigativo", "Observador, leal, pragmático e protetor."),
+                Triple("🌸 Sophie", "Amiga de Infância", "Carinhosa, compreensiva e sempre ao seu lado."),
+                Triple("👑 Julian", "Nobre Conquistador", "Sedutor, influente, carismático e aristocrata."),
+                Triple("🕵️ Victor", "Antagonista Misterioso", "Intrigante, calculista e com segredos perigosos."),
+                Triple("☕ Clara", "Confidente Próxima", "Doce, acolhedora e excelente ouvinte.")
+            )
+        } else {
+            listOf(
+                Triple("🛡️ Kaelen", "Paladino Protetor", "Leal, disciplinado e pronto para proteger o grupo."),
+                Triple("🔮 Lyra", "Maga Arcana", "Erudita, misteriosa e especialista em feitiços ancestrais."),
+                Triple("🗡️ Vael", "Ladino Sorrateiro", "Ágil, irônico e mestre em desarmar armadilhas."),
+                Triple("✨ Elena", "Curandeira da Luz", "Bondosa, empática e devota das artes de cura."),
+                Triple("🏹 Sylvan", "Arqueiro Élfico", "Observador silencioso de pontaria letal."),
+                Triple("⚔️ Thorne", "Guerreiro Bárbaro", "Feroz, destemido e implacável em batalha.")
+            )
+        }
     }
 
     AlertDialog(
@@ -2942,9 +2949,12 @@ private fun DialogoParty(
                 Text("👥", fontSize = 22.sp)
                 Spacer(Modifier.width(8.dp))
                 Column {
-                    Text("Party & Elenco do Grupo", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                     Text(
-                        "${vm.partyAtiva.size} companheiro(s) em cena",
+                        if (ehModoHistoria) "Elenco da História" else "Party & Companheiros de RPG",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                    Text(
+                        if (ehModoHistoria) "${vm.partyAtiva.size} integrante(s) no elenco" else "${vm.partyAtiva.size} companheiro(s) na party",
                         style = MaterialTheme.typography.labelSmall,
                         color = TextoSuave
                     )
@@ -2959,7 +2969,11 @@ private fun DialogoParty(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
-                    "Adicione companheiros de jornada ou personagens coadjuvantes. Na conversa, cada membro terá seu próprio balão com avatar, e você pode chamá-los com @Nome!",
+                    if (ehModoHistoria) {
+                        "Adicione personagens ao elenco desta história (amigos, rivais, confidentes ou pretendentes). Cada um terá seu balão de fala individual na conversa, e você pode falar diretamente com eles usando @Nome!"
+                    } else {
+                        "Adicione companheiros de jornada à sua mesa de RPG. Na conversa, cada membro terá seu próprio balão com avatar, e você pode chamá-los para combates e desafios com @Nome!"
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = TextoSuave
                 )
@@ -2967,9 +2981,9 @@ private fun DialogoParty(
                 // Lista de membros ativos
                 if (vm.partyAtiva.isNotEmpty()) {
                     Text(
-                        "⚔️ INTEGRANTES ATIVOS",
+                        if (ehModoHistoria) "🎭 INTEGRANTES DO ELENCO" else "⚔️ INTEGRANTES DA PARTY",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = Ouro
+                        color = if (ehModoHistoria) Color(0xFFB388FF) else Ouro
                     )
                     vm.partyAtiva.forEach { membro ->
                         val cor = corDoPersonagem(membro.nome)
@@ -3055,7 +3069,11 @@ private fun DialogoParty(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            "Nenhum companheiro em cena. Convide uma de suas Personas ou escolha um arquétipo abaixo!",
+                            if (ehModoHistoria) {
+                                "Nenhum personagem adicionado ao elenco ainda. Convide uma de suas Personas ou escolha um arquétipo abaixo!"
+                            } else {
+                                "Nenhum companheiro na party ainda. Convide uma de suas Personas ou escolha um arquétipo abaixo!"
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = TextoSuave,
                             modifier = Modifier.padding(12.dp)
@@ -3065,9 +3083,9 @@ private fun DialogoParty(
 
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "➕ ADICIONAR AO GRUPO",
+                    if (ehModoHistoria) "➕ ADICIONAR AO ELENCO" else "➕ ADICIONAR À PARTY",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                    color = Ouro
+                    color = if (ehModoHistoria) Color(0xFFB388FF) else Ouro
                 )
 
                 // Seletor de abas
@@ -3078,15 +3096,15 @@ private fun DialogoParty(
                     listOf("Personas", "Arquétipos", "Criar Novo").forEachIndexed { index, aba ->
                         val selecionada = abaAdicionar == index
                         Surface(
-                            color = if (selecionada) Ouro.copy(alpha = 0.22f) else SuperficieAlta,
+                            color = if (selecionada) (if (ehModoHistoria) Color(0xFF7C4DFF).copy(alpha = 0.35f) else Ouro.copy(alpha = 0.22f)) else SuperficieAlta,
                             shape = Cantos.pilula,
-                            border = BorderStroke(1.dp, if (selecionada) Ouro else Color.White.copy(alpha = 0.12f)),
+                            border = BorderStroke(1.dp, if (selecionada) (if (ehModoHistoria) Color(0xFFB388FF) else Ouro) else Color.White.copy(alpha = 0.12f)),
                             modifier = Modifier.weight(1f).clickable { abaAdicionar = index }
                         ) {
                             Text(
                                 aba,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = if (selecionada) Ouro else TextoSuave,
+                                color = if (selecionada) (if (ehModoHistoria) Color(0xFFB388FF) else Ouro) else TextoSuave,
                                 modifier = Modifier.padding(vertical = 6.dp),
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
@@ -3122,7 +3140,7 @@ private fun DialogoParty(
                                                 onClick = {
                                                     vm.adicionarMembroParty(
                                                         nome = p.nome,
-                                                        papel = "Companheiro(a)",
+                                                        papel = if (ehModoHistoria) "Personagem" else "Companheiro(a)",
                                                         emoji = p.genero.ifBlank { "👤" },
                                                         avatarUrl = p.avatarUrl,
                                                         descricao = p.descricao
@@ -3132,7 +3150,7 @@ private fun DialogoParty(
                                                 modifier = Modifier.height(32.dp),
                                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
                                             ) {
-                                                Text(if (jaNaParty) "Na Party" else "+ Convidar", fontSize = 11.sp)
+                                                Text(if (jaNaParty) "No Elenco" else "+ Convidar", fontSize = 11.sp)
                                             }
                                         }
                                     }
@@ -3158,7 +3176,7 @@ private fun DialogoParty(
                                         Spacer(Modifier.width(10.dp))
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(nome.substringAfter(" "), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
-                                            Text(papel, style = MaterialTheme.typography.labelSmall, color = Ouro)
+                                            Text(papel, style = MaterialTheme.typography.labelSmall, color = if (ehModoHistoria) Color(0xFFB388FF) else Ouro)
                                             Text(desc, style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp), color = TextoSuave, maxLines = 1)
                                         }
                                         Button(
@@ -3174,7 +3192,7 @@ private fun DialogoParty(
                                             modifier = Modifier.height(32.dp),
                                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
                                         ) {
-                                            Text(if (jaNaParty) "Na Party" else "+ Adicionar", fontSize = 11.sp)
+                                            Text(if (jaNaParty) "No Elenco" else "+ Adicionar", fontSize = 11.sp)
                                         }
                                     }
                                 }
@@ -3193,7 +3211,7 @@ private fun DialogoParty(
                             OutlinedTextField(
                                 value = papelCustom,
                                 onValueChange = { papelCustom = it.take(40) },
-                                label = { Text("Papel / Classe (Ex: Mago, Rival, Detetive)") },
+                                label = { Text(if (ehModoHistoria) "Papel (Ex: Rival, Confidente, Antagonista)" else "Classe / Papel (Ex: Mago, Ladino, Guerreiro)") },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true
                             )
@@ -3209,7 +3227,7 @@ private fun DialogoParty(
                                     if (nomeCustom.isNotBlank()) {
                                         vm.adicionarMembroParty(
                                             nome = nomeCustom.trim(),
-                                            papel = papelCustom.ifBlank { "Companheiro" },
+                                            papel = papelCustom.ifBlank { if (ehModoHistoria) "Personagem" else "Companheiro" },
                                             emoji = "👤",
                                             descricao = descCustom.trim()
                                         )
@@ -3221,7 +3239,7 @@ private fun DialogoParty(
                                 enabled = nomeCustom.isNotBlank(),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("Entrar na Party")
+                                Text(if (ehModoHistoria) "Entrar no Elenco" else "Entrar na Party")
                             }
                         }
                     }
