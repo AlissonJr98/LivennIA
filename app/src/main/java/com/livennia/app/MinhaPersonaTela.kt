@@ -2049,7 +2049,13 @@ private fun TelaSelecionarImagem(
     onImagemEscolhida: () -> Unit
 ) {
     val contexto = LocalContext.current
-    var indiceSelecionado by remember { mutableStateOf<Int?>(null) }
+    var indiceSelecionado by remember { mutableStateOf<Int?>(0) }
+
+    LaunchedEffect(vm.candidatosRetrato) {
+        if (vm.candidatosRetrato.isNotEmpty()) {
+            indiceSelecionado = 0
+        }
+    }
 
     // Simulação de progresso 0% a 100% enquanto gera
     var progressoSimulado by remember { mutableIntStateOf(0) }
@@ -2079,7 +2085,7 @@ private fun TelaSelecionarImagem(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Barra Superior: < Selecionar imagem [X]
+        // Barra Superior: < Retrato da Persona [X]
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2090,7 +2096,7 @@ private fun TelaSelecionarImagem(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar", tint = TextoClaro)
             }
             Text(
-                "Selecionar imagem",
+                "Retrato da Persona",
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp,
                 color = TextoClaro,
@@ -2101,44 +2107,27 @@ private fun TelaSelecionarImagem(
             }
         }
 
-        // Grade 2x2 de Candidatos (Imagens 2 e 5)
-        Column(
+        // Imagem única centralizada de alta qualidade
+        Box(
             modifier = Modifier
                 .weight(1f)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.Center
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 8.dp),
+            contentAlignment = Alignment.Center
         ) {
-            for (linha in 0..1) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    for (coluna in 0..1) {
-                        val indice = linha * 2 + coluna
-                        val candidato = vm.candidatosRetrato.getOrNull(indice)
-                        val ehSelecionado = (indiceSelecionado == indice)
-
-                        CardCandidatoQuadrado(
-                            candidato = candidato,
-                            indice = indice,
-                            loteId = vm.loteCandidatosId,
-                            carregando = vm.gerandoCandidatos,
-                            progresso = progressoSimulado,
-                            ehSelecionado = ehSelecionado,
-                            onSelecionar = {
-                                if (!vm.gerandoCandidatos) {
-                                    indiceSelecionado = indice
-                                }
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .aspectRatio(0.78f)
-                        )
-                    }
-                }
-            }
+            val candidato = vm.candidatosRetrato.firstOrNull()
+            CardCandidatoQuadrado(
+                candidato = candidato,
+                indice = 0,
+                loteId = vm.loteCandidatosId,
+                carregando = vm.gerandoCandidatos,
+                progresso = progressoSimulado,
+                ehSelecionado = true,
+                onSelecionar = { indiceSelecionado = 0 },
+                modifier = Modifier
+                    .fillMaxHeight(0.92f)
+                    .aspectRatio(0.75f)
+            )
         }
 
         // Rodapé com "Gerar novamente" e "Escolher" (Imagens 2 e 5)
@@ -2175,14 +2164,10 @@ private fun TelaSelecionarImagem(
             // Botão "Escolher" Amarelo
             Button(
                 onClick = {
-                    val idx = indiceSelecionado
-                    if (idx == null) {
-                        Toast.makeText(contexto, "Toque em uma das 4 imagens para selecionar!", Toast.LENGTH_SHORT).show()
-                        return@Button
-                    }
+                    val idx = indiceSelecionado ?: 0
                     val loteId = vm.loteCandidatosId
                     if (loteId.isBlank()) {
-                        Toast.makeText(contexto, "Aguarde as imagens carregarem...", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(contexto, "Aguarde a imagem carregar...", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
 

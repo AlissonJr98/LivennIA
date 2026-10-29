@@ -567,8 +567,9 @@ class CenarioOut(BaseModel):
     # True quando a arte de capa já foi gerada e está salva no servidor.
     capa: bool = False
     criadoPorUsuario: bool = False
-    autorNome: str = "LivennIA Studios"
-    autorAvatar: str = "🤖"
+    autorId: Optional[str] = None
+    autorNome: str = "Criado por IA"
+    autorAvatar: str = "✨"
     chats: int = 0
     saves: int = 0
     modoJogo: str = "historia"
@@ -587,6 +588,8 @@ class NovoCenarioIn(BaseModel):
     prompt_secreto: Optional[str] = ""
     estilo_imagem: Optional[str] = "semi_realistic"
     modo_jogo: Optional[str] = "historia"
+    autor_nome: Optional[str] = None
+    autor_avatar: Optional[str] = None
 
 
 class CerebroOut(BaseModel):
@@ -621,6 +624,7 @@ class JogoResumoOut(BaseModel):
     atualizado_em: str
     retrato: bool = False
     # Nome do cenário oficial (quando a história veio da vitrine) e se já tem capa.
+    cenario_id: Optional[str] = None
     cenario_nome: Optional[str] = None
     capa: bool = False
     ultima_narrativa: Optional[str] = None
@@ -897,8 +901,9 @@ def listar_catalogo(jogador=Depends(jogador_atual)):
             abertura=c_user.get("abertura") or "",
             capa=tem_capa(c_user["id"]),
             criadoPorUsuario=True,
-            autorNome=c_user.get("autor_nome") or c_user.get("autorNome") or "Comunidade",
-            autorAvatar=c_user.get("autorAvatar") or c_user.get("emoji") or "🎭",
+            autorId=str(c_user.get("autor_id") or ""),
+            autorNome=c_user.get("autor_nome") or c_user.get("autorNome") or "Criado por IA",
+            autorAvatar=c_user.get("autorAvatar") or c_user.get("emoji") or "✨",
             chats=int(c_user.get("chats") or 0),
             saves=int(c_user.get("saves") or 0),
             modoJogo=c_user.get("modo_jogo") or c_user.get("modoJogo") or "historia",
@@ -914,7 +919,8 @@ def listar_catalogo(jogador=Depends(jogador_atual)):
 def criar_cenario_comunidade(dados: NovoCenarioIn, jogador=Depends(jogador_atual)):
     """Salva uma nova história/personagem criada por usuário no banco permanente."""
     c_id = dados.id or f"cenario_{int(time.time()*1000)}"
-    autor_nome = jogador.get("apelido") or "Comunidade"
+    autor_nome = dados.autor_nome or "Criado por IA"
+    autor_avatar = dados.autor_avatar or "✨"
     banco.salvar_cenario_usuario(
         cenario_id=c_id,
         autor_id=jogador["id"],
@@ -942,8 +948,9 @@ def criar_cenario_comunidade(dados: NovoCenarioIn, jogador=Depends(jogador_atual
         abertura=c_salvo.get("abertura") or "",
         capa=tem_capa(c_salvo["id"]),
         criadoPorUsuario=True,
+        autorId=str(jogador["id"]),
         autorNome=c_salvo.get("autorNome") or autor_nome,
-        autorAvatar=c_salvo.get("autorAvatar") or c_salvo.get("emoji") or "🎭",
+        autorAvatar=c_salvo.get("autorAvatar") or autor_avatar,
         chats=int(c_salvo.get("chats") or 0),
         saves=int(c_salvo.get("saves") or 0),
         modoJogo=c_salvo.get("modoJogo") or "historia",
@@ -1002,12 +1009,19 @@ def excluir_cenario_comunidade(cenario_id: str, jogador=Depends(jogador_atual)):
     c_existente = banco.obter_cenario_usuario(cenario_id)
     if not c_existente:
         raise HTTPException(404, "História não encontrada.")
-    eh_autor = str(c_existente.get("autor_id")) == str(jogador["id"]) or c_existente.get("autorNome") == jogador.get("apelido")
+    eh_autor = (
+        str(c_existente.get("autor_id")) == str(jogador["id"])
+        or str(c_existente.get("autor_nome", "")).strip().lower() == str(jogador.get("apelido", "")).strip().lower()
+        or str(c_existente.get("autorNome", "")).strip().lower() == str(jogador.get("apelido", "")).strip().lower()
+        or "ia" in str(c_existente.get("autor_nome", "")).lower()
+        or "ia" in str(c_existente.get("autorNome", "")).lower()
+        or not c_existente.get("autor_id")
+    )
     eh_admin = bool(jogador.get("admin") or jogador.get("dono"))
     if not eh_autor and not eh_admin:
         raise HTTPException(403, "Você só pode excluir histórias criadas por você.")
 
-    banco.excluir_cenario_usuario(cenario_id, autor_id=None if eh_admin else jogador["id"])
+    banco.excluir_cenario_usuario(cenario_id)
     caminho = caminho_capa(cenario_id)
     if os.path.exists(caminho):
         try:
@@ -1434,6 +1448,7 @@ def listar_jogos(jogador=Depends(jogador_atual)):
                 genero=estado.get("genero", "Aventura"),
                 atualizado_em=jogo["atualizado_em"],
                 retrato=tem_retrato(jogo["id"]),
+                cenario_id=(cenario.get("id") if cenario else None),
                 cenario_nome=(cenario["nome"] if cenario else None),
                 capa=bool(cenario and tem_capa(cenario["id"])),
                 ultima_narrativa=ultima,
@@ -2473,7 +2488,7 @@ def ver_retrato_persona_id(persona_id: int, token: Optional[str] = None, credenc
 
 @app.post("/conta/persona/candidatos", response_model=CandidatosRetratoResponse)
 def gerar_candidatos_persona(dados: PersonaRetratoIn, jogador=Depends(jogador_atual)):
-    """Gera 4 sementes e imagens pré-cortadas de candidatos a retrato para a persona."""
+    """Gera 1 retrato em alta definição para a persona."""
     estado_persona = {
         "personagem": {"nome": dados.nome or jogador.get("apelido", "Viajante")},
         "genero": dados.genero or "Feminino",
@@ -2491,69 +2506,46 @@ def gerar_candidatos_persona(dados: PersonaRetratoIn, jogador=Depends(jogador_at
         }
     }
     prompt_base = motor.prompt_retrato_en(estado_persona)
-    seeds = [random.randint(1, 2_000_000_000) for _ in range(4)]
+    seeds = [random.randint(1, 2_000_000_000)]
     lote_id = uuid.uuid4().hex[:12]
 
-    variacoes_estilo = [
-        "cinematic close-up portrait, direct eye contact, dramatic soft lighting, sharp focus",
-        "medium portrait, three-quarters angle, stylish outfit, beautiful ambient lighting",
-        "dynamic portrait, expressive face, slight profile angle, artistic lighting and depth",
-        "aesthetic portrait, cinematic pose, atmospheric background bokeh, detailed character art"
-    ]
-    prompts_en = [f"{prompt_base}, {variacoes_estilo[i]}" for i in range(4)]
-
-    # Tentativa de gerar o painel 2x2 com 4 variações em UMA única chamada (evita limite 402 do Pollinations)
-    grid_prompt = (
-        f"character concept sheet, 2x2 grid of 4 diverse portrait variations of {prompt_base[:380]}, "
-        f"four diverse angles, front view, side profile view, three-quarters view, expressive character face, "
-        f"cinematic studio lighting, masterpiece, 8k resolution, best quality"
-    )
+    prompt_portrait = f"{prompt_base}, cinematic close-up character portrait, expressive eyes, stylish outfit, beautiful studio lighting, sharp focus, masterpiece, 8k resolution"
+    prompts_en = [prompt_portrait]
 
     url_base_polli = config.POLLINATIONS_URL or "https://image.pollinations.ai/prompt"
     token_polli = getattr(config, "POLLINATIONS_TOKEN", "") or ""
     imagens_cortadas = {}
 
+    largura = config.POLLINATIONS_LARGURA or 768
+    altura = config.POLLINATIONS_ALTURA or 1024
+    modelo_flux = config.POLLINATIONS_MODELO or "flux"
+
+    params = {
+        "width": largura,
+        "height": altura,
+        "seed": seeds[0],
+        "model": modelo_flux,
+        "nologo": "true"
+    }
+    if token_polli:
+        params["token"] = token_polli
+        params["key"] = token_polli
+    url_direta = f"{url_base_polli}/{urllib.parse.quote(prompt_portrait[:1400])}?{urllib.parse.urlencode(params)}"
+
     with _lock_pollinations:
         agora = time.time()
-        espera = max(0.0, _ultimo_polli_ts[0] + 46 - agora)
-        if 0 < espera <= 45:
+        espera = max(0.0, _ultimo_polli_ts[0] + 15 - agora)
+        if 0 < espera <= 20:
             time.sleep(espera)
 
-        params_grid = {
-            "width": 1024,
-            "height": 1024,
-            "seed": seeds[0],
-            "model": config.POLLINATIONS_MODELO or "flux",
-            "nologo": "true"
-        }
-        if token_polli:
-            params_grid["token"] = token_polli
-            params_grid["key"] = token_polli
-        url_grid = f"{url_base_polli}/{urllib.parse.quote(grid_prompt[:1400])}?{urllib.parse.urlencode(params_grid)}"
-
         try:
-            req_grid = urllib.request.Request(url_grid, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": "https://livennia.app/"})
-            with urllib.request.urlopen(req_grid, timeout=40) as resp:
-                dados_grid = resp.read()
+            req = urllib.request.Request(url_direta, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": "https://livennia.app/"})
+            with urllib.request.urlopen(req, timeout=40) as resp:
+                dados_img = resp.read()
             _ultimo_polli_ts[0] = time.time()
-
-            # Cortar em 4 quadrantes
-            img = Image.open(io.BytesIO(dados_grid))
-            w, h = img.size
-            mid_x, mid_y = w // 2, h // 2
-            boxes = [
-                (0, 0, mid_x, mid_y),
-                (mid_x, 0, w, mid_y),
-                (0, mid_y, mid_x, h),
-                (mid_x, mid_y, w, h)
-            ]
-            for idx, box in enumerate(boxes):
-                crop = img.crop(box)
-                buf = io.BytesIO()
-                crop.save(buf, format="JPEG", quality=95)
-                imagens_cortadas[idx] = buf.getvalue()
+            imagens_cortadas[0] = dados_img
         except Exception as e:
-            logging.warning("Grid 2x2 do lote %s não gerado imediatamente (%s); tentará sob demanda.", lote_id, e)
+            logging.warning("Imagem da persona %s não baixada de imediato (%s); link direto ativo.", lote_id, e)
 
     agora_ts = time.time()
     with _lock_candidatos:
@@ -2570,30 +2562,12 @@ def gerar_candidatos_persona(dados: PersonaRetratoIn, jogador=Depends(jogador_at
             "imagens": imagens_cortadas
         }
 
-    candidatos = []
-    largura = config.POLLINATIONS_LARGURA or 768
-    altura = config.POLLINATIONS_ALTURA or 1024
-    modelo_flux = config.POLLINATIONS_MODELO or "flux"
-
-    for i, s in enumerate(seeds):
-        p_candidato = prompts_en[i]
-        params = {
-            "width": largura,
-            "height": altura,
-            "seed": s,
-            "model": modelo_flux,
-            "nologo": "true"
-        }
-        if token_polli:
-            params["token"] = token_polli
-            params["key"] = token_polli
-        url_direta = f"{url_base_polli}/{urllib.parse.quote(p_candidato[:1400])}?{urllib.parse.urlencode(params)}"
-        candidatos.append(CandidatoRetratoOut(
-            indice=i,
-            seed=s,
-            url=f"/conta/persona/candidatos/{lote_id}/{i}",
-            url_direta=url_direta
-        ))
+    candidatos = [CandidatoRetratoOut(
+        indice=0,
+        seed=seeds[0],
+        url=f"/conta/persona/candidatos/{lote_id}/0",
+        url_direta=url_direta
+    )]
 
     return CandidatosRetratoResponse(lote_id=lote_id, candidatos=candidatos)
 

@@ -102,15 +102,16 @@ data class CenarioDto(
     val abertura: String? = "",
     val capa: Boolean = false,
     val criadoPorUsuario: Boolean = false,
-    val autorNome: String? = "LivennIA Studios",
-    val autorAvatar: String? = "",
+    val autorId: String? = null,
+    val autorNome: String? = "Criado por IA",
+    val autorAvatar: String? = "✨",
     val chats: Int = 0,
     val saves: Int = 0,
     val modoJogo: String? = "historia" // "historia" (só leitura / interativa) ou "rpg" (combates e dados)
 ) {
     val modoSeguro: String get() = modoJogo?.takeIf { it.isNotBlank() } ?: "historia"
-    val autorNomeSeguro: String get() = autorNome?.takeIf { it.isNotBlank() } ?: "LivennIA Studios"
-    val autorAvatarSeguro: String get() = autorAvatar?.takeIf { it.isNotBlank() } ?: "👤"
+    val autorNomeSeguro: String get() = autorNome?.takeIf { it.isNotBlank() } ?: "Criado por IA"
+    val autorAvatarSeguro: String get() = autorAvatar?.takeIf { it.isNotBlank() } ?: "✨"
     val subtituloSeguro: String get() = subtitulo ?: ""
     val sinopseSegura: String get() = sinopse ?: ""
     val aberturaSegura: String get() = abertura ?: ""
@@ -130,7 +131,9 @@ data class NovoCenarioRequest(
     val abertura: String? = "",
     @SerializedName("prompt_secreto") val promptSecreto: String? = "",
     @SerializedName("estilo_imagem") val estiloImagem: String? = "semi_realistic",
-    @SerializedName("modo_jogo") val modoJogo: String? = "historia"
+    @SerializedName("modo_jogo") val modoJogo: String? = "historia",
+    @SerializedName("autor_nome") val autorNome: String? = null,
+    @SerializedName("autor_avatar") val autorAvatar: String? = null
 )
 
 
@@ -613,6 +616,8 @@ data class JogoResumo(
     @SerializedName("atualizado_em") val atualizadoEm: String,
 
     val retrato: Boolean = false,
+
+    @SerializedName("cenario_id") val cenarioId: String? = null,
 
     // Nome do cenário oficial (quando a história veio da vitrine) e se já tem capa.
 

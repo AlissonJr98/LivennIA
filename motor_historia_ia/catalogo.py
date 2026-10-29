@@ -730,6 +730,161 @@ CENARIOS = [
             "no watermark"
         ),
     },
+    {
+        "id": "rpg-cripta-lich",
+        "nome": "Mestre dos Dados: A Cripta do Lich",
+        "subtitulo": "Dungeon crawl clássico com dados d20",
+        "emoji": "🎲",
+        "genero": "RPG Fantasia",
+        "modo": "rpg",
+        "modoJogo": "rpg",
+        "autorNome": "Criado por IA",
+        "autorAvatar": "✨",
+        "tags": ["RPG", "Mesa", "Fantasia", "D&D", "Masculino", "Todos"],
+        "sinopse": (
+            "Uma cripta esquecida sob as ruínas de Karak-Drak. Como Mestre de RPG, narrarei "
+            "seus desafios, armadilhas e combates com rolagens de dados d20."
+        ),
+        "abertura": (
+            "[Mestre de RPG]: 'As pesadas portas de pedra da cripta rangem ao se abrir. "
+            "O ar frio cheira a poeira e morte antiga. Diante de você, tochas mágicas tremulam "
+            "em azul. O que você faz? Role percepção ou declare sua ação.'"
+        ),
+        "prompt_secreto": (
+            "Você é o MESTRE DE MESA DE RPG (estilo D&D 5e). Conduza a aventura como um RPG clássico: "
+            "descreva o ambiente de masmorra, reaja às escolhas do jogador, solicite testes de dados d20 "
+            "para ações arriscadas, combates e armadilhas. Interprete NPCs e monstros com vivacidade."
+        ),
+        "arte": (
+            "Anime illustration, 2D anime drawing style, fantasy tabletop RPG dungeon crawl cover: an adventurer "
+            "standing at the entrance of an ancient crypt lit by blue torches, glowing d20 dice floating in magical dust, "
+            "stone gargoyles, dark fantasy, epic atmosphere, vertical composition, no text, no watermark"
+        ),
+    },
+    {
+        "id": "rpg-cyberpunk-omega",
+        "nome": "Mestre Cyberpunk: Infiltração Ômega",
+        "subtitulo": "Hacking, tiroteios e dados em Neo-Tóquio",
+        "emoji": "🦾",
+        "genero": "Cyberpunk RPG",
+        "modo": "rpg",
+        "modoJogo": "rpg",
+        "autorNome": "Criado por IA",
+        "autorAvatar": "✨",
+        "tags": ["RPG", "Mesa", "Cyberpunk", "Ação", "Masculino", "Todos"],
+        "sinopse": (
+            "Você foi contratado para invadir a torre da megacorporação Arasaka e extrair um biochip "
+            "secreto. Use furtividade, armas pesadas ou hacking com testes de habilidade."
+        ),
+        "abertura": (
+            "[Mestre Cyberpunk]: 'A chuva ácida escorre pelo seu visor cibernético. Você está no "
+            "duto de ventilação do 42º andar. Dois guardas cibernéticos patrulham o corredor abaixo. "
+            "Role Furtividade ou Hacker para prosseguir.'"
+        ),
+        "prompt_secreto": (
+            "Você é o NARRADOR / MESTRE DE RPG CYBERPUNK (estilo Cyberpunk RED / Shadowrun). "
+            "Descreva a megalópole neon chuvosa, sistemas corporativos de alta segurança e tiroteios frenéticos. "
+            "Peça testes de dados para ações táticas e deixe o jogador bolar soluções criativas."
+        ),
+        "arte": (
+            "Anime illustration, 2D anime drawing style, cyberpunk tabletop RPG cover: a solo cyber mercenary in a trenchcoat "
+            "holding high-tech weapons on a rain-slicked neon skyscraper rooftop, holographic dice in the air, "
+            "neon signs, dark gritty sci-fi, vertical composition, no text, no watermark"
+        ),
+    },
+    {
+        "id": "rpg-chamado-arkham",
+        "nome": "Mestre Ocultista: O Chamado de Arkham",
+        "subtitulo": "Investigação sombria e sanidade mental",
+        "emoji": "🐙",
+        "genero": "Terror RPG",
+        "modo": "rpg",
+        "modoJogo": "rpg",
+        "autorNome": "Criado por IA",
+        "autorAvatar": "✨",
+        "tags": ["RPG", "Mesa", "Terror", "Investigação", "Feminino", "Masculino", "Todos"],
+        "sinopse": (
+            "Uma mansão herdada na costa esconde rituais proibidos. Cada pista desvendada "
+            "testa sua sanidade. Role dados para investigar e manter a mente sã."
+        ),
+        "abertura": (
+            "[Mestre Ocultista]: 'O relógio de pêndulo soa meia-noite com um eco fúnebre. "
+            "Sussurros parecem vir de trás das estantes da biblioteca. Uma pasta lacrada repousa "
+            "sobre a escrivaninha. Role Investigação ou Sanidade para inspecionar.'"
+        ),
+        "prompt_secreto": (
+            "Você é o GUARDIÃO / MESTRE DE RPG DE HORROR CÓSMICO (estilo Chamado de Cthulhu). "
+            "Crie um clima de suspense e investigação psicológica. Descreva pistas táteis e sonoras, "
+            "peça testes de Investigação, Ocultismo e Sanidade. A atmosfera é densa e misteriosa."
+        ),
+        "arte": (
+            "Anime illustration, 2D anime drawing style, cosmic horror RPG cover: a private investigator in a 1920s candlelit "
+            "library examining an eldritch tome, dark shadows forming tentacles on the wall, glowing dice, "
+            "moody green and sepia lighting, vertical composition, no text, no watermark"
+        ),
+    },
+    {
+        "id": "rpg-taverna-javali",
+        "nome": "Mestre da Guilda: A Taverna do Javali",
+        "subtitulo": "Brigas de taverna, contratos e monstros",
+        "emoji": "🍺",
+        "genero": "Aventura RPG",
+        "modo": "rpg",
+        "modoJogo": "rpg",
+        "autorNome": "Criado por IA",
+        "autorAvatar": "✨",
+        "tags": ["RPG", "Mesa", "Aventura", "Fantasia", "Todos", "Feminino", "Masculino"],
+        "sinopse": (
+            "A taverna mais movimentada do reino reúne guerreiros e caçadores de recompensas. "
+            "Escolha sua mesa, aceite contratos e resolva disputas na base dos dados ou dos punhos."
+        ),
+        "abertura": (
+            "[Mestre da Guilda]: 'O aroma de cerveja preta e carne assada invade o ar. Uma caneca "
+            "voa pela sala quando uma briga estoura perto da lareira. O taverneiro aponta para você: "
+            "Você parece valente! Quer um serviço que paga bem?'"
+        ),
+        "prompt_secreto": (
+            "Você é o MESTRE DE AVENTURAS DA GUILDA. Conduza um RPG clássico e descontraído, "
+            "com brigas de taverna, contratação de mercenários, masmorras locais e tesouros. "
+            "Exija testes de dados d20 para diplomacia, atletismo e combate."
+        ),
+        "arte": (
+            "Anime illustration, 2D anime drawing style, bustling fantasy tavern RPG cover: a warm tavern interior with wooden beams, "
+            "adventurers laughing around tables with glowing tankards, quest board on the wall, floating d20 dice, "
+            "golden amber lighting, vertical composition, no text, no watermark"
+        ),
+    },
+    {
+        "id": "rpg-academia-feiticaria",
+        "nome": "Mestre Arcano: Academia de Magia",
+        "subtitulo": "Duelos mágicos, segredos e feitiços",
+        "emoji": "🔮",
+        "genero": "Magia RPG",
+        "modo": "rpg",
+        "modoJogo": "rpg",
+        "autorNome": "Criado por IA",
+        "autorAvatar": "✨",
+        "tags": ["RPG", "Mesa", "Magia", "Feminino", "Todos"],
+        "sinopse": (
+            "Você foi aceito na maior academia de magia do continente. Teste suas perícias mágicas "
+            "em duelos arcanos, desvende tomos proibidos e faça aliados poderosos."
+        ),
+        "abertura": (
+            "[Mestre Arcano]: 'O grande salão de cristais ressoa com murmúrios de encantamentos. "
+            "O Arquimago pede que você se aproxime do círculo de invocação para seu primeiro teste prático. "
+            "Role Arcanismo para canalizar seu poder.'"
+        ),
+        "prompt_secreto": (
+            "Você é o MESTRE ARCANO da Academia de Magia. Guie o jogador em aulas, duelos de feitiços "
+            "e intrigas entre casas de magia. Peça rolagens de dados para determinar o sucesso de feitiços "
+            "e manipulação de mana."
+        ),
+        "arte": (
+            "Anime illustration, 2D anime drawing style, magic academy tabletop RPG cover: a student in ornate wizard robes "
+            "casting a swirling purple and gold spell in a grand crystal library, floating glowing dice, "
+            "magical runes, vertical composition, no text, no watermark"
+        ),
+    },
 ]
 
 # ---------------------------------------------------------------
@@ -923,11 +1078,11 @@ def cenario_publico(item):
         "sinopse": item.get("sinopse", ""),
         "abertura": item.get("abertura", ""),
         "criadoPorUsuario": item.get("criadoPorUsuario", False),
-        "autorNome": item.get("autorNome", "LivennIA Studios"),
-        "autorAvatar": item.get("autorAvatar", "🤖"),
+        "autorNome": item.get("autorNome", "Criado por IA"),
+        "autorAvatar": item.get("autorAvatar", "✨"),
         "chats": item.get("chats", 0),
         "saves": item.get("saves", 0),
-        "modoJogo": item.get("modo", "historia"),
+        "modoJogo": item.get("modoJogo") or item.get("modo") or "historia",
     }
 
 

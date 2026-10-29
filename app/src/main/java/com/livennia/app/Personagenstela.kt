@@ -225,6 +225,8 @@ fun PersonagensTela(vm: AppViewModel) {
 
     var cenarioPreviaDetalhes by remember { mutableStateOf<CenarioDto?>(null) }
 
+    var cenarioContinuarOuNovoGlobal by remember { mutableStateOf<Pair<CenarioDto, JogoResumo>?>(null) }
+
 
 
     Scaffold(
@@ -284,7 +286,20 @@ fun PersonagensTela(vm: AppViewModel) {
 
                     2 -> AbaExplorar(
                         vm,
-                        onAbrirDetalhes = { cenarioPreviaDetalhes = it },
+                        onAbrirDetalhes = { cenario ->
+                            val jogoExistente = vm.jogos.firstOrNull {
+                                (!it.encerrado) && (
+                                    (it.cenarioId != null && it.cenarioId == cenario.id) ||
+                                    (it.cenarioNome != null && it.cenarioNome.equals(cenario.nome, ignoreCase = true)) ||
+                                    it.nome.equals(cenario.nome, ignoreCase = true)
+                                )
+                            }
+                            if (jogoExistente != null) {
+                                cenarioContinuarOuNovoGlobal = Pair(cenario, jogoExistente)
+                            } else {
+                                cenarioPreviaDetalhes = cenario
+                            }
+                        },
                         onAbrirCriacao = {
                             if (vm.personas.isEmpty()) {
                                 Toast.makeText(contexto, "Você precisa criar sua Persona primeiro para que o Bot saiba quem você é!", Toast.LENGTH_LONG).show()
@@ -405,11 +420,82 @@ fun PersonagensTela(vm: AppViewModel) {
                     Toast.makeText(contexto, "Você precisa criar sua Persona primeiro para que o Bot saiba quem você é!", Toast.LENGTH_LONG).show()
                     vm.mostrarModalPersonaObrigatorio = true
                 } else {
-                    cenarioPreviaDetalhes = null
-                    val modo = cenario.modoSeguro
-                    vm.iniciarHistoriaDireta(cenario, modo)
+                    val jogoExistente = vm.jogos.firstOrNull {
+                        (!it.encerrado) && (
+                            (it.cenarioId != null && it.cenarioId == cenario.id) ||
+                            (it.cenarioNome != null && it.cenarioNome.equals(cenario.nome, ignoreCase = true)) ||
+                            it.nome.equals(cenario.nome, ignoreCase = true)
+                        )
+                    }
+                    if (jogoExistente != null) {
+                        cenarioPreviaDetalhes = null
+                        cenarioContinuarOuNovoGlobal = Pair(cenario, jogoExistente)
+                    } else {
+                        cenarioPreviaDetalhes = null
+                        val modo = cenario.modoSeguro
+                        vm.iniciarHistoriaDireta(cenario, modo)
+                    }
                 }
             }
+        )
+    }
+
+    cenarioContinuarOuNovoGlobal?.let { (cenario, jogo) ->
+        AlertDialog(
+            onDismissRequest = { cenarioContinuarOuNovoGlobal = null },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("⚡", fontSize = 22.sp)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Jornada em Andamento", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Você já tem uma jornada iniciada em '${cenario.nome}' (Turno ${jogo.turno}).",
+                        color = Color(0xFFCCCED9),
+                        fontSize = 14.sp
+                    )
+                    Text(
+                        "Deseja continuar de onde parou ou começar uma nova história do início?",
+                        color = TextoSuave,
+                        fontSize = 13.sp
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val jId = jogo.jogoId
+                        cenarioContinuarOuNovoGlobal = null
+                        cenarioPreviaDetalhes = null
+                        vm.abrirJogo(jId)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Ouro)
+                ) {
+                    Text("▶️ Continuar Jornada", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = {
+                            cenarioContinuarOuNovoGlobal = null
+                            cenarioPreviaDetalhes = null
+                            val modo = cenario.modoSeguro
+                            vm.iniciarHistoriaDireta(cenario, modo)
+                        }
+                    ) {
+                        Text("✨ Nova História", color = Color(0xFF7C4DFF), fontWeight = FontWeight.Bold)
+                    }
+                    TextButton(onClick = { cenarioContinuarOuNovoGlobal = null }) {
+                        Text("Cancelar", color = Color(0xFF8E8E93))
+                    }
+                }
+            },
+            containerColor = Color(0xFF16161F),
+            shape = RoundedCornerShape(18.dp)
         )
     }
 
@@ -1165,6 +1251,10 @@ private fun AbaExplorar(
 
     var filtroOrigem by rememberSaveable { mutableStateOf("Todos") } // "Todos", "IA", "Usuarios"
 
+    var filtroModoJogo by rememberSaveable { mutableStateOf("Todos") } // "Todos", "Historia", "RPG"
+
+    var filtroPublico by rememberSaveable { mutableStateOf("Todos") } // "Todos", "Feminino", "Masculino"
+
     var filtroGeneroRanking by rememberSaveable { mutableStateOf("Todos") } // "Todos", "Feminino", "Masculino"
 
     var filtroPeriodoRanking by rememberSaveable { mutableStateOf("Semanal") } // "Semanal", "Geral"
@@ -1211,7 +1301,7 @@ private fun AbaExplorar(
 
     // Filtragem para o feed Explorar
 
-    val catalogoFiltrado = remember(todosOsCenarios, busca, estiloFiltro, filtroOrigem) {
+    val catalogoFiltrado = remember(todosOsCenarios, busca, estiloFiltro, filtroOrigem, filtroModoJogo, filtroPublico) {
 
         val termo = busca.trim().lowercase()
 
@@ -1222,6 +1312,42 @@ private fun AbaExplorar(
                 "IA" -> !c.criadoPorUsuario
 
                 "Usuarios" -> c.criadoPorUsuario
+
+                else -> true
+
+            }
+
+            val bateModo = when (filtroModoJogo) {
+
+                "Historia" -> c.modoSeguro != "rpg"
+
+                "RPG" -> c.modoSeguro == "rpg"
+
+                else -> true
+
+            }
+
+            val batePublico = when (filtroPublico) {
+
+                "Feminino" -> c.tagsSeguras.any {
+                    it.contains("Feminino", ignoreCase = true) ||
+                    it.contains("Elas", ignoreCase = true) ||
+                    it.contains("Romance", ignoreCase = true) ||
+                    it.contains("Enemies to Lovers", ignoreCase = true) ||
+                    it.contains("CEO", ignoreCase = true) ||
+                    it.contains("Máfia", ignoreCase = true)
+                }
+
+                "Masculino" -> c.tagsSeguras.any {
+                    it.contains("Masculino", ignoreCase = true) ||
+                    it.contains("Eles", ignoreCase = true) ||
+                    it.contains("Androide", ignoreCase = true) ||
+                    it.contains("Caçadora", ignoreCase = true) ||
+                    it.contains("Vampira", ignoreCase = true) ||
+                    it.contains("Cassino", ignoreCase = true) ||
+                    it.contains("Ação", ignoreCase = true) ||
+                    it.contains("Cyberpunk", ignoreCase = true)
+                }
 
                 else -> true
 
@@ -1241,7 +1367,7 @@ private fun AbaExplorar(
 
                 c.tagsSeguras.any { it.lowercase().contains(termo) }
 
-            bateOrigem && bateEstilo && bateBusca
+            bateOrigem && bateModo && batePublico && bateEstilo && bateBusca
 
         }
 
@@ -1941,54 +2067,82 @@ private fun AbaExplorar(
 
 
 
-                // FILTRO DE ORIGEM: [ Tudo | 🤖 IA Oficial | 👥 Criadas por Usuários ]
-
+                // 1. SELEÇÃO DE MODO: [ 🌌 Todos | 📖 Histórias (Livro) | 🎲 RPG de Mesa ]
                 item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
-
                     Row(
-
                         modifier = Modifier
-
                             .fillMaxWidth()
-
                             .horizontalScroll(rememberScrollState()),
-
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
-
                     ) {
-
                         AbaOrigemPill(
-
-                            titulo = "🔥 Tudo",
-
-                            selecionado = filtroOrigem == "Todos",
-
-                            aoClicar = { filtroOrigem = "Todos" }
-
+                            titulo = "🌌 Todos os Modos",
+                            selecionado = filtroModoJogo == "Todos",
+                            aoClicar = { filtroModoJogo = "Todos" }
                         )
-
                         AbaOrigemPill(
-
-                            titulo = "🤖 Histórias de IA",
-
-                            selecionado = filtroOrigem == "IA",
-
-                            aoClicar = { filtroOrigem = "IA" }
-
+                            titulo = "📖 Histórias & Livro",
+                            selecionado = filtroModoJogo == "Historia",
+                            aoClicar = { filtroModoJogo = "Historia" }
                         )
-
                         AbaOrigemPill(
-
-                            titulo = "👥 Criadas por Usuários",
-
-                            selecionado = filtroOrigem == "Usuarios",
-
-                            aoClicar = { filtroOrigem = "Usuarios" }
-
+                            titulo = "🎲 RPG de Mesa",
+                            selecionado = filtroModoJogo == "RPG",
+                            aoClicar = { filtroModoJogo = "RPG" }
                         )
-
                     }
+                }
 
+                // 2. FILTRO DE PÚBLICO (Estilo Emochi: Geral | Feminino | Masculino)
+                item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        AbaOrigemPill(
+                            titulo = "🌟 Geral",
+                            selecionado = filtroPublico == "Todos",
+                            aoClicar = { filtroPublico = "Todos" }
+                        )
+                        AbaOrigemPill(
+                            titulo = "🌸 Para Elas (Feminino)",
+                            selecionado = filtroPublico == "Feminino",
+                            aoClicar = { filtroPublico = "Feminino" }
+                        )
+                        AbaOrigemPill(
+                            titulo = "⚡ Para Eles (Masculino)",
+                            selecionado = filtroPublico == "Masculino",
+                            aoClicar = { filtroPublico = "Masculino" }
+                        )
+                    }
+                }
+
+                // 3. FILTRO DE ORIGEM: [ 🔥 Tudo | 🤖 Criado por IA | 👥 Usuários ]
+                item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        AbaOrigemPill(
+                            titulo = "🔥 Tudo",
+                            selecionado = filtroOrigem == "Todos",
+                            aoClicar = { filtroOrigem = "Todos" }
+                        )
+                        AbaOrigemPill(
+                            titulo = "🤖 Criado por IA",
+                            selecionado = filtroOrigem == "IA",
+                            aoClicar = { filtroOrigem = "IA" }
+                        )
+                        AbaOrigemPill(
+                            titulo = "👥 Criadas por Usuários",
+                            selecionado = filtroOrigem == "Usuarios",
+                            aoClicar = { filtroOrigem = "Usuarios" }
+                        )
+                    }
                 }
 
 

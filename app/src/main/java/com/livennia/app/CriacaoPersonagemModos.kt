@@ -113,7 +113,12 @@ object RepositorioPersonagensComunidade {
     val criacoes = mutableStateListOf<CenarioDto>()
 
     fun adicionar(cenario: CenarioDto) {
+        criacoes.removeAll { it.id == cenario.id }
         criacoes.add(0, cenario)
+    }
+
+    fun remover(cenarioId: String) {
+        criacoes.removeAll { it.id == cenarioId }
     }
 }
 
@@ -779,8 +784,8 @@ fun WizardModoSpark(
                                 sinopse = "Criado com dinâmica '$tropaSelecionada'. Postura: $tomConversa.",
                                 abertura = "Você finalmente veio... Eu sabia que nossos caminhos se cruzariam outra vez.",
                                 criadoPorUsuario = true,
-                                autorNome = vm.apelido.ifBlank { "Você" },
-                                autorAvatar = "⚡",
+                                autorNome = "Criado por IA",
+                                autorAvatar = "✨",
                                 chats = 0,
                                 saves = 0,
                                 modoJogo = modoNarrativa
@@ -1070,8 +1075,8 @@ fun ModalModoRapido(
                                 sinopse = descricaoVisual.ifBlank { "Personagem concebido com estética $estiloImagem e narrativa envolvente." },
                                 abertura = "Estava esperando por você. O que quer saber primeiro?",
                                 criadoPorUsuario = true,
-                                autorNome = vm.apelido.ifBlank { "Você" },
-                                autorAvatar = "🎨",
+                                autorNome = "Criado por IA",
+                                autorAvatar = "✨",
                                 chats = 0,
                                 saves = 0,
                                 modoJogo = modoJogoEscolhido
@@ -1447,6 +1452,10 @@ fun DetalhesPersonagemModal(
                                     val ehAutor = cenario.criadoPorUsuario && (
                                         cenario.autorNomeSeguro.equals(apelidoUsuario, ignoreCase = true) ||
                                         cenario.autorNomeSeguro.equals(vm?.apelido, ignoreCase = true) ||
+                                        cenario.autorNomeSeguro.contains("IA", ignoreCase = true) ||
+                                        cenario.autorNomeSeguro.equals("Você", ignoreCase = true) ||
+                                        cenario.autorNomeSeguro.equals("Comunidade", ignoreCase = true) ||
+                                        RepositorioPersonagensComunidade.criacoes.any { it.id == cenario.id } ||
                                         vm?.conta?.dono == true
                                     )
                                     if (ehAutor) {

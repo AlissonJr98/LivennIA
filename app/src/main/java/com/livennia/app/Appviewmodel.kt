@@ -1409,7 +1409,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     tags = cenario.tags ?: emptyList(),
                     sinopse = cenario.sinopse,
                     abertura = cenario.abertura,
-                    modoJogo = cenario.modoJogo ?: "historia"
+                    modoJogo = cenario.modoJogo ?: "historia",
+                    autorNome = cenario.autorNome ?: "Criado por IA",
+                    autorAvatar = cenario.autorAvatar ?: "✨"
                 )
             )
             RepositorioPersonagensComunidade.adicionar(salvo)
@@ -1431,7 +1433,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     tags = cenario.tags ?: emptyList(),
                     sinopse = cenario.sinopse,
                     abertura = cenario.abertura,
-                    modoJogo = cenario.modoJogo ?: "historia"
+                    modoJogo = cenario.modoJogo ?: "historia",
+                    autorNome = cenario.autorNome ?: "Criado por IA",
+                    autorAvatar = cenario.autorAvatar ?: "✨"
                 )
             )
             RepositorioPersonagensComunidade.adicionar(salvo)
@@ -1442,7 +1446,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun excluirCenario(cenarioId: String, onSucesso: () -> Unit = {}) {
         executar("Excluindo história...") { api ->
-            api.excluirCenario(cenarioId)
+            try {
+                api.excluirCenario(cenarioId)
+            } catch (_: Exception) {
+            }
+            RepositorioPersonagensComunidade.remover(cenarioId)
+            catalogo = catalogo.filter { it.id != cenarioId }
             carregarCatalogo()
             onSucesso()
         }
