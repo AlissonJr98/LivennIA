@@ -130,22 +130,24 @@ val ESTILOS_IMAGEM_PERSONA = listOf(
 )
 
 val TAGS_DISPONIVEIS_CATEGORIZADAS = mapOf(
-    "Aparência Física" to listOf(
-        "Alto", "Baixo", "Atlético", "Musculoso", "Magro", "Elegante",
-        "Cabelo Curto", "Cabelo Longo", "Cabelo Cacheado", "Cabelo Ondulado",
-        "Loiro", "Moreno", "Ruivo", "Cabelo Preto", "Cabelo Branco",
-        "Olhos Azuis", "Olhos Verdes", "Olhos Castanhos", "Olhos Claros",
-        "Barba", "Óculos", "Tatuagem", "Sardas", "Cicatriz"
+    "Personalidade" to listOf(
+        "Romântico", "Gentil", "Sedutor", "Carinhoso", "Possessivo", "Controlador",
+        "Provocador", "Leal", "Brincalhão", "Calmo", "Sarcástico", "Protetor",
+        "Confiante", "Misterioso", "Inteligente", "Corajoso", "Sensível", "Sério",
+        "Manipulador", "Arrogante", "Hostil", "Ciumento", "Dominante", "Emocional",
+        "Introvertido", "Extrovertido", "Determinado", "Afeituoso"
     ),
-    "Personalidade & Vibe" to listOf(
-        "Gentil", "Reservado", "Extrovertido", "Misterioso", "Inteligente",
-        "Leal", "Corajoso", "Calmo", "Romântico", "Sarcástico",
-        "Protetor", "Líder", "Curioso", "Sensível", "Sério", "Confiante"
+    "Estilo de História & Vibe" to listOf(
+        "Romance", "Sobrenatural", "Máfia", "Rivalidade", "Enemies to Lovers",
+        "Casamento Forçado", "Amor Proibido", "Fantasia", "Crime", "Mistério",
+        "Terror", "RPG", "Drama", "Fatia da Vida", "BL", "Comédia", "Ação",
+        "Cyberpunk", "Amante Obsessivo", "Conflito", "Superpoderes", "Romance Sombrio"
     ),
-    "Papel & Estilo" to listOf(
-        "Casual", "Formal", "Elegante", "Armadura", "Moletom",
-        "Estudante", "Guerreiro", "Detetive", "Artista", "Mago",
-        "Cientista", "Viajante", "Nobre", "Rebelde"
+    "Identidade & Arquétipo" to listOf(
+        "Rival", "Amigo", "Mafioso", "Vampiro", "Elfo", "Sobrenatural",
+        "CEO", "Herdeiro", "Detetive", "Mago", "Guerreiro", "Cavaleiro",
+        "Inimigo", "Cônjuge", "Namorado", "Parceiro", "Ídolo", "Rebelde",
+        "Estudante", "Aristocrata", "Líder", "Capturador"
     )
 )
 
@@ -1689,10 +1691,10 @@ private fun TelaCriarEditarPersona(
                 }
             }
 
-            // 4. Campo de descrição do que deve aparecer na imagem (Imagem 4)
+            // 4. Campo de descrição de Aparência Física escrita pelo usuário
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    "Conteúdo visual da imagem",
+                    "Aparência física do personagem",
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 13.sp,
                     color = TextoClaro
@@ -1705,16 +1707,20 @@ private fun TelaCriarEditarPersona(
                         .fillMaxWidth()
                         .defaultMinSize(minHeight = 84.dp)
                 ) {
+                    val textoAparencia = aparencia.ifBlank { detalhesImagem }
                     BasicTextField(
-                        value = detalhesImagem,
-                        onValueChange = onDetalhesImagemChange,
+                        value = textoAparencia,
+                        onValueChange = { novo ->
+                            onAparenciaChange(novo)
+                            onDetalhesImagemChange(novo)
+                        },
                         textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp, lineHeight = 18.sp),
                         cursorBrush = SolidColor(AmareloDestaque),
                         modifier = Modifier.padding(12.dp),
                         decorationBox = { inner ->
-                            if (detalhesImagem.isEmpty()) {
+                            if (textoAparencia.isEmpty()) {
                                 Text(
-                                    "(Opcional) Conte o que deve aparecer na imagem: rosto, corpo, poses, expressões, roupa, fundo, etc.",
+                                    "Descreva aqui a aparência do seu personagem (ex: altura, tipo e cor de cabelo, olhos, roupas, acessórios, estilo...)",
                                     color = TextoMudo,
                                     fontSize = 12.sp,
                                     lineHeight = 17.sp
@@ -1726,14 +1732,14 @@ private fun TelaCriarEditarPersona(
                 }
             }
 
-            // 5. Seletor de Tags (Imagem 3 & 4)
+            // 5. Seletor de Tags (Personalidade & Estilo)
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Tags", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
+                    Text("Tags (Personalidade & Estilo)", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
                     Text("${tags.size}/5", color = AmareloDestaque, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
 
@@ -1751,7 +1757,7 @@ private fun TelaCriarEditarPersona(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            if (tags.isEmpty()) "Adicionar tags de personalidade e aparência..."
+                            if (tags.isEmpty()) "Adicionar tags de personalidade e estilo..."
                             else "Editar tags selecionadas (${tags.size}/5)",
                             color = if (tags.isEmpty()) TextoMudo else TextoClaro,
                             fontSize = 13.sp
@@ -1930,7 +1936,7 @@ private fun ModalSelecaoTagsPersona(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Tags",
+                        "Tags de Personalidade & Estilo",
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
                         color = TextoClaro
