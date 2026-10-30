@@ -125,6 +125,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.material3.OutlinedButton
 
 import androidx.compose.material3.OutlinedTextField
@@ -933,21 +934,21 @@ private fun LinhaHistoria(
     val pressInteraction = remember { MutableInteractionSource() }
     val isPressed by pressInteraction.collectIsPressedAsState()
     val cardScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.97f else 1f,
+        targetValue = if (isPressed) 0.95f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
         label = "historiaCardScale"
     )
 
     Surface(
         color = Color(0xFF131522),
-        shape = RoundedCornerShape(18.dp),
-        shadowElevation = 8.dp,
+        shape = RoundedCornerShape(20.dp),
+        shadowElevation = if (isPressed) 3.dp else 12.dp,
         border = BorderStroke(
-            1.2.dp,
+            1.5.dp,
             Brush.verticalGradient(
                 listOf(
-                    Color(0xFF7C4DFF).copy(alpha = 0.65f),
-                    Color(0xFF00E5FF).copy(alpha = 0.35f),
+                    Color(0xFF7C4DFF).copy(alpha = 0.75f),
+                    Color(0xFF00E5FF).copy(alpha = 0.45f),
                     Color(0xFF1D2136).copy(alpha = 0.5f)
                 )
             )
@@ -1089,21 +1090,21 @@ private fun LinhaAventura(
     val pressInteraction = remember { MutableInteractionSource() }
     val isPressed by pressInteraction.collectIsPressedAsState()
     val cardScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.97f else 1f,
+        targetValue = if (isPressed) 0.95f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
         label = "aventuraCardScale"
     )
 
     Surface(
         color = Color(0xFF131522),
-        shape = RoundedCornerShape(18.dp),
-        shadowElevation = 8.dp,
+        shape = RoundedCornerShape(20.dp),
+        shadowElevation = if (isPressed) 3.dp else 12.dp,
         border = BorderStroke(
-            1.2.dp,
+            1.5.dp,
             Brush.verticalGradient(
                 listOf(
-                    Color(0xFF00E5FF).copy(alpha = 0.65f),
-                    Color(0xFF7C4DFF).copy(alpha = 0.35f),
+                    Color(0xFF00E5FF).copy(alpha = 0.75f),
+                    Color(0xFF7C4DFF).copy(alpha = 0.45f),
                     Color(0xFF1D2136).copy(alpha = 0.5f)
                 )
             )
@@ -2072,180 +2073,111 @@ private fun AbaExplorar(
 
 
 
-                // 1. SELEÇÃO DE MODO: [ 🌌 Todos | 📖 Histórias (Livro) | 🎲 RPG de Mesa ]
+                // 1. CARROSSEL DE CATEGORIAS & FILTRO RÁPIDO (CLEAN & INTEGRADO)
                 item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        AbaOrigemPill(
-                            titulo = "🌌 Todos os Modos",
-                            selecionado = filtroModoJogo == "Todos",
-                            aoClicar = { filtroModoJogo = "Todos" }
-                        )
-                        AbaOrigemPill(
-                            titulo = "📖 Histórias & Livro",
-                            selecionado = filtroModoJogo == "Historia",
-                            aoClicar = { filtroModoJogo = "Historia" }
-                        )
-                        AbaOrigemPill(
-                            titulo = "🎲 RPG de Mesa",
-                            selecionado = filtroModoJogo == "RPG",
-                            aoClicar = { filtroModoJogo = "RPG" }
-                        )
-                    }
-                }
-
-                // 2. FILTRO DE PÚBLICO (Estilo Emochi: Geral | Feminino | Masculino)
-                item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        AbaOrigemPill(
-                            titulo = "🌟 Geral",
-                            selecionado = filtroPublico == "Todos",
-                            aoClicar = { filtroPublico = "Todos" }
-                        )
-                        AbaOrigemPill(
-                            titulo = "🌸 Para Elas (Feminino)",
-                            selecionado = filtroPublico == "Feminino",
-                            aoClicar = { filtroPublico = "Feminino" }
-                        )
-                        AbaOrigemPill(
-                            titulo = "⚡ Para Eles (Masculino)",
-                            selecionado = filtroPublico == "Masculino",
-                            aoClicar = { filtroPublico = "Masculino" }
-                        )
-                    }
-                }
-
-                // 3. FILTRO DE ORIGEM: [ 🔥 Tudo | 🤖 Criado por IA | 👥 Usuários ]
-                item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        AbaOrigemPill(
-                            titulo = "🔥 Tudo",
-                            selecionado = filtroOrigem == "Todos",
-                            aoClicar = { filtroOrigem = "Todos" }
-                        )
-                        AbaOrigemPill(
-                            titulo = "🤖 Criado por IA",
-                            selecionado = filtroOrigem == "IA",
-                            aoClicar = { filtroOrigem = "IA" }
-                        )
-                        AbaOrigemPill(
-                            titulo = "👥 Criadas por Usuários",
-                            selecionado = filtroOrigem == "Usuarios",
-                            aoClicar = { filtroOrigem = "Usuarios" }
-                        )
-                    }
-                }
-
-
-
-                // Barra de busca + categorias compactas
-
-                item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
-
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-
-                        OutlinedTextField(
-
-                            value = busca,
-
-                            onValueChange = { busca = it.take(60) },
-
-                            leadingIcon = {
-
-                                Icon(Icons.Filled.Search, contentDescription = null, tint = TextoSuave, modifier = Modifier.size(20.dp))
-
-                            },
-
-                            trailingIcon = {
-
-                                if (busca.isNotEmpty()) {
-
-                                    IconButton(onClick = { busca = "" }) {
-
-                                        Icon(Icons.Filled.Close, contentDescription = "Limpar busca", tint = TextoSuave, modifier = Modifier.size(18.dp))
-
-                                    }
-
-                                }
-
-                            },
-
-                            placeholder = { Text("Buscar personagem, tema ou criador...", style = MaterialTheme.typography.bodyMedium) },
-
-                            singleLine = true,
-
-                            shape = Cantos.pilula,
-
-                            modifier = Modifier.fillMaxWidth()
-
-                        )
-
-
-
+                        // Linha 1: Abas Principais de Conteúdo
                         Row(
-
                             modifier = Modifier
-
                                 .fillMaxWidth()
-
                                 .horizontalScroll(rememberScrollState()),
-
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-
-                            estilosDisponiveis.forEach { estilo ->
-
-                                val ativo = estilo == estiloFiltro
-
-                                Surface(
-
-                                    color = if (ativo) Ouro.copy(alpha = 0.20f) else SuperficieAlta,
-
-                                    shape = Cantos.pilula,
-
-                                    border = BorderStroke(1.dp, if (ativo) Ouro else Color.White.copy(alpha = 0.08f)),
-
-                                    modifier = Modifier.clickable { estiloFiltro = estilo }
-
-                                ) {
-
-                                    Text(
-
-                                        text = estilo,
-
-                                        color = if (ativo) Ouro else TextoSuave,
-
-                                        style = MaterialTheme.typography.labelSmall,
-
-                                        fontWeight = if (ativo) FontWeight.SemiBold else FontWeight.Normal,
-
-                                        modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp)
-
-                                    )
-
+                            AbaOrigemPill(
+                                titulo = "🔥 Tudo",
+                                selecionado = filtroModoJogo == "Todos" && filtroPublico == "Todos" && filtroOrigem == "Todos",
+                                aoClicar = {
+                                    filtroModoJogo = "Todos"
+                                    filtroPublico = "Todos"
+                                    filtroOrigem = "Todos"
                                 }
-
-                            }
-
+                            )
+                            AbaOrigemPill(
+                                titulo = "📖 Histórias",
+                                selecionado = filtroModoJogo == "Historia",
+                                aoClicar = {
+                                    filtroModoJogo = if (filtroModoJogo == "Historia") "Todos" else "Historia"
+                                }
+                            )
+                            AbaOrigemPill(
+                                titulo = "🎲 RPG de Mesa",
+                                selecionado = filtroModoJogo == "RPG",
+                                aoClicar = {
+                                    filtroModoJogo = if (filtroModoJogo == "RPG") "Todos" else "RPG"
+                                }
+                            )
+                            AbaOrigemPill(
+                                titulo = "🌸 Para Elas",
+                                selecionado = filtroPublico == "Feminino",
+                                aoClicar = {
+                                    filtroPublico = if (filtroPublico == "Feminino") "Todos" else "Feminino"
+                                }
+                            )
+                            AbaOrigemPill(
+                                titulo = "⚡ Para Eles",
+                                selecionado = filtroPublico == "Masculino",
+                                aoClicar = {
+                                    filtroPublico = if (filtroPublico == "Masculino") "Todos" else "Masculino"
+                                }
+                            )
+                            AbaOrigemPill(
+                                titulo = "👥 Comunidade",
+                                selecionado = filtroOrigem == "Usuarios",
+                                aoClicar = {
+                                    filtroOrigem = if (filtroOrigem == "Usuarios") "Todos" else "Usuarios"
+                                }
+                            )
                         }
 
-                    }
+                        // Linha 2: Busca elegante com cantos 3D
+                        OutlinedTextField(
+                            value = busca,
+                            onValueChange = { busca = it.take(60) },
+                            leadingIcon = {
+                                Icon(Icons.Filled.Search, contentDescription = null, tint = TextoSuave, modifier = Modifier.size(20.dp))
+                            },
+                            trailingIcon = {
+                                if (busca.isNotEmpty()) {
+                                    IconButton(onClick = { busca = "" }) {
+                                        Icon(Icons.Filled.Close, contentDescription = "Limpar busca", tint = TextoSuave, modifier = Modifier.size(18.dp))
+                                    }
+                                }
+                            },
+                            placeholder = { Text("Buscar personagem, universo ou criador...", style = MaterialTheme.typography.bodyMedium) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
 
+                        // Linha 3: Chips de estilo/gênero rápidos
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            estilosDisponiveis.forEach { estilo ->
+                                val ativo = estilo == estiloFiltro
+                                Surface(
+                                    color = if (ativo) Ouro.copy(alpha = 0.22f) else Color(0xFF131522),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, if (ativo) Ouro else Color.White.copy(alpha = 0.08f)),
+                                    shadowElevation = if (ativo) 4.dp else 1.dp,
+                                    modifier = Modifier.interativo3D(escalaPressionado = 0.92f) {
+                                        estiloFiltro = if (ativo) "Todos" else estilo
+                                    }
+                                ) {
+                                    Text(
+                                        text = estilo,
+                                        color = if (ativo) Ouro else TextoSuave,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = if (ativo) FontWeight.Bold else FontWeight.Normal,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
 
 
@@ -2385,37 +2317,25 @@ private fun AbaExplorar(
 
 
 @Composable
-
 private fun AbaOrigemPill(titulo: String, selecionado: Boolean, aoClicar: () -> Unit) {
-
     Surface(
-
-        color = if (selecionado) Ouro.copy(alpha = 0.22f) else SuperficieAlta,
-
-        shape = Cantos.pilula,
-
-        border = BorderStroke(1.dp, if (selecionado) Ouro else Color.White.copy(alpha = 0.08f)),
-
-        modifier = Modifier.clickable { aoClicar() }
-
+        color = if (selecionado) Ouro.copy(alpha = 0.25f) else Color(0xFF131522),
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(
+            1.2.dp,
+            if (selecionado) Ouro else Color.White.copy(alpha = 0.08f)
+        ),
+        shadowElevation = if (selecionado) 6.dp else 2.dp,
+        modifier = Modifier.interativo3D(escalaPressionado = 0.93f) { aoClicar() }
     ) {
-
         Text(
-
             text = titulo,
-
             color = if (selecionado) Ouro else TextoSuave,
-
             fontWeight = if (selecionado) FontWeight.Bold else FontWeight.Medium,
-
             fontSize = 12.sp,
-
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
-
         )
-
     }
-
 }
 
 
@@ -2447,7 +2367,7 @@ private fun CardCenario(
     val pressInteraction = remember { MutableInteractionSource() }
     val isPressed by pressInteraction.collectIsPressedAsState()
     val cardScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.96f else 1f,
+        targetValue = if (isPressed) 0.94f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
         label = "cardCenarioScale"
     )
@@ -2457,19 +2377,23 @@ private fun CardCenario(
             .fillMaxWidth()
             .aspectRatio(0.68f)
             .scale(cardScale)
-            .clip(RoundedCornerShape(20.dp))
+            .shadow(
+                elevation = if (isPressed) 4.dp else 12.dp,
+                shape = RoundedCornerShape(22.dp)
+            )
+            .clip(RoundedCornerShape(22.dp))
             .border(
                 BorderStroke(
-                    1.5.dp,
+                    1.8.dp,
                     Brush.verticalGradient(
                         listOf(
-                            if (cenario.criadoPorUsuario) Color(0xFF8B5CF6) else Color(0xFF00E5FF),
-                            Color(0xFF7C4DFF).copy(alpha = 0.4f),
-                            Color(0xFF131522).copy(alpha = 0.2f)
+                            if (cenario.criadoPorUsuario) Color(0xFFA78BFA) else Color(0xFF38BDF8),
+                            Color(0xFF7C4DFF).copy(alpha = 0.5f),
+                            Color(0xFF131522).copy(alpha = 0.25f)
                         )
                     )
                 ),
-                RoundedCornerShape(20.dp)
+                RoundedCornerShape(22.dp)
             )
             .clickable(
                 enabled = habilitado,
@@ -4539,20 +4463,22 @@ private fun BarraInferior(
             .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 6.dp)
     ) {
         Surface(
-            color = Color(0xF20F111D),
+            color = Color(0xF50F111D),
             shape = Cantos.grande,
-            shadowElevation = 20.dp,
+            shadowElevation = 24.dp,
             border = BorderStroke(
-                1.2.dp,
+                1.5.dp,
                 Brush.horizontalGradient(
                     listOf(
-                        Color(0xFF7C4DFF).copy(alpha = 0.65f),
-                        Color(0xFF00E5FF).copy(alpha = 0.5f),
-                        Color(0xFF7C4DFF).copy(alpha = 0.65f)
+                        Color(0xFF8B5CF6).copy(alpha = 0.8f),
+                        Color(0xFF00E5FF).copy(alpha = 0.65f),
+                        Color(0xFF8B5CF6).copy(alpha = 0.8f)
                     )
                 )
             ),
-            modifier = Modifier.fillMaxWidth().height(62.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(64.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp),
@@ -4566,25 +4492,28 @@ private fun BarraInferior(
             }
         }
 
-        // O "+" flutua por cima da pílula, no meio e na cor de destaque com animação interativa 3D
+        // O "+" flutua por cima da pílula, no meio e na cor de destaque com animação interativa 3D e efeito de profundidade
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .offset(y = (-7).dp)
+                .offset(y = (-8).dp)
                 .scale(plusScale)
-                .size(58.dp)
+                .size(60.dp)
+                .shadow(
+                    elevation = if (isPressed) 4.dp else 16.dp,
+                    shape = CircleShape
+                )
                 .clip(CircleShape)
                 .background(
-                    Brush.sweepGradient(
+                    Brush.linearGradient(
                         listOf(
-                            Color(0xFFFFD54F),
+                            Color(0xFFFFE082),
                             Color(0xFFFFB300),
-                            Color(0xFFFF8F00),
-                            Color(0xFFFFD54F)
+                            Color(0xFFFF8F00)
                         )
                     )
                 )
-                .border(2.dp, Color(0xFFFFECB3).copy(alpha = 0.85f), CircleShape)
+                .border(2.5.dp, Color(0xFFFFF9C4).copy(alpha = 0.95f), CircleShape)
                 .clickable(
                     interactionSource = pressInteraction,
                     indication = null
@@ -4595,7 +4524,7 @@ private fun BarraInferior(
                 Icons.Filled.Add,
                 contentDescription = "Nova aventura ou história",
                 tint = Color(0xFF1B1400),
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(34.dp)
             )
         }
     }

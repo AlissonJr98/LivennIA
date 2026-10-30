@@ -44,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
@@ -767,4 +768,35 @@ fun corDoPersonagem(nome: String?): Color {
     )
     val hash = Math.abs(nome.hashCode())
     return paleta[hash % paleta.size]
+}
+
+// -------------------------------------------------------------
+// EFEITOS 3D E BOTÕES INTERATIVOS
+// -------------------------------------------------------------
+@Composable
+fun Modifier.interativo3D(
+    escalaPressionado: Float = 0.94f,
+    onClick: () -> Unit
+): Modifier {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) escalaPressionado else 1f,
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+        ),
+        label = "escala3D"
+    )
+    return this
+        .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+            shadowElevation = if (isPressed) 2f else 8f
+        }
+        .clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            onClick = onClick
+        )
 }
