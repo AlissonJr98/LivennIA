@@ -22,7 +22,7 @@ class Preferencias(context: Context) {
     // IP padrão do PC na rede local (para o app no celular alcançar o servidor).
     companion object {
         const val SERVIDOR_NUVEM = "https://demanding-qualify-evaluating-grocery.trycloudflare.com"
-        const val SERVIDOR_LOCAL = "http://192.168.15.18:8000"
+        const val SERVIDOR_LOCAL = "http://192.168.15.21:8000"
     }
 
     val servidorPadrao = SERVIDOR_LOCAL

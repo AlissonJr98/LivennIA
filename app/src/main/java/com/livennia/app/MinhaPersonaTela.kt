@@ -2057,7 +2057,7 @@ private fun TelaSelecionarImagem(
     val contexto = LocalContext.current
     var indiceSelecionado by remember { mutableStateOf<Int?>(0) }
 
-    LaunchedEffect(vm.candidatosRetrato) {
+    LaunchedEffect(vm.candidatosRetrato.size, vm.loteCandidatosId) {
         if (vm.candidatosRetrato.isNotEmpty()) {
             indiceSelecionado = 0
         }
@@ -2144,13 +2144,13 @@ private fun TelaSelecionarImagem(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Botão "Gerar novamente" com ícone de refresh
+            // Botão "Gerar outra" com ícone de refresh
             OutlinedButton(
                 onClick = {
-                    indiceSelecionado = null
+                    indiceSelecionado = 0
                     vm.gerarCandidatosRetrato(
                         req = requestAtual,
-                        onSucesso = {},
+                        onSucesso = { indiceSelecionado = 0 },
                         onError = { Toast.makeText(contexto, it, Toast.LENGTH_SHORT).show() }
                     )
                 },
@@ -2164,7 +2164,7 @@ private fun TelaSelecionarImagem(
             ) {
                 Icon(Icons.Default.Refresh, contentDescription = null, tint = TextoClaro, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("Gerar novamente", color = TextoClaro, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text("Gerar outra", color = TextoClaro, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             }
 
             // Botão "Escolher" Amarelo

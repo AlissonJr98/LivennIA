@@ -4979,87 +4979,40 @@ fun ModalTrocarFotoPerfil(
                                         if (vm.gerandoCandidatos) {
                                             CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.Black, strokeWidth = 2.dp)
                                             Spacer(Modifier.width(8.dp))
-                                            Text("Gerando 4 Opções...", color = Color.Black, fontWeight = FontWeight.Bold)
+                                            Text("Gerando Imagem com IA...", color = Color.Black, fontWeight = FontWeight.Bold)
                                         } else {
-                                            Text("✨ Gerar 4 Opções com IA", color = Color.Black, fontWeight = FontWeight.Bold)
+                                            Text("✨ Gerar Imagem com IA", color = Color.Black, fontWeight = FontWeight.Bold)
                                         }
                                     }
                                 } else {
-                                    // Grade 2x2 com os 4 candidatos
+                                    // Retrato único gerado pela IA
                                     Text(
-                                        text = "Toque na melhor imagem para escolher:",
-                                        fontSize = 12.sp,
+                                        text = "Retrato gerado pela IA:",
+                                        fontSize = 13.sp,
                                         color = Color(0xFFF5C842),
                                         fontWeight = FontWeight.SemiBold
                                     )
                                     Spacer(Modifier.height(10.dp))
 
-                                    Column(
-                                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                                        modifier = Modifier.fillMaxWidth()
+                                    val cand0 = vm.candidatosRetrato.firstOrNull()
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(280.dp),
+                                        contentAlignment = Alignment.Center
                                     ) {
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            val cand0 = vm.candidatosRetrato.getOrNull(0)
-                                            val cand1 = vm.candidatosRetrato.getOrNull(1)
-                                            CardCandidatoQuadrado(
-                                                candidato = cand0,
-                                                indice = 0,
-                                                loteId = vm.loteCandidatosId,
-                                                carregando = vm.gerandoCandidatos,
-                                                progresso = 100,
-                                                ehSelecionado = indiceSelecionado == 0,
-                                                onSelecionar = { indiceSelecionado = 0 },
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .aspectRatio(1f)
-                                            )
-                                            CardCandidatoQuadrado(
-                                                candidato = cand1,
-                                                indice = 1,
-                                                loteId = vm.loteCandidatosId,
-                                                carregando = vm.gerandoCandidatos,
-                                                progresso = 100,
-                                                ehSelecionado = indiceSelecionado == 1,
-                                                onSelecionar = { indiceSelecionado = 1 },
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .aspectRatio(1f)
-                                            )
-                                        }
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            val cand2 = vm.candidatosRetrato.getOrNull(2)
-                                            val cand3 = vm.candidatosRetrato.getOrNull(3)
-                                            CardCandidatoQuadrado(
-                                                candidato = cand2,
-                                                indice = 2,
-                                                loteId = vm.loteCandidatosId,
-                                                carregando = vm.gerandoCandidatos,
-                                                progresso = 100,
-                                                ehSelecionado = indiceSelecionado == 2,
-                                                onSelecionar = { indiceSelecionado = 2 },
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .aspectRatio(1f)
-                                            )
-                                            CardCandidatoQuadrado(
-                                                candidato = cand3,
-                                                indice = 3,
-                                                loteId = vm.loteCandidatosId,
-                                                carregando = vm.gerandoCandidatos,
-                                                progresso = 100,
-                                                ehSelecionado = indiceSelecionado == 3,
-                                                onSelecionar = { indiceSelecionado = 3 },
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .aspectRatio(1f)
-                                            )
-                                        }
+                                        CardCandidatoQuadrado(
+                                            candidato = cand0,
+                                            indice = 0,
+                                            loteId = vm.loteCandidatosId,
+                                            carregando = vm.gerandoCandidatos,
+                                            progresso = 100,
+                                            ehSelecionado = true,
+                                            onSelecionar = { indiceSelecionado = 0 },
+                                            modifier = Modifier
+                                                .fillMaxHeight()
+                                                .aspectRatio(0.82f)
+                                        )
                                     }
 
                                     Spacer(Modifier.height(14.dp))
@@ -5070,7 +5023,7 @@ fun ModalTrocarFotoPerfil(
                                     ) {
                                         OutlinedButton(
                                             onClick = {
-                                                indiceSelecionado = null
+                                                indiceSelecionado = 0
                                                 val req = PersonaRetratoRequest(
                                                     nome = vm.apelido.ifBlank { "Viajante" },
                                                     genero = vm.personaGenero.ifBlank { "Não informado" },
@@ -5081,7 +5034,7 @@ fun ModalTrocarFotoPerfil(
                                                 )
                                                 vm.gerarCandidatosRetrato(
                                                     req = req,
-                                                    onSucesso = {},
+                                                    onSucesso = { indiceSelecionado = 0 },
                                                     onError = { Toast.makeText(contexto, it, Toast.LENGTH_SHORT).show() }
                                                 )
                                             },
@@ -5090,17 +5043,13 @@ fun ModalTrocarFotoPerfil(
                                             shape = RoundedCornerShape(12.dp)
                                         ) {
                                             Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                                            Spacer(Modifier.width(4.dp))
-                                            Text("Recriar", color = Color.White, fontSize = 13.sp)
+                                            Spacer(Modifier.width(6.dp))
+                                            Text("Gerar outra", color = Color.White, fontSize = 13.sp)
                                         }
 
                                         Button(
                                             onClick = {
-                                                val idx = indiceSelecionado
-                                                if (idx == null) {
-                                                    Toast.makeText(contexto, "Selecione uma imagem primeiro!", Toast.LENGTH_SHORT).show()
-                                                    return@Button
-                                                }
+                                                val idx = indiceSelecionado ?: 0
                                                 vm.confirmarFotoPerfil(
                                                     loteId = vm.loteCandidatosId,
                                                     indice = idx,
@@ -5113,7 +5062,7 @@ fun ModalTrocarFotoPerfil(
                                                     }
                                                 )
                                             },
-                                            enabled = indiceSelecionado != null && !vm.gerandoCandidatos && !vm.ocupado,
+                                            enabled = cand0 != null && !vm.gerandoCandidatos && !vm.ocupado,
                                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5C842)),
                                             shape = RoundedCornerShape(12.dp),
                                             modifier = Modifier.weight(1.3f).height(48.dp)

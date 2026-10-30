@@ -2534,13 +2534,13 @@ def gerar_candidatos_persona(dados: PersonaRetratoIn, jogador=Depends(jogador_at
 
     with _lock_pollinations:
         agora = time.time()
-        espera = max(0.0, _ultimo_polli_ts[0] + 15 - agora)
-        if 0 < espera <= 20:
+        espera = max(0.0, _ultimo_polli_ts[0] + 2 - agora)
+        if 0 < espera <= 10:
             time.sleep(espera)
 
         try:
             req = urllib.request.Request(url_direta, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": "https://livennia.app/"})
-            with urllib.request.urlopen(req, timeout=40) as resp:
+            with urllib.request.urlopen(req, timeout=30) as resp:
                 dados_img = resp.read()
             _ultimo_polli_ts[0] = time.time()
             imagens_cortadas[0] = dados_img
