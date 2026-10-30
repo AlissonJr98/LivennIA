@@ -300,6 +300,9 @@ fun PersonagensTela(vm: AppViewModel) {
                                 cenarioPreviaDetalhes = cenario
                             }
                         },
+                        onAbrirInfo = { cenario ->
+                            cenarioPreviaDetalhes = cenario
+                        },
                         onAbrirCriacao = {
                             if (vm.personas.isEmpty()) {
                                 Toast.makeText(contexto, "Você precisa criar sua Persona primeiro para que o Bot saiba quem você é!", Toast.LENGTH_LONG).show()
@@ -1238,6 +1241,8 @@ private fun AbaExplorar(
     vm: AppViewModel,
 
     onAbrirDetalhes: (CenarioDto) -> Unit = {},
+
+    onAbrirInfo: (CenarioDto) -> Unit = onAbrirDetalhes,
 
     onAbrirCriacao: () -> Unit = {}
 
@@ -2361,7 +2366,7 @@ private fun AbaExplorar(
                             onAbrirDetalhes(cenario)
                         },
 
-                        onAbrirInfo = { onAbrirDetalhes(cenario) },
+                        onAbrirInfo = { onAbrirInfo(cenario) },
 
                         onGerarCapa = { vm.gerarCapaDoCenario(cenario.id) }
 

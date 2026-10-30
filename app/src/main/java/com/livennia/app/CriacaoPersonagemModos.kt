@@ -1449,7 +1449,7 @@ fun DetalhesPersonagemModal(
                                     expanded = menuMaisAberto,
                                     onDismissRequest = { menuMaisAberto = false }
                                 ) {
-                                    val ehAutor = cenario.criadoPorUsuario && (
+                                    val ehAutor = cenario.criadoPorUsuario ||
                                         cenario.autorNomeSeguro.equals(apelidoUsuario, ignoreCase = true) ||
                                         cenario.autorNomeSeguro.equals(vm?.apelido, ignoreCase = true) ||
                                         cenario.autorNomeSeguro.contains("IA", ignoreCase = true) ||
@@ -1457,7 +1457,6 @@ fun DetalhesPersonagemModal(
                                         cenario.autorNomeSeguro.equals("Comunidade", ignoreCase = true) ||
                                         RepositorioPersonagensComunidade.criacoes.any { it.id == cenario.id } ||
                                         vm?.conta?.dono == true
-                                    )
                                     if (ehAutor) {
                                         DropdownMenuItem(
                                             text = { Text("✏️ Editar História") },

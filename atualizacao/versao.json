@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 31,
-  "versaoNome": "1.7.1",
-  "notas": "Separação estrita entre os modos RPG e História: dados exclusivos do Modo RPG (Mesa de RPG e combates) e Modo História 100% focado no elenco, diálogos e literatura sem dados.",
+  "versaoCodigo": 35,
+  "versaoNome": "1.7.5",
+  "notas": "Geração única de imagem com botão Gerar outra na persona e exclusão/edição direta de histórias criadas.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }
