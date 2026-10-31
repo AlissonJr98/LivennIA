@@ -5,6 +5,11 @@ import android.speech.tts.TextToSpeech
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -18,9 +23,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -50,6 +57,7 @@ import android.widget.Toast
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Icon
@@ -475,6 +483,62 @@ fun JogoTela(vm: AppViewModel) {
                 jogo = jogo,
                 onAbrirDialogo = { dialogo = it }
             )
+
+            // ---- Termômetro de Vínculo & Nível de Afinidade (Estilo Emochi/Visual Novel) ----
+            val progressoVinculo = remember(jogo.turno) {
+                ((jogo.turno * 12) % 100) / 100f
+            }
+            val nivelVinculo = remember(jogo.turno) {
+                when {
+                    jogo.turno <= 3 -> "Desconhecido"
+                    jogo.turno <= 7 -> "Curioso"
+                    jogo.turno <= 14 -> "Amistoso"
+                    jogo.turno <= 22 -> "Companheiro Leal"
+                    else -> "Vínculo Eterno"
+                }
+            }
+            Surface(
+                color = Color(0xFF131522),
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.dp, Color(0xFFFF4081).copy(alpha = 0.35f)),
+                shadowElevation = 4.dp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 4.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("💖", fontSize = 13.sp)
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "Vínculo: $nivelVinculo",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFFFF80AB),
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Box(
+                        modifier = Modifier
+                            .width(80.dp)
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(Color(0xFF232538))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(progressoVinculo.coerceAtLeast(0.15f))
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(Color(0xFFFF4081), Color(0xFFFF80AB))
+                                    )
+                                )
+                        )
+                    }
+                }
+            }
 
             // ---- Vida e itens: um cartão solto, arredondado (a linguagem da referência) ----
             Surface(
@@ -1092,17 +1156,84 @@ private fun CardFalaGrupo(
     }
 }
 
-// ---- Indicador de que o narrador está escrevendo ----
+// ---- Indicador de que o narrador está escrevendo (Estilo 3D com Bolhas Orgânicas) ----
 @Composable
-private fun BlocoDigitando() {
-    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-        Box(
-            modifier = Modifier.size(16.dp).background(Ouro, RoundedCornerShape(50)),
-            contentAlignment = Alignment.Center
-        ) {}
-        Spacer(Modifier.width(10.dp))
-        Box(modifier = Modifier.width(110.dp).padding(top = 6.dp)) {
-            ShimmerBox(modifier = Modifier.fillMaxWidth().height(12.dp))
+private fun BlocoDigitando(nomePersonagem: String = "Digitando...") {
+    val infiniteTransition = rememberInfiniteTransition(label = "bolhasDigitando")
+    val ponto1 by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = -6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(450),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "p1"
+    )
+    val ponto2 by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = -6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(450, delayMillis = 150),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "p2"
+    )
+    val ponto3 by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = -6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(450, delayMillis = 300),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "p3"
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Surface(
+            color = Color(0xFF131522),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, Color(0xFF7C4DFF).copy(alpha = 0.35f)),
+            shadowElevation = 8.dp
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = nomePersonagem,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextoSuave,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(Modifier.width(4.dp))
+                Box(
+                    modifier = Modifier
+                        .offset(y = ponto1.dp)
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(Ouro)
+                )
+                Box(
+                    modifier = Modifier
+                        .offset(y = ponto2.dp)
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF7C4DFF))
+                )
+                Box(
+                    modifier = Modifier
+                        .offset(y = ponto3.dp)
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF00E5FF))
+                )
+            }
         }
     }
 }
@@ -1382,6 +1513,62 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                 jogo = jogo,
                 onAbrirDialogo = { dialogo = it }
             )
+
+            // ---- Termômetro de Vínculo & Nível de Afinidade (Estilo Emochi/Visual Novel) ----
+            val progressoVinculo = remember(jogo.turno) {
+                ((jogo.turno * 12) % 100) / 100f
+            }
+            val nivelVinculo = remember(jogo.turno) {
+                when {
+                    jogo.turno <= 3 -> "Desconhecido"
+                    jogo.turno <= 7 -> "Curioso"
+                    jogo.turno <= 14 -> "Amistoso"
+                    jogo.turno <= 22 -> "Companheiro Leal"
+                    else -> "Vínculo Eterno"
+                }
+            }
+            Surface(
+                color = Color(0xFF131522),
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.dp, Color(0xFFFF4081).copy(alpha = 0.35f)),
+                shadowElevation = 4.dp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 4.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("💖", fontSize = 13.sp)
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "Vínculo: $nivelVinculo",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFFFF80AB),
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Box(
+                        modifier = Modifier
+                            .width(80.dp)
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(Color(0xFF232538))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(progressoVinculo.coerceAtLeast(0.15f))
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(Color(0xFFFF4081), Color(0xFFFF80AB))
+                                    )
+                                )
+                        )
+                    }
+                }
+            }
 
             // ---- Páginas da história e diálogos (Estilo Livro) ----
             LazyColumn(
@@ -3354,10 +3541,19 @@ private fun DialogoRolagemDados(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Botão de Rolar
+                // Animação 3D do Dado Girando
+                var anguloDado by remember { mutableFloatStateOf(0f) }
+                val animAngulo by animateFloatAsState(
+                    targetValue = if (rolando) anguloDado + 720f else anguloDado,
+                    animationSpec = tween(durationMillis = 650),
+                    label = "giroDado"
+                )
+
+                // Botão de Rolar com efeito 3D
                 Button(
                     onClick = {
                         rolando = true
+                        anguloDado += 720f
                         haptico.performHapticFeedback(HapticFeedbackType.LongPress)
                         vm.rolarDado(
                             lados = ladosSelecionados,
@@ -3369,13 +3565,32 @@ private fun DialogoRolagemDados(
                             haptico.performHapticFeedback(HapticFeedbackType.LongPress)
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                    shape = RoundedCornerShape(12.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp)
+                        .interativo3D(escalaPressionado = 0.94f) {},
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Ouro)
                 ) {
-                    Text(
-                        if (rolando) "🎲 ROLANDO..." else "🎲 ROLAR d$ladosSelecionados",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            "🎲",
+                            fontSize = 22.sp,
+                            modifier = Modifier.graphicsLayer {
+                                rotationZ = animAngulo
+                                rotationX = animAngulo / 2f
+                            }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            if (rolando) "ROLANDO DADO..." else "ROLAR d$ladosSelecionados (Mesa 3D)",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = Color(0xFF1B1400)
+                        )
+                    }
                 }
 
                 // Exibição do Resultado

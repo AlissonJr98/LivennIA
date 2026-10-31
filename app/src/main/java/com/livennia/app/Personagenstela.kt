@@ -491,7 +491,16 @@ fun PersonagensTela(vm: AppViewModel) {
                             vm.iniciarHistoriaDireta(cenario, modo)
                         }
                     ) {
-                        Text("✨ Nova História", color = Color(0xFF7C4DFF), fontWeight = FontWeight.Bold)
+                        Text("✨ Nova", color = Color(0xFF7C4DFF), fontWeight = FontWeight.Bold)
+                    }
+                    TextButton(
+                        onClick = {
+                            val c = cenario
+                            cenarioContinuarOuNovoGlobal = null
+                            cenarioPreviaDetalhes = c
+                        }
+                    ) {
+                        Text("ℹ️ Detalhes", color = Color(0xFF64B5F6), fontWeight = FontWeight.Medium)
                     }
                     TextButton(onClick = { cenarioContinuarOuNovoGlobal = null }) {
                         Text("Cancelar", color = Color(0xFF8E8E93))

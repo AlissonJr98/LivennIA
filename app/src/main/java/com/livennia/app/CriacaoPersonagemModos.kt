@@ -36,6 +36,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedButton
@@ -1435,6 +1436,27 @@ fun DetalhesPersonagemModal(
                                 }
                             }
 
+                            val ehAutor = cenario.criadoPorUsuario ||
+                                cenario.autorNomeSeguro.equals(apelidoUsuario, ignoreCase = true) ||
+                                cenario.autorNomeSeguro.equals(vm?.apelido, ignoreCase = true) ||
+                                cenario.autorNomeSeguro.contains("IA", ignoreCase = true) ||
+                                cenario.autorNomeSeguro.equals("Você", ignoreCase = true) ||
+                                cenario.autorNomeSeguro.equals("Comunidade", ignoreCase = true) ||
+                                RepositorioPersonagensComunidade.criacoes.any { it.id == cenario.id } ||
+                                vm?.conta?.dono == true
+
+                            if (ehAutor) {
+                                Surface(
+                                    color = Color.Black.copy(alpha = 0.50f),
+                                    shape = CircleShape,
+                                    modifier = Modifier.size(38.dp)
+                                ) {
+                                    IconButton(onClick = { mostrarDialogoExcluir = true }) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Excluir História", tint = Color(0xFFFF5252))
+                                    }
+                                }
+                            }
+
                             Box {
                                 Surface(
                                     color = Color.Black.copy(alpha = 0.50f),
@@ -1449,14 +1471,6 @@ fun DetalhesPersonagemModal(
                                     expanded = menuMaisAberto,
                                     onDismissRequest = { menuMaisAberto = false }
                                 ) {
-                                    val ehAutor = cenario.criadoPorUsuario ||
-                                        cenario.autorNomeSeguro.equals(apelidoUsuario, ignoreCase = true) ||
-                                        cenario.autorNomeSeguro.equals(vm?.apelido, ignoreCase = true) ||
-                                        cenario.autorNomeSeguro.contains("IA", ignoreCase = true) ||
-                                        cenario.autorNomeSeguro.equals("Você", ignoreCase = true) ||
-                                        cenario.autorNomeSeguro.equals("Comunidade", ignoreCase = true) ||
-                                        RepositorioPersonagensComunidade.criacoes.any { it.id == cenario.id } ||
-                                        vm?.conta?.dono == true
                                     if (ehAutor) {
                                         DropdownMenuItem(
                                             text = { Text("✏️ Editar História") },

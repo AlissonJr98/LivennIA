@@ -1452,6 +1452,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             }
             RepositorioPersonagensComunidade.remover(cenarioId)
             catalogo = catalogo.filter { it.id != cenarioId }
+            jogos = jogos.filter { it.cenarioId != cenarioId }
             carregarCatalogo()
             onSucesso()
         }

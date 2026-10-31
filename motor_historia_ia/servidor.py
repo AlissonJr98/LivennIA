@@ -1007,19 +1007,19 @@ def editar_cenario_comunidade(cenario_id: str, dados: NovoCenarioIn, jogador=Dep
 def excluir_cenario_comunidade(cenario_id: str, jogador=Depends(jogador_atual)):
     """Exclui uma história/cenário criado pelo usuário."""
     c_existente = banco.obter_cenario_usuario(cenario_id)
-    if not c_existente:
-        raise HTTPException(404, "História não encontrada.")
-    eh_autor = (
-        str(c_existente.get("autor_id")) == str(jogador["id"])
-        or str(c_existente.get("autor_nome", "")).strip().lower() == str(jogador.get("apelido", "")).strip().lower()
-        or str(c_existente.get("autorNome", "")).strip().lower() == str(jogador.get("apelido", "")).strip().lower()
-        or "ia" in str(c_existente.get("autor_nome", "")).lower()
-        or "ia" in str(c_existente.get("autorNome", "")).lower()
-        or not c_existente.get("autor_id")
-    )
     eh_admin = bool(jogador.get("admin") or jogador.get("dono"))
-    if not eh_autor and not eh_admin:
-        raise HTTPException(403, "Você só pode excluir histórias criadas por você.")
+    if c_existente:
+        eh_autor = (
+            str(c_existente.get("autor_id")) == str(jogador["id"])
+            or str(c_existente.get("autor_nome", "")).strip().lower() == str(jogador.get("apelido", "")).strip().lower()
+            or str(c_existente.get("autorNome", "")).strip().lower() == str(jogador.get("apelido", "")).strip().lower()
+            or "ia" in str(c_existente.get("autor_nome", "")).lower()
+            or "ia" in str(c_existente.get("autorNome", "")).lower()
+            or not c_existente.get("autor_id")
+            or c_existente.get("autor_nome") in ["Você", "Voce", "Comunidade", None, ""]
+        )
+        if not eh_autor and not eh_admin:
+            raise HTTPException(403, "Você só pode excluir histórias criadas por você.")
 
     banco.excluir_cenario_usuario(cenario_id)
     caminho = caminho_capa(cenario_id)
@@ -2509,7 +2509,14 @@ def gerar_candidatos_persona(dados: PersonaRetratoIn, jogador=Depends(jogador_at
     seeds = [random.randint(1, 2_000_000_000)]
     lote_id = uuid.uuid4().hex[:12]
 
-    prompt_portrait = f"{prompt_base}, cinematic close-up character portrait, expressive eyes, stylish outfit, beautiful studio lighting, sharp focus, masterpiece, 8k resolution"
+    variacoes_estilo = [
+        "cinematic close-up portrait, expressive gaze, stylish outfit, beautiful studio rim lighting, sharp focus",
+        "dramatic character shot, dynamic volumetric lighting, confident look, high fashion aesthetic",
+        "soft natural daylight portrait, captivating eyes, detailed facial features, elegant artistic mood",
+        "atmospheric neon backlighting, intense charismatic expression, modern cinematic framing, shallow depth of field"
+    ]
+    toque_estilo = random.choice(variacoes_estilo)
+    prompt_portrait = f"{prompt_base}, {toque_estilo}, masterpiece, 8k resolution"
     prompts_en = [prompt_portrait]
 
     url_base_polli = config.POLLINATIONS_URL or "https://image.pollinations.ai/prompt"
