@@ -73,9 +73,101 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.LinearEasing
 import coil.compose.AsyncImage
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
+
+// Clique futurista 3D com amortecimento elástico e resposta tátil háptica
+fun Modifier.cliqueFuturista3D(
+    onClick: () -> Unit
+): Modifier = composed {
+    val haptico = LocalHapticFeedback.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "scale3d"
+    )
+    this
+        .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
+        .clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            onClick = {
+                try {
+                    haptico.performHapticFeedback(HapticFeedbackType.LongPress)
+                } catch (_: Exception) {}
+                onClick()
+            }
+        )
+}
+
+// Efeito de partículas sutis douradas flutuando suavemente em segundo plano (Estilo Obsidian & Ouro)
+@Composable
+fun ParticulasFlutuantesLivennIA(
+    modifier: Modifier = Modifier,
+    quantidade: Int = 20,
+    cor: Color = Ouro
+) {
+    val transicao = rememberInfiniteTransition(label = "particulas")
+    val fase by transicao.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 9000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "fase"
+    )
+
+    val particulas = remember(quantidade) {
+        List(quantidade) {
+            floatArrayOf(
+                (1..100).random() / 100f,
+                (1..100).random() / 100f,
+                (15..40).random() / 10f,
+                (20..65).random() / 100f,
+                (5..20).random() / 10f
+            )
+        }
+    }
+
+    Canvas(modifier = modifier.fillMaxSize()) {
+        val w = size.width
+        val h = size.height
+        if (w <= 0f || h <= 0f) return@Canvas
+
+        for (p in particulas) {
+            val xBase = p[0]
+            val yBase = p[1]
+            val raio = p[2]
+            val opacidadeBase = p[3]
+            val vel = p[4]
+
+            val y = ((yBase - fase * (vel * 0.18f)) % 1f + 1f) % 1f * h
+            val x = (xBase * w + kotlin.math.sin((fase * 6.28f + xBase * 10f).toDouble()).toFloat() * 16.dp.toPx()) % w
+            val opacidade = (opacidadeBase * (0.6f + 0.4f * kotlin.math.sin((fase * 6.28f * vel).toDouble()).toFloat())).coerceIn(0.08f, 0.8f)
+
+            drawCircle(
+                color = cor.copy(alpha = opacidade),
+                radius = raio.dp.toPx(),
+                center = androidx.compose.ui.geometry.Offset(x, y)
+            )
+        }
+    }
+}
 
 @Composable
 fun BarraDeVida(vida: Int, vidaMax: Int, modifier: Modifier = Modifier) {

@@ -133,6 +133,9 @@ interface LivennIAApi {
     @POST("jogos/{id}/retrato")
     suspend fun gerarRetrato(@Path("id") id: String): RetratoResponse
 
+    @POST("jogos/{id}/ilustrar-cena")
+    suspend fun ilustrarCena(@Path("id") id: String): IlustracaoCenaResponse
+
     @GET("personas")
     suspend fun listarPersonas(): List<PersonaResponse>
 

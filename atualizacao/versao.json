@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 44,
-  "versaoNome": "1.8.4",
-  "notas": "Atualização 1.8.4: Qualidade máxima para capas e imagens geradas por IA (resolução 1024x1344, prompts 8K com detalhes hiper-realistas, renderização em hardware no app e upscaling nítido de todas as capas existentes).",
+  "versaoCodigo": 45,
+  "versaoNome": "1.8.5",
+  "notas": "Atualização 1.8.5: Recursos épicos! Ilustrador de Cena com IA (botão para pintar a cena atual em 8K), Som Ambiente Imersivo sintetizado em tempo real (offline), Inventário 3D Interativo no RPG, Partículas flutuantes douradas no tema Obsidian, Insígnias de Criador e Compartilhamento nativo de histórias.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

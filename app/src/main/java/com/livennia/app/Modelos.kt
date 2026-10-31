@@ -528,11 +528,13 @@ data class PersonagemDto(
 
 
 data class CenaDto(
-
     val narrativa: String,
+    val opcoes: List<String>,
+    @SerializedName("imagem_url") val imagemUrl: String? = null
+)
 
-    val opcoes: List<String>
-
+data class IlustracaoCenaResponse(
+    @SerializedName("imagem_url") val imagemUrl: String
 )
 
 

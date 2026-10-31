@@ -313,6 +313,7 @@ class PersonagemOut(BaseModel):
 class CenaOut(BaseModel):
     narrativa: str
     opcoes: list[str]
+    imagem_url: Optional[str] = None
 
 
 class EventoOut(BaseModel):
@@ -1979,6 +1980,65 @@ def regenerar_resposta(jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
         completo=True,
         mochis=saldo_livens,
     )
+
+
+class IlustracaoCenaOut(BaseModel):
+    imagem_url: str
+
+
+@app.post("/jogos/{jogo_id}/ilustrar-cena", response_model=IlustracaoCenaOut)
+def ilustrar_cena_atual(jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
+    """Gera uma ilustração cinematográfica da cena atual do jogo usando IA."""
+    jogo = banco.obter_jogo(jogo_id, jogador["id"])
+    if jogo is None:
+        raise HTTPException(404, "Jogo não encontrado.")
+    estado = carregar_estado_do_jogo(jogo)
+    cena = estado.get("cena") or {}
+    narrativa = (cena.get("narrativa") or "").strip()
+    if not narrativa:
+        raise HTTPException(400, "Cena sem narrativa para ilustrar.")
+
+    cenario = estado.get("cenario") or {}
+    nome = cenario.get("nome") or "Cena"
+
+    prompt = (
+        f"Cinematic masterpiece illustration of the scene from '{nome}': {narrativa[:300]}. "
+        f"8k resolution, photorealistic lighting, atmospheric depth, vertical poster composition, "
+        f"intricate details, award-winning digital art, no text, no watermark, no frame"
+    )
+
+    try:
+        imagem = motor._retrato_pollinations(
+            prompt,
+            traduzir=True,
+            largura=config.POLLINATIONS_LARGURA or 1024,
+            altura=config.POLLINATIONS_ALTURA or 1344
+        )
+    except Exception as e:
+        logging.warning("Erro ao gerar ilustração da cena: %s", e)
+        raise HTTPException(503, "Não foi possível gerar a arte da cena agora.")
+
+    pasta_cenas = os.path.join(config.PASTA, "dados", "cenas")
+    os.makedirs(pasta_cenas, exist_ok=True)
+    arquivo_nome = f"{jogo_id}_{estado['turno']}.png"
+    caminho_final = os.path.join(pasta_cenas, arquivo_nome)
+    with open(caminho_final, "wb") as f:
+        f.write(imagem)
+
+    url_relativa = f"/jogos/{jogo_id}/cenas/{arquivo_nome}"
+    cena["imagem_url"] = url_relativa
+    banco.atualizar_jogo(jogo_id, jogador["id"], motor.estado_para_texto(estado), bool(jogo["encerrado"]))
+
+    return IlustracaoCenaOut(imagem_url=url_relativa)
+
+
+@app.get("/jogos/{jogo_id}/cenas/{arquivo_nome}")
+def ver_imagem_cena(jogo_id: IdDoJogo, arquivo_nome: str):
+    pasta_cenas = os.path.join(config.PASTA, "dados", "cenas")
+    caminho = os.path.join(pasta_cenas, arquivo_nome)
+    if not os.path.exists(caminho):
+        raise HTTPException(404, "Imagem de cena não encontrada.")
+    return FileResponse(caminho, media_type="image/png", headers={"Cache-Control": "public, max-age=86400"})
 
 
 @app.post("/jogos/{jogo_id}/versao", response_model=JogoOut)

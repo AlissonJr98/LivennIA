@@ -899,6 +899,31 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    var ilustrandoCena by mutableStateOf(false)
+        private set
+
+    // Gera uma ilustração cinematográfica da cena atual da história / RPG
+    fun ilustrarCenaAtual(onSucesso: () -> Unit = {}, onError: (String) -> Unit = {}) {
+        val id = jogoAtual?.jogoId ?: return
+        if (ilustrandoCena) return
+        val api = obterApi() ?: return
+        ilustrandoCena = true
+        viewModelScope.launch {
+            try {
+                val resp = api.ilustrarCena(id)
+                val cenaAtual = jogoAtual?.cena
+                if (cenaAtual != null) {
+                    jogoAtual = jogoAtual?.copy(cena = cenaAtual.copy(imagemUrl = resp.imagemUrl))
+                }
+                onSucesso()
+            } catch (e: Exception) {
+                onError(e.message ?: "Não foi possível ilustrar a cena.")
+            } finally {
+                ilustrandoCena = false
+            }
+        }
+    }
+
     // Sorteia outro avatar desenhado (e descarta o retrato por IA, se houver).
     fun sortearAvatar() {
         val id = jogoAtual?.jogoId ?: return

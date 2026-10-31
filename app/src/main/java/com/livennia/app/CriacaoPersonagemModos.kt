@@ -127,32 +127,6 @@ object RepositorioPersonagensComunidade {
 // 2. MODAL DE SELEÇÃO DO MODO DE CRIAÇÃO (IDENTIDADE LIVENNIA)
 // -------------------------------------------------------------
 @Composable
-private fun Modifier.cliqueFuturista3D(
-    onClick: () -> Unit
-): Modifier {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.96f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "scale3d"
-    )
-    return this
-        .graphicsLayer {
-            scaleX = scale
-            scaleY = scale
-        }
-        .clickable(
-            interactionSource = interactionSource,
-            indication = null,
-            onClick = onClick
-        )
-}
-
-@Composable
 fun ModalModosCriacao(
     onDismiss: () -> Unit,
     onEscolherSpark: () -> Unit,
@@ -1505,7 +1479,19 @@ fun DetalhesPersonagemModal(
                                         text = { Text("Compartilhar História") },
                                         onClick = {
                                             menuMaisAberto = false
-                                            Toast.makeText(contexto, "Link copiado para a área de transferência!", Toast.LENGTH_SHORT).show()
+                                            try {
+                                                val shareIntent = android.content.Intent().apply {
+                                                    action = android.content.Intent.ACTION_SEND
+                                                    putExtra(
+                                                        android.content.Intent.EXTRA_TEXT,
+                                                        "📖 Conheça '${cenario.nome}' no LivennIA:\n\n${cenario.sinopseSegura}\n\nJogue e viva histórias interativas com IA no LivennIA!"
+                                                    )
+                                                    type = "text/plain"
+                                                }
+                                                contexto.startActivity(android.content.Intent.createChooser(shareIntent, "Compartilhar História"))
+                                            } catch (_: Exception) {
+                                                Toast.makeText(contexto, "Link da história pronto para compartilhar!", Toast.LENGTH_SHORT).show()
+                                            }
                                         }
                                     )
                                     DropdownMenuItem(
@@ -1577,12 +1563,33 @@ fun DetalhesPersonagemModal(
                                     fontSize = 15.sp,
                                     color = Color.White
                                 )
-                                Text(
-                                    text = "Criador",
-                                    color = Color(0xFF8E8E93),
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Normal
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "Criador",
+                                        color = Color(0xFF8E8E93),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Normal
+                                    )
+                                    val badge = when {
+                                        cenario.saves >= 50 -> "👑 Mestre Narrador"
+                                        cenario.saves >= 20 -> "🔥 Em Alta"
+                                        cenario.criadoPorUsuario -> "✨ Autor"
+                                        else -> "⭐ Criador"
+                                    }
+                                    Spacer(Modifier.width(6.dp))
+                                    Surface(
+                                        color = Color(0xFF26262A),
+                                        shape = RoundedCornerShape(6.dp)
+                                    ) {
+                                        Text(
+                                            text = badge,
+                                            color = Color(0xFFF5C842),
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
                             }
 
                             // Miniaturas de outras criações do criador + seta >
