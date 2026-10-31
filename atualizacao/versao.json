@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 45,
-  "versaoNome": "1.8.5",
-  "notas": "Atualização 1.8.5: Recursos épicos! Ilustrador de Cena com IA (botão para pintar a cena atual em 8K), Som Ambiente Imersivo sintetizado em tempo real (offline), Inventário 3D Interativo no RPG, Partículas flutuantes douradas no tema Obsidian, Insígnias de Criador e Compartilhamento nativo de histórias.",
+  "versaoCodigo": 46,
+  "versaoNome": "1.8.6",
+  "notas": "Atualização 1.8.6: Modo Cinema Visual Novel em Tela Cheia, Termômetro de Humor & Emoção Dinâmico, Revelar Pensamentos Secretos do personagem, Árvore de Linha do Tempo Visual nos Savepoints, Exportação de História Completa em Livro Digital PDF nativo, Cartas de Memória Holográficas 3D, Filtro por Tropes/Arquétipos no Explorar e Capas de Histórias com enquadramento aprimorado e zoom em tela cheia.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

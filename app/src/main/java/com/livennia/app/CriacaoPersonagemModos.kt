@@ -1341,6 +1341,7 @@ fun DetalhesPersonagemModal(
     }
 
     val listaComentarios: List<ComentarioDto> = vm?.comentarios ?: remember { mutableStateListOf<ComentarioDto>() }
+    var visualizandoCapaTelaCheia by remember { mutableStateOf(false) }
 
     Dialog(
         onDismissRequest = onFechar,
@@ -1364,7 +1365,8 @@ fun DetalhesPersonagemModal(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .aspectRatio(0.82f)
+                            .aspectRatio(0.68f)
+                            .clickable { visualizandoCapaTelaCheia = true }
                     ) {
                         CapaCenario(
                             cenarioId = cenario.id,
@@ -2152,6 +2154,45 @@ fun DetalhesPersonagemModal(
                 vm?.iniciarHistoriaDireta(historia, historia.modoSeguro)
             }
         )
+    }
+
+    if (visualizandoCapaTelaCheia) {
+        Dialog(
+            onDismissRequest = { visualizandoCapaTelaCheia = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+            ) {
+                CapaCenario(
+                    cenarioId = cenario.id,
+                    temCapa = cenario.capa,
+                    emoji = cenario.emojiSeguro,
+                    nome = cenario.nome,
+                    versao = versaoCapa,
+                    alignment = Alignment.Center,
+                    recorte = RoundedCornerShape(0.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable { visualizandoCapaTelaCheia = false }
+                )
+
+                Surface(
+                    color = Color.Black.copy(alpha = 0.65f),
+                    shape = CircleShape,
+                    modifier = Modifier
+                        .statusBarsPadding()
+                        .padding(16.dp)
+                        .align(Alignment.TopEnd)
+                ) {
+                    IconButton(onClick = { visualizandoCapaTelaCheia = false }) {
+                        Icon(Icons.Default.Close, contentDescription = "Fechar", tint = Color.White)
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -1298,6 +1298,7 @@ private fun AbaExplorar(
     var busca by rememberSaveable { mutableStateOf("") }
 
     var estiloFiltro by rememberSaveable { mutableStateOf("Todos") }
+    var filtroTrope by rememberSaveable { mutableStateOf("Todos") }
 
     var menuGeneroAberto by remember { mutableStateOf(false) }
 
@@ -1343,34 +1344,20 @@ private fun AbaExplorar(
 
     // Filtragem para o feed Explorar
 
-    val catalogoFiltrado = remember(todosOsCenarios, busca, estiloFiltro, filtroOrigem, filtroModoJogo, filtroPublico) {
-
+    val catalogoFiltrado = remember(todosOsCenarios, busca, estiloFiltro, filtroOrigem, filtroModoJogo, filtroPublico, filtroTrope) {
         val termo = busca.trim().lowercase()
-
         todosOsCenarios.filter { c ->
-
             val bateOrigem = when (filtroOrigem) {
-
                 "IA" -> !c.criadoPorUsuario
-
                 "Usuarios" -> c.criadoPorUsuario
-
                 else -> true
-
             }
-
             val bateModo = when (filtroModoJogo) {
-
                 "Historia" -> c.modoSeguro != "rpg"
-
                 "RPG" -> c.modoSeguro == "rpg"
-
                 else -> true
-
             }
-
             val batePublico = when (filtroPublico) {
-
                 "Feminino" -> c.tagsSeguras.any {
                     it.contains("Feminino", ignoreCase = true) ||
                     it.contains("Elas", ignoreCase = true) ||
@@ -1379,7 +1366,6 @@ private fun AbaExplorar(
                     it.contains("CEO", ignoreCase = true) ||
                     it.contains("Máfia", ignoreCase = true)
                 }
-
                 "Masculino" -> c.tagsSeguras.any {
                     it.contains("Masculino", ignoreCase = true) ||
                     it.contains("Eles", ignoreCase = true) ||
@@ -1390,27 +1376,26 @@ private fun AbaExplorar(
                     it.contains("Ação", ignoreCase = true) ||
                     it.contains("Cyberpunk", ignoreCase = true)
                 }
-
                 else -> true
-
             }
-
             val bateEstilo = estiloFiltro == "Todos" || c.generoSeguro.equals(estiloFiltro, ignoreCase = true)
-
+            val bateTrope = when (filtroTrope) {
+                "Enemies to Lovers" -> c.tagsSeguras.any { it.contains("Enemies", ignoreCase = true) || it.contains("Lovers", ignoreCase = true) } || c.sinopseSegura.contains("rival", ignoreCase = true) || c.sinopseSegura.contains("inimig", ignoreCase = true)
+                "Isekai" -> c.tagsSeguras.any { it.contains("Isekai", ignoreCase = true) || it.contains("Reencarna", ignoreCase = true) } || c.sinopseSegura.contains("outro mundo", ignoreCase = true)
+                "Fantasia Sombria" -> c.tagsSeguras.any { it.contains("Sombria", ignoreCase = true) || it.contains("Dark", ignoreCase = true) } || c.generoSeguro.contains("Fantasia", ignoreCase = true)
+                "Cyberpunk" -> c.tagsSeguras.any { it.contains("Cyberpunk", ignoreCase = true) || it.contains("Ficção", ignoreCase = true) } || c.generoSeguro.contains("Ficção", ignoreCase = true)
+                "Romance Proibido" -> c.tagsSeguras.any { it.contains("Romance", ignoreCase = true) || it.contains("Proibido", ignoreCase = true) } || c.sinopseSegura.contains("amor", ignoreCase = true) || c.sinopseSegura.contains("segredo", ignoreCase = true)
+                "Mistério" -> c.tagsSeguras.any { it.contains("Mistério", ignoreCase = true) || it.contains("Terror", ignoreCase = true) || it.contains("Investiga", ignoreCase = true) }
+                "Sobrevivência" -> c.tagsSeguras.any { it.contains("Sobrevivência", ignoreCase = true) || it.contains("Ação", ignoreCase = true) || it.contains("Apocalipse", ignoreCase = true) }
+                else -> true
+            }
             val bateBusca = termo.isEmpty() ||
-
                 c.nome.lowercase().contains(termo) ||
-
                 c.subtituloSeguro.lowercase().contains(termo) ||
-
                 c.sinopseSegura.lowercase().contains(termo) ||
-
                 c.generoSeguro.lowercase().contains(termo) ||
-
                 c.tagsSeguras.any { it.lowercase().contains(termo) }
-
-            bateOrigem && bateModo && batePublico && bateEstilo && bateBusca
-
+            bateOrigem && bateModo && batePublico && bateEstilo && bateTrope && bateBusca
         }
 
     }
@@ -2334,7 +2319,7 @@ private fun AbaExplorar(
                             }
 
                             // Botão de Limpar Filtros quando algum filtro estiver ativo
-                            if (modoAtivo || publicoAtivo || estiloAtivo || busca.isNotBlank()) {
+                            if (modoAtivo || publicoAtivo || estiloAtivo || filtroTrope != "Todos" || busca.isNotBlank()) {
                                 Surface(
                                     color = Color(0xFF2C1B1F),
                                     shape = RoundedCornerShape(12.dp),
@@ -2344,6 +2329,7 @@ private fun AbaExplorar(
                                         filtroPublico = "Todos"
                                         filtroOrigem = "Todos"
                                         estiloFiltro = "Todos"
+                                        filtroTrope = "Todos"
                                         busca = ""
                                     }
                                 ) {
@@ -2353,6 +2339,45 @@ private fun AbaExplorar(
                                     ) {
                                         Text("✕ Limpar", color = Color(0xFFFF8A80), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                                     }
+                                }
+                            }
+                        }
+
+                        // Linha 3: Filtros de Tropes e Arquétipos Narrativos
+                        val listaTropes = listOf(
+                            "Todos" to "✨ Todos",
+                            "Enemies to Lovers" to "⚡ Enemies to Lovers",
+                            "Isekai" to "🌌 Isekai",
+                            "Fantasia Sombria" to "🖤 Fantasia Sombria",
+                            "Cyberpunk" to "🤖 Cyberpunk",
+                            "Romance Proibido" to "🔥 Romance Proibido",
+                            "Mistério" to "🕵️ Mistério",
+                            "Sobrevivência" to "⚔️ Sobrevivência"
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            listaTropes.forEach { (chave, rotulo) ->
+                                val selecionado = filtroTrope == chave
+                                Surface(
+                                    color = if (selecionado) Ouro.copy(alpha = 0.22f) else Color(0xFF131520),
+                                    shape = RoundedCornerShape(50),
+                                    border = BorderStroke(1.dp, if (selecionado) Ouro else Color.White.copy(alpha = 0.08f)),
+                                    modifier = Modifier.interativo3D(escalaPressionado = 0.93f) {
+                                        filtroTrope = chave
+                                    }
+                                ) {
+                                    Text(
+                                        text = rotulo,
+                                        color = if (selecionado) Ouro else TextoSuave,
+                                        fontSize = 11.sp,
+                                        fontWeight = if (selecionado) FontWeight.Bold else FontWeight.Normal,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                    )
                                 }
                             }
                         }

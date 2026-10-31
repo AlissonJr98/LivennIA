@@ -1,6 +1,10 @@
 package com.livennia.app
 
 import android.content.Intent
+import android.graphics.pdf.PdfDocument
+import android.graphics.Paint
+import android.graphics.Color as AndroidColor
+import androidx.compose.ui.zIndex
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
@@ -40,6 +44,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -57,6 +63,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.border
 import androidx.compose.ui.graphics.RectangleShape
@@ -168,6 +175,382 @@ fun calcularVinculo(turno: Int): NivelVinculo {
     }
 }
 
+fun extrairHumorPersonagem(narrativa: String, turno: Int): Pair<String, String> {
+    val n = narrativa.lowercase()
+    return when {
+        "sorri" in n || "rir" in n || "divert" in n || "gargalh" in n -> "😄" to "Divertido(a)"
+        "beij" in n || "abraç" in n || "rubor" in n || "coração" in n || "olhar intenso" in n -> "😍" to "Apaixonado(a)"
+        "irrit" in n || "rosn" in n || "cerr" in n || "raiva" in n || "bravo" in n -> "😡" to "Tenso(a)"
+        "medo" in n || "recu" in n || "treme" in n || "pavor" in n -> "😨" to "Em Alerta"
+        "sussurr" in n || "segredo" in n || "olha nos olhos" in n || "mistér" in n -> "😏" to "Cúmplice"
+        "firme" in n || "determina" in n || "espada" in n || "combate" in n -> "⚔️" to "Combativo(a)"
+        turno <= 2 -> "🌱" to "Cauteloso(a)"
+        turno <= 5 -> "✨" to "Curioso(a)"
+        else -> "💭" to "Reflexivo(a)"
+    }
+}
+
+fun gerarPensamentoSecreto(nome: String, situacao: String, turno: Int): String {
+    val s = situacao.lowercase()
+    return when {
+        "sorri" in s || "olhar" in s -> "\"$nome pensa: 'Não sei se deveria demonstrar tanto interesse... Mas tem algo diferente nessa pessoa que me prende.'\""
+        "espada" in s || "combate" in s || "arma" in s || "ataque" in s -> "\"$nome pensa: 'Se vacilarmos agora, é o fim. Preciso manter a guarda alta e cobrir nossa retaguarda.'\""
+        "contrato" in s || "crédito" in s || "missão" in s -> "\"$nome pensa: 'Esse contrato esconde mais do que me disseram. Se eu não tomar cuidado, nós dois vamos afundar.'\""
+        "beijo" in s || "amor" in s || "sentimento" in s -> "\"$nome pensa: 'Meu coração está disparado. Eu prometi que não me apegaria a ninguém de novo... mas já é tarde.'\""
+        "medo" in s || "sombra" in s || "perigo" in s -> "\"$nome pensa: 'Preciso fingir calma. Se perceberem o quão perto do abismo estamos, o pânico vai nos matar.'\""
+        turno <= 3 -> "\"$nome pensa: 'Ainda estou medindo cada palavra sua. Vamos ver se você é quem realmente diz ser.'\""
+        turno <= 8 -> "\"$nome pensa: 'Confesso que você superou minhas expectativas até aqui. Uma parceria promissora...'\""
+        else -> "\"$nome pensa: 'Já passamos por tanta coisa juntos que mal me lembro de como era antes de você aparecer.'\""
+    }
+}
+
+fun exportarHistoriaPdf(context: android.content.Context, jogo: JogoResponse, chat: List<MensagemDto>) {
+    try {
+        val pdfDoc = PdfDocument()
+        val paintTitulo = Paint().apply {
+            textSize = 20f
+            isFakeBoldText = true
+            color = AndroidColor.rgb(20, 20, 30)
+        }
+        val paintSub = Paint().apply {
+            textSize = 12f
+            color = AndroidColor.rgb(100, 100, 120)
+        }
+        val paintCap = Paint().apply {
+            textSize = 13f
+            isFakeBoldText = true
+            color = AndroidColor.rgb(180, 120, 20)
+        }
+        val paintTexto = Paint().apply {
+            textSize = 11f
+            color = AndroidColor.rgb(30, 30, 40)
+        }
+        val paintFala = Paint().apply {
+            textSize = 11f
+            color = AndroidColor.rgb(140, 80, 0)
+            isFakeBoldText = true
+        }
+        val paintLinha = Paint().apply {
+            color = AndroidColor.rgb(220, 200, 160)
+            strokeWidth = 1.2f
+        }
+
+        val pageWidth = 595
+        val pageHeight = 842
+        var pageNumber = 1
+        var pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create()
+        var page = pdfDoc.startPage(pageInfo)
+        var canvas = page.canvas
+
+        var y = 60f
+
+        val titulo = jogo.cenario?.nome ?: jogo.personagem.nome
+        val autor = jogo.cenario?.autorNome ?: "LivennIA"
+
+        // Cabeçalho da Primeira Página
+        canvas.drawText("LIVENNIA • CRÔNICAS INTERATIVAS", 50f, y, paintSub)
+        y += 26f
+        canvas.drawText(titulo, 50f, y, paintTitulo)
+        y += 20f
+        canvas.drawText("Autor(a): $autor  •  Gênero: ${jogo.genero}  •  Turnos: ${chat.size}", 50f, y, paintSub)
+        y += 18f
+        val dataStr = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+        canvas.drawText("Protagonista: ${jogo.personagem.nome}  •  Data do Registro: $dataStr", 50f, y, paintSub)
+        y += 24f
+        canvas.drawLine(50f, y, pageWidth - 50f, y, paintLinha)
+        y += 28f
+
+        fun quebrarLinhas(texto: String, paint: Paint, maxWidth: Float): List<String> {
+            val palavras = texto.split(Regex("\\s+"))
+            val linhas = mutableListOf<String>()
+            var linhaAtual = StringBuilder()
+            for (p in palavras) {
+                val teste = if (linhaAtual.isEmpty()) p else "$linhaAtual $p"
+                if (paint.measureText(teste) > maxWidth) {
+                    if (linhaAtual.isNotEmpty()) linhas.add(linhaAtual.toString())
+                    linhaAtual = StringBuilder(p)
+                } else {
+                    linhaAtual = StringBuilder(teste)
+                }
+            }
+            if (linhaAtual.isNotEmpty()) linhas.add(linhaAtual.toString())
+            return linhas
+        }
+
+        for ((idx, msg) in chat.withIndex()) {
+            val capTitulo = "Capítulo ${idx + 1}"
+            val linhasAcao = if (msg.acao != "[CONTINUAR_HISTORIA]" && idx > 0) {
+                quebrarLinhas("➔ ${jogo.personagem.nome}: ${msg.situacao ?: msg.acao}", paintFala, pageWidth - 100f)
+            } else emptyList()
+            val linhasNarrativa = quebrarLinhas(msg.narrativa, paintTexto, pageWidth - 100f)
+
+            val alturaBloco = 26f + (linhasAcao.size * 16f) + (linhasNarrativa.size * 16f) + 20f
+            if (y + alturaBloco > pageHeight - 60f) {
+                pdfDoc.finishPage(page)
+                pageNumber++
+                pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create()
+                page = pdfDoc.startPage(pageInfo)
+                canvas = page.canvas
+                y = 60f
+            }
+
+            canvas.drawText(capTitulo, 50f, y, paintCap)
+            y += 18f
+
+            if (linhasAcao.isNotEmpty()) {
+                for (l in linhasAcao) {
+                    canvas.drawText(l, 50f, y, paintFala)
+                    y += 16f
+                }
+                y += 4f
+            }
+
+            for (l in linhasNarrativa) {
+                canvas.drawText(l, 50f, y, paintTexto)
+                y += 16f
+            }
+            y += 22f
+        }
+
+        pdfDoc.finishPage(page)
+
+        val nomeLimpo = titulo.replace(Regex("[^a-zA-Z0-9]"), "_").take(30)
+        val arquivoPdf = java.io.File(context.cacheDir, "Livro_${nomeLimpo}.pdf")
+        val fos = java.io.FileOutputStream(arquivoPdf)
+        pdfDoc.writeTo(fos)
+        fos.close()
+        pdfDoc.close()
+
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            arquivoPdf
+        )
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "application/pdf"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_SUBJECT, "Livro Digital: $titulo")
+            putExtra(Intent.EXTRA_TEXT, "📖 Confira a história de '$titulo' registrada no LivennIA!")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(Intent.createChooser(shareIntent, "Exportar Livro Digital (PDF)"))
+    } catch (e: Exception) {
+        android.widget.Toast.makeText(context, "Erro ao exportar PDF: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+    }
+}
+
+@Composable
+fun ModoCinemaVisualNovel(
+    jogo: JogoResponse,
+    chat: List<MensagemDto>,
+    vm: AppViewModel,
+    narrativaAtual: String,
+    onFechar: () -> Unit
+) {
+    val contexto = LocalContext.current
+    var somAtivo by remember { mutableStateOf(SintetizadorAmbienteLivennIA.ativo) }
+    var visivelCinema by remember(narrativaAtual) { mutableIntStateOf(0) }
+
+    LaunchedEffect(narrativaAtual) {
+        visivelCinema = 0
+        while (visivelCinema < narrativaAtual.length) {
+            delay(16)
+            visivelCinema = minOf(narrativaAtual.length, visivelCinema + 3)
+        }
+    }
+
+    val terminouTexto = visivelCinema >= narrativaAtual.length
+    val humor = remember(narrativaAtual, jogo.turno) { extrairHumorPersonagem(narrativaAtual, jogo.turno) }
+    val vinculo = remember(jogo.turno) { calcularVinculo(jogo.turno) }
+    val nomePersonagem = jogo.cenario?.nome ?: jogo.personagem.nome
+    val cenarioId = jogo.cenario?.id
+
+    val base = ApiClient.baseUrlAtual() ?: ""
+    val urlCenaOuCapa = remember(jogo.cena.imagemUrl, cenarioId, vm.capaVersao) {
+        when {
+            !jogo.cena.imagemUrl.isNullOrBlank() -> "${base}${jogo.cena.imagemUrl}"
+            !cenarioId.isNullOrBlank() -> "${base}catalogo/$cenarioId/capa?v=${vm.capaVersao}"
+            jogo.retrato -> "${base}jogos/${jogo.jogoId}/retrato?v=${vm.retratoVersao}"
+            else -> null
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .zIndex(100f)
+            .clickable {
+                if (!terminouTexto) {
+                    visivelCinema = narrativaAtual.length
+                }
+            }
+    ) {
+        if (urlCenaOuCapa != null) {
+            AsyncImage(
+                model = ImageRequest.Builder(contexto)
+                    .data(urlCenaOuCapa)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Cena Cinemática",
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.Center,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color(0xFF13141F), Color(0xFF07080C))
+                        )
+                    )
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.55f),
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.70f),
+                            Color.Black.copy(alpha = 0.95f)
+                        )
+                    )
+                )
+        )
+
+        ParticulasFlutuantesLivennIA(
+            modifier = Modifier.fillMaxSize(),
+            quantidade = 24,
+            cor = Ouro
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                color = Color.Black.copy(alpha = 0.65f),
+                shape = Cantos.pilula,
+                border = BorderStroke(1.dp, Ouro.copy(alpha = 0.40f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("🎬 Modo Cinema", color = Ouro, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Cap. ${jogo.turno}", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                }
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Surface(
+                    color = Color.Black.copy(alpha = 0.65f),
+                    shape = CircleShape,
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                    modifier = Modifier.size(38.dp)
+                ) {
+                    IconButton(onClick = {
+                        val gen = jogo.cenario?.tags?.firstOrNull() ?: jogo.genero
+                        SintetizadorAmbienteLivennIA.alternar(gen) { somAtivo = it }
+                    }) {
+                        Text(if (somAtivo) "🎵" else "🔇", fontSize = 16.sp)
+                    }
+                }
+
+                Surface(
+                    color = Color.Black.copy(alpha = 0.65f),
+                    shape = CircleShape,
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                    modifier = Modifier.size(38.dp)
+                ) {
+                    IconButton(onClick = onFechar) {
+                        Icon(Icons.Default.Close, contentDescription = "Sair do Modo Cinema", tint = Color.White)
+                    }
+                }
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.offset(y = 10.dp).zIndex(2f).padding(start = 14.dp)
+            ) {
+                Surface(
+                    color = Color(0xFF1E2030),
+                    shape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp, bottomEnd = 6.dp, bottomStart = 6.dp),
+                    border = BorderStroke(1.5.dp, Ouro),
+                    shadowElevation = 8.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(nomePersonagem, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Text("${humor.first} ${humor.second}", color = Ouro, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+
+            Surface(
+                color = Color(0xFF0C0D16).copy(alpha = 0.94f),
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.2.dp, Brush.horizontalGradient(listOf(Ouro.copy(alpha = 0.6f), Color(0xFF7C4DFF).copy(alpha = 0.4f)))),
+                shadowElevation = 14.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Text(
+                        text = narrativaAtual.take(visivelCinema),
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        lineHeight = 23.sp
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (terminouTexto) "▼ Toque para avançar" else "•••",
+                            color = Ouro.copy(alpha = 0.75f),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+
+                        Text(
+                            text = "${vinculo.icone} Vínculo: ${vinculo.titulo}",
+                            color = Color(0xFFFF80AB),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun JogoTela(vm: AppViewModel) {
     val jogo = vm.jogoAtual ?: return
@@ -233,6 +616,7 @@ fun JogoTela(vm: AppViewModel) {
     var acaoLivre by remember(jogo.turno) { mutableStateOf("") }
     var dialogo by remember { mutableStateOf<DialogoAberto?>(null) }
     var indiceEdicao by remember { mutableStateOf<Int?>(null) }
+    var modoCinema by remember { mutableStateOf(false) }
     val corFala = MaterialTheme.colorScheme.onBackground
     val corAcao = TextoSuave
     val corNormal = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.90f)
@@ -252,6 +636,15 @@ fun JogoTela(vm: AppViewModel) {
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
+        if (modoCinema) {
+            ModoCinemaVisualNovel(
+                jogo = jogo,
+                chat = chat,
+                vm = vm,
+                narrativaAtual = narrativaAtual,
+                onFechar = { modoCinema = false }
+            )
+        }
         // Arte de Fundo Imersiva Full-Bleed do Cenário / Personagem (RPG)
         val cenarioId = jogo.cenario?.id
         val urlFundo = remember(jogo.cenario, jogo.retrato, vm.capaVersao, vm.retratoVersao) {
@@ -492,7 +885,9 @@ fun JogoTela(vm: AppViewModel) {
             BarraFerramentasLiven(
                 vm = vm,
                 jogo = jogo,
-                onAbrirDialogo = { dialogo = it }
+                onAbrirDialogo = { dialogo = it },
+                onAtivarModoCinema = { modoCinema = true },
+                onExportarPdf = { exportarHistoriaPdf(contexto, jogo, chat) }
             )
 
             // ---- Termômetro de Vínculo & Nível de Afinidade (Estilo Emochi/Visual Novel) ----
@@ -508,6 +903,7 @@ fun JogoTela(vm: AppViewModel) {
                     else -> "Vínculo Eterno"
                 }
             }
+            val humorAtual = remember(narrativaAtual, jogo.turno) { extrairHumorPersonagem(narrativaAtual, jogo.turno) }
             Surface(
                 color = Color(0xFF131522),
                 shape = RoundedCornerShape(14.dp),
@@ -516,6 +912,7 @@ fun JogoTela(vm: AppViewModel) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp, vertical = 4.dp)
+                    .clickable { dialogo = DialogoAberto.Vinculo }
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -524,7 +921,7 @@ fun JogoTela(vm: AppViewModel) {
                     Text("💖", fontSize = 13.sp)
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        "Vínculo: $nivelVinculo",
+                        "Vínculo: $nivelVinculo  •  ${humorAtual.first} ${humorAtual.second}",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color(0xFFFF80AB),
                         fontWeight = FontWeight.Bold
@@ -772,6 +1169,64 @@ fun JogoTela(vm: AppViewModel) {
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
                                                 Text("✨ Ilustração da Cena", fontSize = 11.sp, color = Ouro, fontWeight = FontWeight.SemiBold)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (!jogo.cena.imagemUrl.isNullOrBlank()) {
+                    item(key = "arte_cena_atual_historia") {
+                        val base = remember { ApiClient.baseUrlAtual() }
+                        val fullUrl = remember(jogo.cena.imagemUrl, base) {
+                            val u = jogo.cena.imagemUrl
+                            if (base != null && u != null) "${base}${u.removePrefix("/")}" else u
+                        }
+                        if (fullUrl != null) {
+                            val cabecalho = remember { ApiClient.cabecalhoAutorizacao() }
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 4.dp, vertical = 6.dp)
+                            ) {
+                                Surface(
+                                    color = Color(0xFF10121C),
+                                    shape = RoundedCornerShape(18.dp),
+                                    border = BorderStroke(1.5.dp, Ouro.copy(alpha = 0.55f)),
+                                    shadowElevation = 8.dp,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(290.dp)
+                                        .clip(RoundedCornerShape(18.dp))
+                                ) {
+                                    Box(modifier = Modifier.fillMaxSize()) {
+                                        AsyncImage(
+                                            model = ImageRequest.Builder(LocalContext.current)
+                                                .data(fullUrl)
+                                                .apply { if (cabecalho != null) addHeader("Authorization", cabecalho) }
+                                                .crossfade(true)
+                                                .allowHardware(true)
+                                                .build(),
+                                            contentDescription = "Arte da Cena Atual",
+                                            contentScale = ContentScale.Crop,
+                                            alignment = Alignment.Center,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                        Surface(
+                                            color = Color.Black.copy(alpha = 0.60f),
+                                            shape = Cantos.pilula,
+                                            modifier = Modifier
+                                                .align(Alignment.BottomStart)
+                                                .padding(10.dp)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text("✨ Ilustração da Cena Gerada por IA", style = MaterialTheme.typography.labelSmall, color = Ouro)
                                             }
                                         }
                                     }
@@ -1221,6 +1676,39 @@ private fun BlocoNarrador(
                         Text("• ${ev.texto}", color = cor, style = MaterialTheme.typography.labelSmall)
                     }
                 }
+                var revelouPensamento by remember { mutableStateOf(false) }
+                Row(modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)) {
+                    Surface(
+                        color = if (revelouPensamento) Color(0xFF6C5CE7).copy(alpha = 0.20f) else Color.White.copy(alpha = 0.06f),
+                        shape = Cantos.pilula,
+                        border = BorderStroke(1.dp, if (revelouPensamento) Color(0xFF6C5CE7).copy(alpha = 0.5f) else Color.White.copy(alpha = 0.12f)),
+                        modifier = Modifier.clickable { revelouPensamento = !revelouPensamento }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(if (revelouPensamento) "💭 Ocultar Pensamento" else "💭 Revelar Pensamento", color = if (revelouPensamento) Color(0xFFA29BFE) else TextoSuave, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+                if (revelouPensamento) {
+                    Surface(
+                        color = Color(0xFF16152B),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, Color(0xFF6C5CE7).copy(alpha = 0.40f)),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = gerarPensamentoSecreto("Personagem", texto, 5),
+                            color = Color(0xFFD6D0F5),
+                            fontSize = 12.sp,
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                            lineHeight = 17.sp,
+                            modifier = Modifier.padding(10.dp)
+                        )
+                    }
+                }
                 Spacer(Modifier.height(8.dp))
                 RodapeMensagemLiven(
                     rotuloEsquerda = hora?.let { horaDaMensagem(it) } ?: "",
@@ -1508,6 +1996,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
     var mostrarSugestoes by remember(jogo.turno) { mutableStateOf(false) }
     var dialogo by remember { mutableStateOf<DialogoAberto?>(null) }
     var indiceEdicao by remember { mutableStateOf<Int?>(null) }
+    var modoCinema by remember { mutableStateOf(false) }
 
     LaunchedEffect(chat.size, vm.ocupado, vm.acaoPendente) {
         val extras = if (vm.ocupado) (if (vm.acaoPendente != null) 2 else 1) else 0
@@ -1555,6 +2044,15 @@ private fun JogoModoHistoria(vm: AppViewModel) {
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
+        if (modoCinema) {
+            ModoCinemaVisualNovel(
+                jogo = jogo,
+                chat = chat,
+                vm = vm,
+                narrativaAtual = narrativaAtual,
+                onFechar = { modoCinema = false }
+            )
+        }
         // Arte de Fundo Imersiva Full-Bleed do Cenário / Personagem (Modo História)
         val cenarioId = jogo.cenario?.id
         val urlFundo = remember(jogo.cenario, jogo.retrato, vm.capaVersao, vm.retratoVersao, vm.personaAtiva) {
@@ -1714,7 +2212,9 @@ private fun JogoModoHistoria(vm: AppViewModel) {
             BarraFerramentasLiven(
                 vm = vm,
                 jogo = jogo,
-                onAbrirDialogo = { dialogo = it }
+                onAbrirDialogo = { dialogo = it },
+                onAtivarModoCinema = { modoCinema = true },
+                onExportarPdf = { exportarHistoriaPdf(contexto, jogo, chat) }
             )
 
             // ---- Termômetro de Vínculo & Nível de Afinidade (Estilo Emochi/Visual Novel) ----
@@ -1730,6 +2230,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                     else -> "Vínculo Eterno"
                 }
             }
+            val humorAtual = remember(narrativaAtual, jogo.turno) { extrairHumorPersonagem(narrativaAtual, jogo.turno) }
             Surface(
                 color = Color(0xFF131522),
                 shape = RoundedCornerShape(14.dp),
@@ -1738,6 +2239,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp, vertical = 4.dp)
+                    .clickable { dialogo = DialogoAberto.Vinculo }
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -1746,7 +2248,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                     Text("💖", fontSize = 13.sp)
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        "Vínculo: $nivelVinculo",
+                        "Vínculo: $nivelVinculo  •  ${humorAtual.first} ${humorAtual.second}",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color(0xFFFF80AB),
                         fontWeight = FontWeight.Bold
@@ -1945,6 +2447,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                                         }
                                         IconButton(
                                             onClick = {
+                                                vm.ilustrarCenaAtual()
                                                 Toast.makeText(contexto, "Gerando ilustração da cena com IA...", Toast.LENGTH_SHORT).show()
                                             },
                                             modifier = Modifier.size(28.dp)
@@ -1969,6 +2472,44 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                                             lineHeight = (vm.tamanhoLetraNarrador * 1.65f).sp
                                         )
                                     )
+                                    var revelouPensamentoHistoria by remember { mutableStateOf(false) }
+                                    Row(modifier = Modifier.padding(top = 6.dp, bottom = 4.dp)) {
+                                        Surface(
+                                            color = if (revelouPensamentoHistoria) Color(0xFF6C5CE7).copy(alpha = 0.20f) else Color.White.copy(alpha = 0.06f),
+                                            shape = Cantos.pilula,
+                                            border = BorderStroke(1.dp, if (revelouPensamentoHistoria) Color(0xFF6C5CE7).copy(alpha = 0.5f) else Color.White.copy(alpha = 0.12f)),
+                                            modifier = Modifier.clickable { revelouPensamentoHistoria = !revelouPensamentoHistoria }
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(
+                                                    if (revelouPensamentoHistoria) "💭 Ocultar Pensamento" else "💭 Revelar Pensamento",
+                                                    color = if (revelouPensamentoHistoria) Color(0xFFA29BFE) else TextoSuave,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Medium
+                                                )
+                                            }
+                                        }
+                                    }
+                                    if (revelouPensamentoHistoria) {
+                                        Surface(
+                                            color = Color(0xFF16152B),
+                                            shape = RoundedCornerShape(12.dp),
+                                            border = BorderStroke(1.dp, Color(0xFF6C5CE7).copy(alpha = 0.40f)),
+                                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                                        ) {
+                                            Text(
+                                                text = gerarPensamentoSecreto(cenarioCompleto.nome, msg.narrativa, indice + 1),
+                                                color = Color(0xFFD6D0F5),
+                                                fontSize = 12.sp,
+                                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                                lineHeight = 17.sp,
+                                                modifier = Modifier.padding(10.dp)
+                                            )
+                                        }
+                                    }
                                     Spacer(Modifier.height(8.dp))
                                     RodapeMensagemLiven(
                                         rotuloEsquerda = msg.emNarrador?.let { horaDaMensagem(it) } ?: "Cap. ${indice + 1}",
@@ -1980,6 +2521,64 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                                         aoEditar = { indiceEdicao = indice },
                                         aoCopiar = { areaDeCopia.setText(AnnotatedString(msg.narrativa)) }
                                     )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (!jogo.cena.imagemUrl.isNullOrBlank()) {
+                    item(key = "arte_cena_atual_historia") {
+                        val base = remember { ApiClient.baseUrlAtual() }
+                        val fullUrl = remember(jogo.cena.imagemUrl, base) {
+                            val u = jogo.cena.imagemUrl
+                            if (base != null && u != null) "${base}${u.removePrefix("/")}" else u
+                        }
+                        if (fullUrl != null) {
+                            val cabecalho = remember { ApiClient.cabecalhoAutorizacao() }
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 4.dp, vertical = 6.dp)
+                            ) {
+                                Surface(
+                                    color = Color(0xFF10121C),
+                                    shape = RoundedCornerShape(18.dp),
+                                    border = BorderStroke(1.5.dp, Ouro.copy(alpha = 0.55f)),
+                                    shadowElevation = 8.dp,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(290.dp)
+                                        .clip(RoundedCornerShape(18.dp))
+                                ) {
+                                    Box(modifier = Modifier.fillMaxSize()) {
+                                        AsyncImage(
+                                            model = ImageRequest.Builder(LocalContext.current)
+                                                .data(fullUrl)
+                                                .apply { if (cabecalho != null) addHeader("Authorization", cabecalho) }
+                                                .crossfade(true)
+                                                .allowHardware(true)
+                                                .build(),
+                                            contentDescription = "Arte da Cena Atual",
+                                            contentScale = ContentScale.Crop,
+                                            alignment = Alignment.Center,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                        Surface(
+                                            color = Color.Black.copy(alpha = 0.60f),
+                                            shape = Cantos.pilula,
+                                            modifier = Modifier
+                                                .align(Alignment.BottomStart)
+                                                .padding(10.dp)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text("✨ Ilustração da Cena Gerada por IA", style = MaterialTheme.typography.labelSmall, color = Ouro)
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -2441,7 +3040,9 @@ private fun JogoModoHistoria(vm: AppViewModel) {
 private fun BarraFerramentasLiven(
     vm: AppViewModel,
     jogo: JogoResponse,
-    onAbrirDialogo: (DialogoAberto) -> Unit
+    onAbrirDialogo: (DialogoAberto) -> Unit,
+    onAtivarModoCinema: (() -> Unit)? = null,
+    onExportarPdf: (() -> Unit)? = null
 ) {
     val saldoLivens = vm.conta?.livens ?: jogo.livens ?: 0
     val podeResgatarHoje = vm.conta?.resgateDiarioDisponivel == true
@@ -2573,6 +3174,38 @@ private fun BarraFerramentasLiven(
                 fontWeight = if (somAtivo) FontWeight.Bold else FontWeight.Normal,
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
             )
+        }
+
+        if (onAtivarModoCinema != null) {
+            Surface(
+                color = Color(0xFF6C5CE7).copy(alpha = 0.25f),
+                shape = Cantos.pilula,
+                border = BorderStroke(1.dp, Color(0xFF6C5CE7).copy(alpha = 0.65f)),
+                modifier = Modifier.cliqueFuturista3D { onAtivarModoCinema() }
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("🎬 Modo Cinema", style = MaterialTheme.typography.labelSmall, color = Color(0xFFA29BFE), fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        if (onExportarPdf != null) {
+            Surface(
+                color = SuperficieAlta,
+                shape = Cantos.pilula,
+                border = BorderStroke(1.dp, Ouro.copy(alpha = 0.35f)),
+                modifier = Modifier.cliqueFuturista3D { onExportarPdf() }
+            ) {
+                Text(
+                    text = "📖 Livro (PDF)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                )
+            }
         }
     }
 }
@@ -3026,26 +3659,46 @@ private fun GerenciadorDialogosJogo(
                             jogo.cartas.asReversed().forEach { carta ->
                                 val dataCarta = carta.criadaEm?.let { horaDaMensagem(it) } ?: "Cap. ${carta.turno}"
                                 Surface(
-                                    color = SuperficieAlta,
-                                    shape = Cantos.cartao,
-                                    border = BorderStroke(1.dp, Ouro.copy(alpha = 0.30f)),
+                                    color = Color(0xFF141524),
+                                    shape = RoundedCornerShape(18.dp),
+                                    border = BorderStroke(1.5.dp, Brush.linearGradient(listOf(Color(0xFFFF80AB), Color(0xFF6C5CE7), Color(0xFF00E5FF), Ouro))),
+                                    shadowElevation = 8.dp,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Column(modifier = Modifier.padding(12.dp)) {
+                                    Column(modifier = Modifier.padding(14.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text("💌", fontSize = 16.sp)
+                                                Spacer(Modifier.width(6.dp))
+                                                Text(
+                                                    text = carta.titulo,
+                                                    style = MaterialTheme.typography.titleSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Ouro
+                                                )
+                                            }
+                                            Surface(
+                                                color = Color.Black.copy(alpha = 0.5f),
+                                                shape = Cantos.pilula
+                                            ) {
+                                                Text("★★★★★ RARA", color = Color(0xFFFFD54F), fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                            }
+                                        }
+                                        Spacer(Modifier.height(4.dp))
                                         Text(
-                                            text = carta.titulo,
-                                            style = MaterialTheme.typography.titleSmall,
-                                            color = Ouro
-                                        )
-                                        Text(
-                                            text = "De: ${carta.remetente} • $dataCarta",
+                                            text = "Escrita por ${carta.remetente} • $dataCarta",
                                             style = MaterialTheme.typography.labelSmall,
                                             color = TextoSuave
                                         )
-                                        Spacer(Modifier.height(6.dp))
+                                        Spacer(Modifier.height(8.dp))
                                         Text(
                                             text = carta.conteudo,
-                                            style = MaterialTheme.typography.bodyMedium
+                                            style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 21.sp),
+                                            color = Color.White.copy(alpha = 0.92f)
                                         )
                                     }
                                 }
@@ -3102,46 +3755,87 @@ private fun GerenciadorDialogosJogo(
                         } else {
                             jogo.savepoints.asReversed().forEach { sp ->
                                 val dataSave = sp.criadoEm?.let { horaDaMensagem(it) } ?: sp.local
-                                Surface(
-                                    color = SuperficieAlta,
-                                    shape = Cantos.cartao,
-                                    border = BorderStroke(1.dp, Ouro.copy(alpha = 0.25f)),
-                                    modifier = Modifier.fillMaxWidth()
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.Top
                                 ) {
-                                    Column(modifier = Modifier.padding(10.dp)) {
-                                        Text(
-                                            text = "${sp.nome} (Turno ${sp.turno})",
-                                            style = MaterialTheme.typography.titleSmall,
-                                            color = Ouro
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        modifier = Modifier.width(28.dp).padding(top = 4.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(12.dp)
+                                                .background(Ouro, CircleShape)
+                                                .border(2.dp, Color(0xFF161824), CircleShape)
                                         )
-                                        Text(
-                                            text = dataSave,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = TextoSuave
+                                        Box(
+                                            modifier = Modifier
+                                                .width(2.dp)
+                                                .height(55.dp)
+                                                .background(Ouro.copy(alpha = 0.35f))
                                         )
-                                        if (sp.resumo.isNotBlank()) {
-                                            Spacer(Modifier.height(4.dp))
-                                            Text(
-                                                text = sp.resumo,
-                                                style = MaterialTheme.typography.bodySmall,
-                                                maxLines = 2,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-                                        Spacer(Modifier.height(6.dp))
-                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            OutlinedButton(
-                                                onClick = {
-                                                    vm.carregarSavepoint(sp.id)
-                                                    onFecharDialogo()
+                                    }
+                                    Spacer(Modifier.width(6.dp))
+                                    Surface(
+                                        color = Color(0xFF161824),
+                                        shape = RoundedCornerShape(14.dp),
+                                        border = BorderStroke(1.dp, Ouro.copy(alpha = 0.35f)),
+                                        modifier = Modifier.weight(1f).padding(bottom = 10.dp)
+                                    ) {
+                                        Column(modifier = Modifier.padding(12.dp)) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(
+                                                    text = sp.nome.ifBlank { "Momento da História" },
+                                                    style = MaterialTheme.typography.titleSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Ouro
+                                                )
+                                                Surface(
+                                                    color = Color.Black.copy(alpha = 0.45f),
+                                                    shape = Cantos.pilula
+                                                ) {
+                                                    Text("Turno ${sp.turno}", color = Color.White.copy(alpha = 0.8f), fontSize = 10.sp, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                                                 }
-                                            ) {
-                                                Text("Restaurar")
                                             }
-                                            TextButton(
-                                                onClick = { vm.apagarSavepoint(sp.id) }
-                                            ) {
-                                                Text("Apagar", color = MaterialTheme.colorScheme.error)
+                                            Text(
+                                                text = dataSave,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = TextoSuave
+                                            )
+                                            if (sp.resumo.isNotBlank()) {
+                                                Spacer(Modifier.height(4.dp))
+                                                Text(
+                                                    text = sp.resumo,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = Color.White.copy(alpha = 0.85f),
+                                                    maxLines = 2,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
+                                            Spacer(Modifier.height(8.dp))
+                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                Button(
+                                                    onClick = {
+                                                        vm.carregarSavepoint(sp.id)
+                                                        onFecharDialogo()
+                                                    },
+                                                    colors = ButtonDefaults.buttonColors(containerColor = Ouro),
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    modifier = Modifier.height(34.dp)
+                                                ) {
+                                                    Text("🌿 Voltar a este Rumo", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                                }
+                                                TextButton(
+                                                    onClick = { vm.apagarSavepoint(sp.id) },
+                                                    modifier = Modifier.height(34.dp)
+                                                ) {
+                                                    Text("Apagar", color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
+                                                }
                                             }
                                         }
                                     }
@@ -3197,6 +3891,36 @@ private fun GerenciadorDialogosJogo(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = TextoSuave
                                 )
+                            }
+                        }
+
+                        val narrativaUltima = vm.chat.lastOrNull()?.narrativa ?: jogo.cena.narrativa
+                        val humor = remember(narrativaUltima, jogo.turno) { extrairHumorPersonagem(narrativaUltima, jogo.turno) }
+                        Surface(
+                            color = Color(0xFF1B1D2C),
+                            shape = RoundedCornerShape(14.dp),
+                            border = BorderStroke(1.dp, Color(0xFFFF80AB).copy(alpha = 0.40f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(humor.first, fontSize = 28.sp)
+                                Spacer(Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        "Humor Atual: ${humor.second}",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = Color(0xFFFF80AB),
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        "O personagem reage com emoções reais às suas palavras e atitudes.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = TextoSuave
+                                    )
+                                }
                             }
                         }
 
