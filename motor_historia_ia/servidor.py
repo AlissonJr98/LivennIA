@@ -2622,22 +2622,28 @@ def gerar_candidatos_persona(dados: PersonaRetratoIn, jogador=Depends(jogador_at
     lote_id = uuid.uuid4().hex[:12]
 
     variacoes_estilo = [
-        "cinematic close-up portrait, expressive gaze, stylish outfit, beautiful studio rim lighting, sharp focus",
-        "dramatic character shot, dynamic volumetric lighting, confident look, high fashion aesthetic",
-        "soft natural daylight portrait, captivating eyes, detailed facial features, elegant artistic mood",
-        "atmospheric neon backlighting, intense charismatic expression, modern cinematic framing, shallow depth of field"
+        "cinematic close-up portrait, expressive gaze, stylish outfit, beautiful studio rim lighting, sharp focus, 8k resolution, ultra detailed skin texture, masterpiece",
+        "dramatic character shot, dynamic volumetric lighting, confident look, high fashion aesthetic, masterpiece, hyperdetailed, 8k resolution",
+        "soft natural daylight portrait, captivating eyes, detailed facial features, elegant artistic mood, professional photography, masterpiece, 8k",
+        "atmospheric neon backlighting, intense charismatic expression, modern cinematic framing, shallow depth of field, unreal engine 5 render, 8k, masterpiece"
     ]
     toque_estilo = random.choice(variacoes_estilo)
-    prompt_portrait = f"{prompt_base}, {toque_estilo}, masterpiece, 8k resolution"
+    prompt_portrait = f"{prompt_base}, {toque_estilo}, masterpiece, 8k resolution, ultra sharp"
     prompts_en = [prompt_portrait]
 
     url_base_polli = config.POLLINATIONS_URL or "https://image.pollinations.ai/prompt"
     token_polli = getattr(config, "POLLINATIONS_TOKEN", "") or ""
+    largura = config.POLLINATIONS_LARGURA or 1024
+    altura = config.POLLINATIONS_ALTURA or 1344
+    modelo_flux = config.POLLINATIONS_MODELO or "flux"
     imagens_cortadas = {}
 
     params = {
         "seed": seeds[0],
-        "nologo": "true"
+        "nologo": "true",
+        "width": largura,
+        "height": altura,
+        "model": modelo_flux,
     }
     if token_polli:
         params["token"] = token_polli
@@ -2712,14 +2718,17 @@ def obter_candidato_imagem(lote_id: str, indice: int):
     # Fallback se o quadrante não foi cortado no grid: busca individual com controle de taxa
     seed = lote["seeds"][indice]
     prompt_en = lote.get("prompts_en", [lote["prompt_en"]] * 4)[indice]
-    largura = config.POLLINATIONS_LARGURA or 768
-    altura = config.POLLINATIONS_ALTURA or 1024
+    largura = config.POLLINATIONS_LARGURA or 1024
+    altura = config.POLLINATIONS_ALTURA or 1344
     modelo_flux = config.POLLINATIONS_MODELO or "flux"
     url_base_polli = config.POLLINATIONS_URL or "https://image.pollinations.ai/prompt"
     token_polli = getattr(config, "POLLINATIONS_TOKEN", "") or ""
     params = {
         "seed": seed,
-        "nologo": "true"
+        "nologo": "true",
+        "width": largura,
+        "height": altura,
+        "model": modelo_flux,
     }
     if token_polli:
         params["token"] = token_polli
@@ -2771,7 +2780,16 @@ def confirmar_candidato_persona(persona_id: int, dados: ConfirmarCandidatoIn, jo
         prompt_en = lote.get("prompts_en", [lote["prompt_en"]] * 4)[dados.indice]
         url_base_polli = config.POLLINATIONS_URL or "https://image.pollinations.ai/prompt"
         token_polli = getattr(config, "POLLINATIONS_TOKEN", "") or ""
-        params = {"seed": seed, "nologo": "true"}
+        largura = config.POLLINATIONS_LARGURA or 1024
+        altura = config.POLLINATIONS_ALTURA or 1344
+        modelo_flux = config.POLLINATIONS_MODELO or "flux"
+        params = {
+            "seed": seed,
+            "nologo": "true",
+            "width": largura,
+            "height": altura,
+            "model": modelo_flux,
+        }
         if token_polli:
             params["token"] = token_polli
             params["key"] = token_polli
@@ -2871,7 +2889,16 @@ def confirmar_candidato_conta(dados: ConfirmarCandidatoIn, jogador=Depends(jogad
         prompt_en = lote.get("prompts_en", [lote["prompt_en"]] * 4)[dados.indice]
         url_base_polli = config.POLLINATIONS_URL or "https://image.pollinations.ai/prompt"
         token_polli = getattr(config, "POLLINATIONS_TOKEN", "") or ""
-        params = {"seed": seed, "nologo": "true"}
+        largura = config.POLLINATIONS_LARGURA or 1024
+        altura = config.POLLINATIONS_ALTURA or 1344
+        modelo_flux = config.POLLINATIONS_MODELO or "flux"
+        params = {
+            "seed": seed,
+            "nologo": "true",
+            "width": largura,
+            "height": altura,
+            "model": modelo_flux,
+        }
         if token_polli:
             params["token"] = token_polli
             params["key"] = token_polli

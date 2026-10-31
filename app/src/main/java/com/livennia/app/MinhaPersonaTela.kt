@@ -2303,6 +2303,7 @@ fun CardCandidatoQuadrado(
                         .build(),
                     contentDescription = "Variação ${indice + 1}",
                     contentScale = ContentScale.Crop,
+                    alignment = Alignment.TopCenter,
                     modifier = Modifier.fillMaxSize(),
                     loading = {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().background(CardObsidian)) {
@@ -2323,6 +2324,7 @@ fun CardCandidatoQuadrado(
                                     .build(),
                                 contentDescription = "Variação ${indice + 1} (fallback)",
                                 contentScale = ContentScale.Crop,
+                                alignment = Alignment.TopCenter,
                                 modifier = Modifier.fillMaxSize(),
                                 loading = {
                                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().background(CardObsidian)) {

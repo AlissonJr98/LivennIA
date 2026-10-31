@@ -478,6 +478,7 @@ fun RetratoPersonagem(
                 .data(url)
                 .apply { if (cabecalho != null) addHeader("Authorization", cabecalho) }
                 .crossfade(true)
+                .allowHardware(true)
                 .build(),
             contentDescription = "Retrato de $nome",
             contentScale = ContentScale.Crop,
@@ -524,6 +525,7 @@ fun RetratoPersona(
                     .data(url)
                     .apply { if (cabecalho != null) addHeader("Authorization", cabecalho) }
                     .crossfade(true)
+                    .allowHardware(true)
                     .build(),
                 contentDescription = "Retrato da Persona",
                 contentScale = ContentScale.Crop,
@@ -618,6 +620,7 @@ fun CapaCenario(
                 .data(url)
                 .apply { if (cabecalho != null) addHeader("Authorization", cabecalho) }
                 .crossfade(true)
+                .allowHardware(true)
                 .build(),
             contentDescription = "Capa de $nome",
             contentScale = ContentScale.Crop,

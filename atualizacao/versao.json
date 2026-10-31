@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 43,
-  "versaoNome": "1.8.3",
-  "notas": "Atualização 1.8.3: Ajustado enquadramento da capa das histórias para preservar a cabeça e rosto dos personagens sem cortes. Reposicionado o botão de excluir história para o canto superior direito, removendo a lixeira do centro da imagem.",
+  "versaoCodigo": 44,
+  "versaoNome": "1.8.4",
+  "notas": "Atualização 1.8.4: Qualidade máxima para capas e imagens geradas por IA (resolução 1024x1344, prompts 8K com detalhes hiper-realistas, renderização em hardware no app e upscaling nítido de todas as capas existentes).",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

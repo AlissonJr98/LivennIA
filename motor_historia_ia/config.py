@@ -87,8 +87,8 @@ POLLINATIONS_URL = os.environ.get(
     "LIVENNIA_POLLINATIONS_URL", "https://image.pollinations.ai/prompt"
 )
 POLLINATIONS_MODELO = os.environ.get("LIVENNIA_POLLINATIONS_MODELO", "flux")
-POLLINATIONS_LARGURA = _inteiro("LIVENNIA_POLLINATIONS_LARGURA", 768)
-POLLINATIONS_ALTURA = _inteiro("LIVENNIA_POLLINATIONS_ALTURA", 1024)
+POLLINATIONS_LARGURA = _inteiro("LIVENNIA_POLLINATIONS_LARGURA", 1024)
+POLLINATIONS_ALTURA = _inteiro("LIVENNIA_POLLINATIONS_ALTURA", 1344)
 # Chave opcional (pollen key). Com ela o limite grátis por IP deixa de existir e
 # as 4 variações podem ser geradas em paralelo. Sem ela, o servidor espaça os
 # pedidos (1 imagem a cada ~45 s por IP, regra do plano grátis).
@@ -113,8 +113,8 @@ MAX_RETRATOS_POR_DIA = _inteiro("LIVENNIA_MAX_RETRATOS_DIA", 200)  # teto global
 # vez e fica salva: abrir a vitrine depois disso não gasta cota nenhuma.
 PASTA_CAPAS = os.environ.get("LIVENNIA_CAPAS", os.path.join(PASTA, "dados", "capas"))
 MAX_CAPAS_POR_DIA = _inteiro("LIVENNIA_MAX_CAPAS_DIA", 60)   # teto global do dia
-CAPA_LARGURA = _inteiro("LIVENNIA_CAPA_LARGURA", 768)
-CAPA_ALTURA = _inteiro("LIVENNIA_CAPA_ALTURA", 1024)
+CAPA_LARGURA = _inteiro("LIVENNIA_CAPA_LARGURA", 1024)
+CAPA_ALTURA = _inteiro("LIVENNIA_CAPA_ALTURA", 1344)
 
 # ---------------------------------------------------------------
 # Regras do jogo (iguais às do mestre.py)

@@ -1328,15 +1328,15 @@ def arte_do_cenario(cenario):
     tags_str = ", ".join(str(t) for t in tags)
 
     estilo = str(cenario.get("estilo_imagem") or cenario.get("estilo") or "semi_realistic").lower()
-    estilo_prompt = "cinematic semi-realistic digital art, masterpiece, 8k resolution"
+    estilo_prompt = "cinematic semi-realistic digital art, masterpiece, 8k resolution, photorealistic lighting, highly detailed textures"
     if "anime" in estilo:
-        estilo_prompt = "high-end 2D anime illustration, vibrant colors, anime key visual, clean lines"
+        estilo_prompt = "high-end anime illustration, makoto shinkai aesthetic, vibrant colors, anime key visual, clean detailed lines, masterpiece, 8k resolution"
     elif "realist" in estilo or "foto" in estilo:
-        estilo_prompt = "photorealistic character photography, 8k, hyper-detailed skin texture, studio lighting"
+        estilo_prompt = "photorealistic character photography, 8k, hyper-detailed skin texture, subsurface scattering, studio rim lighting, award-winning portrait, professional color grading"
     elif "cyber" in estilo:
-        estilo_prompt = "cyberpunk neon aesthetic, high-tech cybernetic details, atmospheric volumetric lighting"
+        estilo_prompt = "cyberpunk neon aesthetic, high-tech cybernetic details, atmospheric volumetric lighting, raytracing, ultra-detailed 8k, unreal engine 5 render, cinematic"
     elif "dark" in estilo or "fantasia" in estilo or "gotic" in estilo:
-        estilo_prompt = "dark fantasy art, dramatic chiaroscuro lighting, intricate gothic details"
+        estilo_prompt = "dark fantasy art, dramatic chiaroscuro lighting, intricate gothic details, oil painting aesthetic, cinematic masterpiece, 8k"
 
     modo = str(cenario.get("modo") or cenario.get("modoJogo") or "historia").lower()
     tipo_arte = "tabletop RPG hero character portrait" if modo == "rpg" else "story character portrait"
@@ -1350,7 +1350,7 @@ def arte_do_cenario(cenario):
     if sinopse:
         partes.append(f"story setting and mood: {sinopse[:200]}")
     partes.append(estilo_prompt)
-    partes.append("expressive captivating eyes, charismatic pose, vertical composition, highly detailed, beautiful character design, no text, no watermark, no frame")
+    partes.append("expressive captivating eyes, charismatic pose, vertical composition, highly detailed face and eyes, beautiful character design, ultra sharp focus, 8k resolution, professional studio quality, no text, no watermark, no frame, no blur")
 
     return ", ".join(partes)
 
@@ -1720,10 +1720,16 @@ def _traduzir_prompt_retrato(prompt):
 
 
 def _retrato_pollinations(prompt, traduzir=True, largura=None, altura=None):
-    """Imagem por difusão (Flux/Turbo) via Pollinations."""
+    """Imagem por difusão (Flux/Turbo) via Pollinations em alta resolução."""
     # Se o prompt já está estruturado em inglês com tags de difusão, não traduz novamente
     if traduzir and not ("1man" in prompt or "1woman" in prompt or "portrait" in prompt or "photorealistic" in prompt or "masterpiece" in prompt):
         prompt = _traduzir_prompt_retrato(prompt)
+
+    if "masterpiece" not in prompt:
+        prompt = f"{prompt}, masterpiece, 8k resolution, ultra detailed, sharp focus"
+
+    largura_req = largura or config.POLLINATIONS_LARGURA or 1024
+    altura_req = altura or config.POLLINATIONS_ALTURA or 1344
 
     modelos = [config.POLLINATIONS_MODELO or "flux", "turbo", None]
     token = getattr(config, "POLLINATIONS_TOKEN", "") or ""
@@ -1733,11 +1739,9 @@ def _retrato_pollinations(prompt, traduzir=True, largura=None, altura=None):
         params = {
             "seed": random.randint(1, 2_000_000_000),
             "nologo": "true",
+            "width": largura_req,
+            "height": altura_req,
         }
-        if largura:
-            params["width"] = largura
-        if altura:
-            params["height"] = altura
         if mod:
             params["model"] = mod
         if token:
