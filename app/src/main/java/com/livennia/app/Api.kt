@@ -14,6 +14,7 @@ import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
+import retrofit2.http.Query
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.util.concurrent.TimeUnit
@@ -134,7 +135,10 @@ interface LivennIAApi {
     suspend fun gerarRetrato(@Path("id") id: String): RetratoResponse
 
     @POST("jogos/{id}/ilustrar-cena")
-    suspend fun ilustrarCena(@Path("id") id: String): IlustracaoCenaResponse
+    suspend fun ilustrarCena(
+        @Path("id") id: String,
+        @Query("com_anuncio") comAnuncio: Boolean = false
+    ): IlustracaoCenaResponse
 
     @GET("personas")
     suspend fun listarPersonas(): List<PersonaResponse>

@@ -903,21 +903,26 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         private set
 
     // Gera uma ilustração cinematográfica da cena atual da história / RPG
-    fun ilustrarCenaAtual(onSucesso: () -> Unit = {}, onError: (String) -> Unit = {}) {
+    fun ilustrarCenaAtual(comAnuncio: Boolean = false, onSucesso: () -> Unit = {}, onError: (String) -> Unit = {}) {
         val id = jogoAtual?.jogoId ?: return
         if (ilustrandoCena) return
         val api = obterApi() ?: return
         ilustrandoCena = true
         viewModelScope.launch {
             try {
-                val resp = api.ilustrarCena(id)
+                val resp = api.ilustrarCena(id, comAnuncio)
                 val cenaAtual = jogoAtual?.cena
                 if (cenaAtual != null) {
                     jogoAtual = jogoAtual?.copy(cena = cenaAtual.copy(imagemUrl = resp.imagemUrl))
                 }
                 onSucesso()
             } catch (e: Exception) {
-                onError(e.message ?: "Não foi possível ilustrar a cena.")
+                val msg = when {
+                    e.message?.contains("503") == true -> "Servidores de imagem com alta demanda temporária. Tente novamente em alguns segundos."
+                    e.message?.contains("403") == true -> "Recurso exclusivo para modelos pagos ou assistindo a um anúncio."
+                    else -> e.message ?: "Não foi possível ilustrar a cena."
+                }
+                onError(msg)
             } finally {
                 ilustrandoCena = false
             }

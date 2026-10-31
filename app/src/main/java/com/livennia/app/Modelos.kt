@@ -283,6 +283,8 @@ data class CerebroDoJogoDto(
 
     val emoji: String = "",
 
+    val premium: Boolean = false,
+
     @SerializedName("custo_livens", alternate = ["custo_mochi"]) val custoLivens: Int = 0,
 
     val categoria: String = "Geral"
@@ -290,6 +292,8 @@ data class CerebroDoJogoDto(
 ) {
 
     val custoMochi: Int get() = custoLivens
+
+    val ehPago: Boolean get() = premium || custoLivens > 0
 
 }
 

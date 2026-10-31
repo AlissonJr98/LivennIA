@@ -10,6 +10,7 @@ import io
 import logging
 import os
 import random
+import re
 import threading
 import time
 import urllib.parse
@@ -21,7 +22,7 @@ from typing import Annotated, Literal, Optional
 
 from PIL import Image
 
-from fastapi import Depends, FastAPI, HTTPException, Path, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Path, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -396,6 +397,7 @@ class CerebroDoJogoOut(BaseModel):
     id: str
     nome: str
     emoji: str = ""
+    premium: bool = False
     custo_livens: int = 0
     custo_mochi: int = 0
     categoria: str = "Geral"
@@ -843,6 +845,7 @@ def montar_saida(jogo_id, estado, encerrado, restantes, completo=False, mochis=N
                 id=modelo["id"],
                 nome=modelo["nome"],
                 emoji=modelo.get("emoji") or "",
+                premium=bool(modelo.get("premium")),
                 custo_livens=int(modelo.get("custo_livens") or modelo.get("custo_mochi") or 0),
                 custo_mochi=int(modelo.get("custo_mochi") or 0),
                 categoria=modelo.get("categoria") or "Geral",
@@ -1987,7 +1990,11 @@ class IlustracaoCenaOut(BaseModel):
 
 
 @app.post("/jogos/{jogo_id}/ilustrar-cena", response_model=IlustracaoCenaOut)
-def ilustrar_cena_atual(jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
+def ilustrar_cena_atual(
+    jogo_id: IdDoJogo,
+    com_anuncio: bool = Query(False),
+    jogador=Depends(jogador_atual)
+):
     """Gera uma ilustração cinematográfica da cena atual do jogo usando IA."""
     jogo = banco.obter_jogo(jogo_id, jogador["id"])
     if jogo is None:
@@ -1998,34 +2005,68 @@ def ilustrar_cena_atual(jogo_id: IdDoJogo, jogador=Depends(jogador_atual)):
     if not narrativa:
         raise HTTPException(400, "Cena sem narrativa para ilustrar.")
 
-    cenario = estado.get("cenario") or {}
-    nome = cenario.get("nome") or "Cena"
-
-    prompt = (
-        f"Cinematic masterpiece illustration of the scene from '{nome}': {narrativa[:300]}. "
-        f"8k resolution, photorealistic lighting, atmospheric depth, vertical poster composition, "
-        f"intricate details, award-winning digital art, no text, no watermark, no frame"
-    )
-
-    try:
-        imagem = motor._retrato_pollinations(
-            prompt,
-            traduzir=True,
-            largura=config.POLLINATIONS_LARGURA or 1024,
-            altura=config.POLLINATIONS_ALTURA or 1344
-        )
-    except Exception as e:
-        logging.warning("Erro ao gerar ilustração da cena: %s", e)
-        raise HTTPException(503, "Não foi possível gerar a arte da cena agora.")
-
     pasta_cenas = os.path.join(config.PASTA, "dados", "cenas")
     os.makedirs(pasta_cenas, exist_ok=True)
     arquivo_nome = f"{jogo_id}_{estado['turno']}.png"
     caminho_final = os.path.join(pasta_cenas, arquivo_nome)
+    url_relativa = f"/jogos/{jogo_id}/cenas/{arquivo_nome}"
+
+    # 1. Se a cena deste turno já foi ilustrada e o arquivo existe, retorna imediatamente
+    if os.path.exists(caminho_final) and os.path.getsize(caminho_final) > 1000:
+        cena["imagem_url"] = url_relativa
+        banco.atualizar_jogo(jogo_id, jogador["id"], motor.estado_para_texto(estado), bool(jogo["encerrado"]))
+        return IlustracaoCenaOut(imagem_url=url_relativa)
+
+    # 2. Verificação de Acesso: Modelo Pago vs Gratuito com Anúncio
+    eh_jogador_premium = bool(jogador.get("premium"))
+    modelo_jogo = estado.get("modelo") or {}
+    cerebro = catalogo.cerebro(modelo_jogo.get("modelo_id") or modelo_jogo.get("modelo"))
+    modelo_eh_pago = False
+    if cerebro:
+        modelo_eh_pago = bool(cerebro.get("premium")) or int(cerebro.get("custo_livens") or cerebro.get("custo_mochi") or 0) > 0
+
+    if not eh_jogador_premium and not modelo_eh_pago and not com_anuncio:
+        raise HTTPException(
+            403,
+            "A ilustração de cena é exclusiva para modelos pagos ou mediante visualização de anúncio."
+        )
+
+    cenario = estado.get("cenario") or {}
+    nome = cenario.get("nome") or "Cena"
+
+    # Limpar prompt para difusão
+    narrativa_limpa = re.sub(r'[\*\#\[\]\"\'\n\r]', ' ', narrativa[:220]).strip()
+    prompt = (
+        f"Cinematic illustration of {nome}: {narrativa_limpa}. "
+        f"Dramatic lighting, vertical poster composition, digital concept art, masterpiece, 8k resolution, no text, no watermark"
+    )
+
+    imagem = None
+    try:
+        imagem = motor._retrato_pollinations(
+            prompt,
+            traduzir=False,
+            largura=config.POLLINATIONS_LARGURA or 1024,
+            altura=config.POLLINATIONS_ALTURA or 1344
+        )
+    except Exception as e:
+        logging.warning("Erro ao gerar ilustração primária da cena: %s", e)
+        # Fallback resiliente com dimensões e prompt menores
+        try:
+            prompt_reserva = f"Atmospheric cinematic scene of {nome}, digital concept art, highly detailed"
+            imagem = motor._retrato_pollinations(
+                prompt_reserva,
+                traduzir=False,
+                largura=768,
+                altura=1024
+            )
+        except Exception as e2:
+            logging.warning("Fallback de ilustração também falhou: %s", e2)
+            raise HTTPException(503, "Os servidores de renderização de imagem estão com alta demanda temporária. Tente novamente em alguns segundos.")
+
     with open(caminho_final, "wb") as f:
         f.write(imagem)
 
-    url_relativa = f"/jogos/{jogo_id}/cenas/{arquivo_nome}"
     cena["imagem_url"] = url_relativa
     banco.atualizar_jogo(jogo_id, jogador["id"], motor.estado_para_texto(estado), bool(jogo["encerrado"]))
 

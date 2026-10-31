@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 47,
-  "versaoNome": "1.8.7",
-  "notas": "Atualização 1.8.7 (Inspiração Emochi & Assinatura LivennIA): Galeria de Momentos & Memórias Secretas (CG Gallery desbloqueável por afinidade), Sistema de Presentes & Mimos Interativos com reações emocionais imediatas em tempo real, Modulação de Voz Inteligente no TTS (Pitch & Speed adaptados ao arquétipo do personagem), Status de Presença em Tempo Real, enquadramento de capas aprimorado sem cortes e layout de detalhes limpo e imersivo.",
+  "versaoCodigo": 48,
+  "versaoNome": "1.8.8",
+  "notas": "Atualização 1.8.8: Ilustração de Cenas com IA integrada ao sistema de acesso (geração direta para modelos pagos/assinantes VIP, e diálogo com opção de assistir a anúncio de recompensa ou assinar nos modelos gratuitos). Correção do erro HTTP 503 com cache instantâneo por turno e fallback resiliente no backend.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

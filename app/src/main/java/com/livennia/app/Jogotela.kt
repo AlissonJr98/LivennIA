@@ -648,6 +648,251 @@ fun ModalGaleriaMomentos(
 }
 
 @Composable
+fun DialogoIlustracaoCenaOpcoes(
+    nomeModeloAtual: String,
+    onAssistirAnuncio: () -> Unit,
+    onMelhorarPlano: () -> Unit,
+    onFechar: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onFechar,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    color = Color(0xFFFFD700).copy(alpha = 0.20f),
+                    shape = CircleShape,
+                    modifier = Modifier.size(38.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("🖼️", fontSize = 20.sp)
+                    }
+                }
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text("Ilustrar Cena com IA", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Recurso Avançado", style = MaterialTheme.typography.labelSmall, color = Ouro)
+                }
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text(
+                    text = "A ilustração cinematográfica da cena atual em ultra resolução é um recurso dos Modelos de IA Avançados do LivennIA.\n\nNo momento você está usando o modelo gratuito ($nomeModeloAtual). Escolha como deseja liberar a arte:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextoSuave,
+                    lineHeight = 19.sp
+                )
+
+                // Opção 1: Assistir Anúncio
+                Surface(
+                    color = Color(0xFF161826),
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, Color(0xFF00E5FF).copy(alpha = 0.40f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onAssistirAnuncio() }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .background(Color(0xFF00E5FF).copy(alpha = 0.20f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("🎬", fontSize = 22.sp)
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Assistir a um Anúncio",
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                "Assista a um vídeo curto e desbloqueie a arte da cena gratuitamente",
+                                color = TextoSuave,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                }
+
+                // Opção 2: Melhorar Plano (Assinatura)
+                Surface(
+                    color = Color(0xFF1F1A12),
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, Ouro.copy(alpha = 0.50f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onMelhorarPlano() }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .background(Ouro.copy(alpha = 0.20f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("👑", fontSize = 22.sp)
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    "Melhorar o Plano",
+                                    fontWeight = FontWeight.Bold,
+                                    color = Ouro,
+                                    fontSize = 14.sp
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Surface(
+                                    color = Ouro.copy(alpha = 0.25f),
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text(
+                                        "VIP",
+                                        color = Ouro,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
+                            Text(
+                                "Desbloqueie todos os modelos e gere ilustrações ilimitadas sem anúncios",
+                                color = TextoSuave,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onFechar) {
+                Text("Cancelar", color = TextoSuave)
+            }
+        }
+    )
+}
+
+@Composable
+fun DialogoSimuladorAnuncio(
+    onConcluido: () -> Unit,
+    onFechar: () -> Unit
+) {
+    var segundosRestantes by remember { mutableIntStateOf(5) }
+    LaunchedEffect(Unit) {
+        while (segundosRestantes > 0) {
+            delay(1000L)
+            segundosRestantes--
+        }
+        delay(300L)
+        onConcluido()
+    }
+
+    Dialog(
+        onDismissRequest = { /* Aguarda concluir */ },
+        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+    ) {
+        Surface(
+            color = Color(0xFF0F1016),
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.dp, Color(0xFF00E5FF).copy(alpha = 0.5f)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Anúncio de Recompensa",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF8E8E93)
+                    )
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.6f),
+                        shape = Cantos.pilula
+                    ) {
+                        Text(
+                            text = if (segundosRestantes > 0) "Recompensa em ${segundosRestantes}s" else "Concluído! ✨",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (segundosRestantes > 0) Color.White else Color(0xFF00E676),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(20.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(130.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(Color(0xFF1E2138), Color(0xFF0B0D18))
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("🎬", fontSize = 38.sp)
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            "LivennIA Ad Rewards",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            "Obrigado por apoiar a IA gratuita!",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF00E5FF)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(20.dp))
+
+                if (segundosRestantes > 0) {
+                    LinearProgressIndicator(
+                        progress = { (5 - segundosRestantes) / 5f },
+                        modifier = Modifier.fillMaxWidth().height(6.dp).clip(Cantos.pilula),
+                        color = Color(0xFF00E5FF),
+                        trackColor = Color(0xFF26262A)
+                    )
+                } else {
+                    Text(
+                        "Recompensa desbloqueada! Pintando cena com IA...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF00E676),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun ModoCinemaVisualNovel(
     jogo: JogoResponse,
     chat: List<MensagemDto>,
@@ -927,6 +1172,8 @@ fun JogoTela(vm: AppViewModel) {
     var modoCinema by remember { mutableStateOf(false) }
     var modalPresentesAberto by remember { mutableStateOf(false) }
     var modalGaleriaAberto by remember { mutableStateOf(false) }
+    var mostrarDialogoIlustracaoGratis by remember { mutableStateOf(false) }
+    var simulandoAnuncioIlustracao by remember { mutableStateOf(false) }
     val corFala = MaterialTheme.colorScheme.onBackground
     val corAcao = TextoSuave
     val corNormal = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.90f)
@@ -1674,10 +1921,16 @@ fun JogoTela(vm: AppViewModel) {
                                 border = BorderStroke(1.dp, Ouro.copy(alpha = 0.40f)),
                                 modifier = Modifier.cliqueFuturista3D {
                                     if (!vm.ocupado && !vm.ilustrandoCena) {
-                                        vm.ilustrarCenaAtual(
-                                            onSucesso = { Toast.makeText(contexto, "Cena ilustrada com sucesso!", Toast.LENGTH_SHORT).show() },
-                                            onError = { Toast.makeText(contexto, it, Toast.LENGTH_SHORT).show() }
-                                        )
+                                        val ehPago = (jogo.modelo?.ehPago == true) || (vm.conta?.premium == true)
+                                        if (ehPago) {
+                                            vm.ilustrarCenaAtual(
+                                                comAnuncio = false,
+                                                onSucesso = { Toast.makeText(contexto, "Cena ilustrada com sucesso!", Toast.LENGTH_SHORT).show() },
+                                                onError = { Toast.makeText(contexto, it, Toast.LENGTH_LONG).show() }
+                                            )
+                                        } else {
+                                            mostrarDialogoIlustracaoGratis = true
+                                        }
                                     }
                                 }
                             ) {
@@ -1890,6 +2143,36 @@ fun JogoTela(vm: AppViewModel) {
             cenarioId = jogo.cenario?.id,
             nivelVinculoAtual = vinculoAtual,
             onFechar = { modalGaleriaAberto = false }
+        )
+    }
+
+    if (mostrarDialogoIlustracaoGratis) {
+        val nomeModelo = jogo.modelo?.nome ?: "Liven Flash (Grátis)"
+        DialogoIlustracaoCenaOpcoes(
+            nomeModeloAtual = nomeModelo,
+            onAssistirAnuncio = {
+                mostrarDialogoIlustracaoGratis = false
+                simulandoAnuncioIlustracao = true
+            },
+            onMelhorarPlano = {
+                mostrarDialogoIlustracaoGratis = false
+                vm.navegarPara(Tela.Assinatura("Ultra"))
+            },
+            onFechar = { mostrarDialogoIlustracaoGratis = false }
+        )
+    }
+
+    if (simulandoAnuncioIlustracao) {
+        DialogoSimuladorAnuncio(
+            onConcluido = {
+                simulandoAnuncioIlustracao = false
+                vm.ilustrarCenaAtual(
+                    comAnuncio = true,
+                    onSucesso = { Toast.makeText(contexto, "Cena ilustrada com sucesso!", Toast.LENGTH_SHORT).show() },
+                    onError = { Toast.makeText(contexto, it, Toast.LENGTH_LONG).show() }
+                )
+            },
+            onFechar = { simulandoAnuncioIlustracao = false }
         )
     }
 
@@ -2339,6 +2622,8 @@ private fun JogoModoHistoria(vm: AppViewModel) {
     var modoCinema by remember { mutableStateOf(false) }
     var modalPresentesAberto by remember { mutableStateOf(false) }
     var modalGaleriaAberto by remember { mutableStateOf(false) }
+    var mostrarDialogoIlustracaoGratis by remember { mutableStateOf(false) }
+    var simulandoAnuncioIlustracao by remember { mutableStateOf(false) }
 
     LaunchedEffect(chat.size, vm.ocupado, vm.acaoPendente) {
         val extras = if (vm.ocupado) (if (vm.acaoPendente != null) 2 else 1) else 0
@@ -2802,8 +3087,18 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                                         }
                                         IconButton(
                                             onClick = {
-                                                vm.ilustrarCenaAtual()
-                                                Toast.makeText(contexto, "Gerando ilustração da cena com IA...", Toast.LENGTH_SHORT).show()
+                                                if (!vm.ocupado && !vm.ilustrandoCena) {
+                                                    val ehPago = (jogo.modelo?.ehPago == true) || (vm.conta?.premium == true)
+                                                    if (ehPago) {
+                                                        vm.ilustrarCenaAtual(
+                                                            comAnuncio = false,
+                                                            onSucesso = { Toast.makeText(contexto, "Cena ilustrada com sucesso!", Toast.LENGTH_SHORT).show() },
+                                                            onError = { Toast.makeText(contexto, it, Toast.LENGTH_LONG).show() }
+                                                        )
+                                                    } else {
+                                                        mostrarDialogoIlustracaoGratis = true
+                                                    }
+                                                }
                                             },
                                             modifier = Modifier.size(28.dp)
                                         ) {
@@ -3099,10 +3394,16 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             border = BorderStroke(1.dp, Ouro.copy(alpha = 0.40f)),
                             modifier = Modifier.cliqueFuturista3D {
                                 if (!vm.ocupado && !vm.ilustrandoCena) {
-                                    vm.ilustrarCenaAtual(
-                                        onSucesso = { Toast.makeText(contexto, "Cena ilustrada com sucesso!", Toast.LENGTH_SHORT).show() },
-                                        onError = { Toast.makeText(contexto, it, Toast.LENGTH_SHORT).show() }
-                                    )
+                                    val ehPago = (jogo.modelo?.ehPago == true) || (vm.conta?.premium == true)
+                                    if (ehPago) {
+                                        vm.ilustrarCenaAtual(
+                                            comAnuncio = false,
+                                            onSucesso = { Toast.makeText(contexto, "Cena ilustrada com sucesso!", Toast.LENGTH_SHORT).show() },
+                                            onError = { Toast.makeText(contexto, it, Toast.LENGTH_LONG).show() }
+                                        )
+                                    } else {
+                                        mostrarDialogoIlustracaoGratis = true
+                                    }
                                 }
                             }
                         ) {
@@ -3392,6 +3693,36 @@ private fun JogoModoHistoria(vm: AppViewModel) {
             cenarioId = jogo.cenario?.id,
             nivelVinculoAtual = vinculoAtual,
             onFechar = { modalGaleriaAberto = false }
+        )
+    }
+
+    if (mostrarDialogoIlustracaoGratis) {
+        val nomeModelo = jogo.modelo?.nome ?: "Liven Flash (Grátis)"
+        DialogoIlustracaoCenaOpcoes(
+            nomeModeloAtual = nomeModelo,
+            onAssistirAnuncio = {
+                mostrarDialogoIlustracaoGratis = false
+                simulandoAnuncioIlustracao = true
+            },
+            onMelhorarPlano = {
+                mostrarDialogoIlustracaoGratis = false
+                vm.navegarPara(Tela.Assinatura("Ultra"))
+            },
+            onFechar = { mostrarDialogoIlustracaoGratis = false }
+        )
+    }
+
+    if (simulandoAnuncioIlustracao) {
+        DialogoSimuladorAnuncio(
+            onConcluido = {
+                simulandoAnuncioIlustracao = false
+                vm.ilustrarCenaAtual(
+                    comAnuncio = true,
+                    onSucesso = { Toast.makeText(contexto, "Cena ilustrada com sucesso!", Toast.LENGTH_SHORT).show() },
+                    onError = { Toast.makeText(contexto, it, Toast.LENGTH_LONG).show() }
+                )
+            },
+            onFechar = { simulandoAnuncioIlustracao = false }
         )
     }
 

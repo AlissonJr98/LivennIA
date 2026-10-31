@@ -1404,7 +1404,7 @@ _trava_imagem = threading.Lock()
 PARADA_SEM_COTA_SEG = {
     "gemini": config.ESPERA_SEM_COTA_SEG,
     # O provedor grátis limita 1 imagem a cada ~45s por IP: some sozinho depois.
-    "pollinations": 90,
+    "pollinations": 35,
 }
 
 
@@ -1731,8 +1731,8 @@ def _retrato_pollinations(prompt, traduzir=True, largura=None, altura=None):
     largura_req = largura or config.POLLINATIONS_LARGURA or 1024
     altura_req = altura or config.POLLINATIONS_ALTURA or 1344
 
-    modelos = [config.POLLINATIONS_MODELO or "flux", "turbo", None]
     token = getattr(config, "POLLINATIONS_TOKEN", "") or ""
+    modelos = [config.POLLINATIONS_MODELO or "flux", "turbo", None] if token else [None, "turbo", config.POLLINATIONS_MODELO or "flux"]
     ultimo_erro = None
 
     for mod in modelos:
