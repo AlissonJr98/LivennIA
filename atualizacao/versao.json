@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 40,
-  "versaoNome": "1.8.0",
-  "notas": "Atualização 1.8.0: Retrato da persona estabilizado com geração individual ultra-rápida. Menu Explorar clean com listas suspensas (Modo, Público e Gênero), histórias correlacionadas por público (homens interagem com mulheres e vice-versa) e capas emolduradas no estilo Modelos de Persona.",
+  "versaoCodigo": 41,
+  "versaoNome": "1.8.1",
+  "notas": "Atualização 1.8.1: No chat, foto da capa da história no topo e clique no título abre o perfil completo com criador/sinopse. Botão de elenco substituído por Minha Persona, garantindo que a IA converse e interaja diretamente com a persona selecionada.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

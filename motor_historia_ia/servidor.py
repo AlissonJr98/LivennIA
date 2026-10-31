@@ -1389,13 +1389,16 @@ def criar_jogo(dados: NovoJogoIn, jogador=Depends(jogador_atual)):
             except Exception:
                 pass
 
-        if item and dados.modo == "historia":
-            # No Modo História, o Bot é o personagem do cenário!
-            nome_usado = item["nome"]
-        else:
+        # O protagonista da história é a PERSONA DO JOGADOR!
+        # O Bot/Cenário é quem a IA interpreta (ex: Dante Moretti, Seraphina Vale, etc.)
+        if persona and persona.get("nome"):
+            nome_usado = persona["nome"]
+        elif dados.nome_personagem and dados.nome_personagem != (item["nome"] if item else "") and dados.nome_personagem != "Viajante":
             nome_usado = dados.nome_personagem
-            if persona and (not dados.nome_personagem or dados.nome_personagem == "Viajante"):
-                nome_usado = persona["nome"]
+        elif persona:
+            nome_usado = persona.get("nome") or "Viajante"
+        else:
+            nome_usado = dados.nome_personagem or "Viajante"
 
         premissa = dados.premissa or (item["sinopse"] if item else None)
         estado = motor.novo_estado(
@@ -2932,6 +2935,9 @@ def trocar_persona_jogo(jogo_id: IdDoJogo, dados: TrocarPersonaJogoIn, jogador=D
         raise HTTPException(404, "Persona não encontrada.")
     estado = carregar_estado_do_jogo(jogo)
     estado["persona"] = persona
+    if persona.get("nome"):
+        if "personagem" in estado and isinstance(estado["personagem"], dict):
+            estado["personagem"]["nome"] = persona["nome"]
     banco.atualizar_jogo(jogo_id, jogador["id"], motor.estado_para_texto(estado), jogo["encerrado"])
     return montar_saida(jogo_id, estado, jogo["encerrado"], restante_do_dia(jogador["id"]), mochis=int(jogador.get("mochis") or 0))
 

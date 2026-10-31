@@ -1461,10 +1461,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun criarPersonagem(nome: String) {
         val p = personaAtiva
         val cenario = cenarioSelecionado
-        val nomeLimpo = if (cenario != null) {
-            cenario.nome.trim().take(30).ifEmpty { "Personagem" }
+        val nomeLimpo = if (p != null && p.nome.isNotBlank()) {
+            p.nome.trim().take(30)
+        } else if (personaNome.trim().isNotEmpty() && personaNome.trim() != "Viajante") {
+            personaNome.trim().take(30)
+        } else if (nome.trim().isNotEmpty() && (cenario == null || !nome.equals(cenario.nome, ignoreCase = true))) {
+            nome.trim().take(30)
         } else {
-            (p?.nome?.takeIf { it.isNotBlank() } ?: personaNome.trim().takeIf { it.isNotEmpty() } ?: nome.trim()).take(30).ifEmpty { "Viajante" }
+            "Viajante"
         }
         val genero = cenario?.genero?.takeIf { it.isNotBlank() } ?: generoSelecionado.ifBlank { "Aventura" }
         val premissaLimpa = premissa.trim().take(500).takeIf { it.isNotEmpty() } ?: cenario?.sinopse?.take(500)

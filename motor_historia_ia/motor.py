@@ -1165,10 +1165,14 @@ def _montar_prompt(estado, acao, escolha=False, historico_custom=None):
         f"<<<{memoria}>>>\n"
         if memoria else ""
     )
+    nome_persona = (persona.get("nome") if persona else None) or (estado.get("personagem") or {}).get("nome", "Viajante")
+    tags_persona = (persona.get("tags") if persona else []) or []
+    tags_str = f" • Vibe/Personalidade: {', '.join(tags_persona)}" if tags_persona else ""
     instrucao_persona = (
-        "\n\nLEMBRETE SOBRE A PERSONA DO JOGADOR:\n"
-        "A persona é o humano conversando com você. NUNCA recite idade, altura ou aparência do jogador em suas respostas. "
-        "Trate-o naturalmente como uma pessoa presente na cena."
+        f"\n\nPERSONA DO JOGADOR INTERAGINDO DIRETAMENTE NA CENA:\n"
+        f"- Nome da Persona: {nome_persona}{tags_str}\n"
+        f"- O usuário é a Persona {nome_persona}. Converse e interaja diretamente com {nome_persona}, respondendo às falas, atitudes e sentimentos dele(a).\n"
+        f"- NUNCA recite idade, altura ou ficha como um robô. Trate {nome_persona} com total imersão e naturalidade na cena.\n"
     )
     instrucao_party = ""
     if party:

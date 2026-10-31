@@ -1300,6 +1300,36 @@ private fun JogoModoHistoria(vm: AppViewModel) {
     val corAcao = TextoSuave.copy(alpha = 0.90f)
     val corNormal = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.93f)
     var mostrarPersonaModal by remember { mutableStateOf(false) }
+    var mostrarPerfilHistoria by remember { mutableStateOf(false) }
+
+    val cenarioCompleto = remember(jogo.cenario, vm.catalogo) {
+        val cid = jogo.cenario?.id
+        if (cid != null) {
+            vm.catalogo.firstOrNull { it.id == cid } ?: CenarioDto(
+                id = cid,
+                nome = jogo.cenario?.nome ?: jogo.personagem.nome,
+                subtitulo = jogo.cenario?.subtitulo ?: "",
+                genero = jogo.genero,
+                sinopse = jogo.cenario?.sinopse ?: "",
+                tags = jogo.cenario?.tags ?: emptyList(),
+                emoji = jogo.cenario?.emoji ?: "📖",
+                capa = jogo.cenario?.capa ?: false,
+                autorNome = jogo.cenario?.autorNome ?: "LivennIA"
+            )
+        } else {
+            CenarioDto(
+                id = "custom_${jogo.jogoId}",
+                nome = jogo.personagem.nome,
+                subtitulo = jogo.personagem.local,
+                genero = jogo.genero,
+                sinopse = jogo.cena.narrativa,
+                tags = emptyList(),
+                emoji = "📖",
+                capa = jogo.retrato,
+                autorNome = "LivennIA"
+            )
+        }
+    }
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -1380,91 +1410,64 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             modifier = Modifier.size(20.dp)
                         )
                     }
-                    val personaAtivaHeader = vm.personaAtiva
-                    if (jogo.retrato) {
-                        RetratoPersonagem(
-                            jogoId = jogo.jogoId,
-                            seed = jogo.avatarSeed,
-                            nome = jogo.personagem.nome,
-                            temRetrato = true,
-                            tamanho = 40,
-                            versao = vm.retratoVersao
-                        )
-                    } else if (personaAtivaHeader != null && personaAtivaHeader.temRetrato) {
-                        RetratoPersona(
-                            temRetrato = true,
-                            emojiOuPadrao = personaAtivaHeader.genero.ifBlank { "👤" },
-                            tamanho = 40,
-                            versao = personaAtivaHeader.versaoRetrato,
-                            personaId = personaAtivaHeader.id,
+                    // Avatar da História no topo (ao clicar vai para o perfil da história)
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .border(1.5.dp, Ouro.copy(alpha = 0.55f), CircleShape)
+                            .clickable { mostrarPerfilHistoria = true }
+                    ) {
+                        CapaCenario(
+                            cenarioId = cenarioCompleto.id,
+                            temCapa = cenarioCompleto.capa,
+                            emoji = cenarioCompleto.emojiSeguro.ifBlank { "📖" },
+                            nome = cenarioCompleto.nome,
+                            versao = vm.capaVersao,
+                            modifier = Modifier.fillMaxSize(),
                             recorte = CircleShape
-                        )
-                    } else {
-                        RetratoPersonagem(
-                            jogoId = jogo.jogoId,
-                            seed = jogo.avatarSeed,
-                            nome = jogo.personagem.nome,
-                            temRetrato = false,
-                            tamanho = 40,
-                            versao = vm.retratoVersao
                         )
                     }
                     Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)) {
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .clickable { mostrarPerfilHistoria = true }
+                    ) {
                         Text(
-                            jogo.cenario?.let { "${it.emoji} ${it.nome}" } ?: jogo.personagem.nome,
+                            text = "${cenarioCompleto.emojiSeguro} ${cenarioCompleto.nome}".trim(),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onBackground,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            if (jogo.cenario != null) {
-                                "Protagonista: ${jogo.personagem.nome} • Cap. ${jogo.turno}"
-                            } else {
-                                "📖 ${jogo.genero} • ${jogo.personagem.local} • Cap. ${jogo.turno}"
-                            },
+                            text = "Por ${cenarioCompleto.autorNomeSeguro} • Cap. ${jogo.turno}",
                             style = MaterialTheme.typography.labelSmall,
                             color = TextoSuave,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.clickable { mostrarPersonaModal = true }
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
-                    if (vm.gerandoRetrato) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
-                            color = Ouro
-                        )
-                        Spacer(Modifier.width(6.dp))
-                    } else {
-                        IconButton(onClick = { vm.gerarRetrato() }) {
-                            Icon(
-                                Icons.Filled.Refresh,
-                                contentDescription = "Gerar retrato",
-                                tint = TextoSuave,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
+                    val personaAtivaHeader = vm.personaAtiva
                     Surface(
-                        color = if (vm.partyAtiva.isNotEmpty()) Color(0xFF7C4DFF).copy(alpha = 0.25f) else SuperficieAlta,
+                        color = Color(0xFF7C4DFF).copy(alpha = 0.22f),
                         shape = Cantos.pilula,
-                        border = BorderStroke(1.dp, if (vm.partyAtiva.isNotEmpty()) Color(0xFFB388FF).copy(alpha = 0.60f) else Color.White.copy(alpha = 0.15f)),
-                        modifier = Modifier
-                            .clickable { dialogo = DialogoAberto.Party }
+                        border = BorderStroke(1.dp, Color(0xFFB388FF).copy(alpha = 0.55f)),
+                        modifier = Modifier.clickable { mostrarPersonaModal = true }
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp)
                         ) {
-                            Text("👥", fontSize = 11.sp)
-                            Spacer(Modifier.width(3.dp))
+                            Text("🎭", fontSize = 11.sp)
+                            Spacer(Modifier.width(4.dp))
                             Text(
-                                if (vm.partyAtiva.isNotEmpty()) "Elenco (${vm.partyAtiva.size})" else "Elenco",
+                                text = personaAtivaHeader?.nome?.ifBlank { "Persona" } ?: "Minha Persona",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = if (vm.partyAtiva.isNotEmpty()) Color(0xFFB388FF) else TextoSuave
+                                color = Color(0xFFE0D4FF),
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1
                             )
                         }
                     }
@@ -2105,27 +2108,6 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                                 Text("≡", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                             }
                         }
-
-                        // Pílula 4: Elenco
-                        Surface(
-                            color = if (vm.partyAtiva.isNotEmpty()) Color(0xFF7C4DFF).copy(alpha = 0.25f) else Color.White.copy(alpha = 0.08f),
-                            shape = RoundedCornerShape(50),
-                            border = BorderStroke(1.dp, if (vm.partyAtiva.isNotEmpty()) Color(0xFFB388FF).copy(alpha = 0.60f) else Color.White.copy(alpha = 0.12f)),
-                            modifier = Modifier.clickable { dialogo = DialogoAberto.Party }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("👥", fontSize = 12.sp)
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    if (vm.partyAtiva.isNotEmpty()) "Elenco (${vm.partyAtiva.size})" else "Elenco",
-                                    color = if (vm.partyAtiva.isNotEmpty()) Color(0xFFB388FF) else Color.White.copy(alpha = 0.85f),
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
                     }
                 }
             }
@@ -2141,6 +2123,17 @@ private fun JogoModoHistoria(vm: AppViewModel) {
         onFecharEdicao = { indiceEdicao = null },
         aoInserirNoChat = { texto -> acaoLivre = if (acaoLivre.isBlank()) texto else "$acaoLivre $texto" }
     )
+
+    if (mostrarPerfilHistoria) {
+        DetalhesPersonagemModal(
+            cenario = cenarioCompleto,
+            versaoCapa = vm.capaVersao,
+            apelidoUsuario = vm.apelido,
+            vm = vm,
+            onFechar = { mostrarPerfilHistoria = false },
+            onIniciarChat = { mostrarPerfilHistoria = false }
+        )
+    }
 
     if (mostrarPersonaModal) {
         ModalMinhaPersona(
