@@ -1282,6 +1282,12 @@ private fun AbaExplorar(
 
     var menuPeriodoAberto by remember { mutableStateOf(false) }
 
+    var menuModoAberto by remember { mutableStateOf(false) }
+
+    var menuPublicoAberto by remember { mutableStateOf(false) }
+
+    var menuEstiloAberto by remember { mutableStateOf(false) }
+
 
 
     // Combina o catálogo oficial de IA com os personagens criados pelos usuários na comunidade
@@ -2082,63 +2088,10 @@ private fun AbaExplorar(
 
 
 
-                // 1. CARROSSEL DE CATEGORIAS & FILTRO RÁPIDO (CLEAN & INTEGRADO)
+                // 1. BARRA DE BUSCA E FILTROS EM LISTAS SUSPENSAS (DROPDOWNS CLEAN)
                 item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        // Linha 1: Abas Principais de Conteúdo
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            AbaOrigemPill(
-                                titulo = "🔥 Tudo",
-                                selecionado = filtroModoJogo == "Todos" && filtroPublico == "Todos" && filtroOrigem == "Todos",
-                                aoClicar = {
-                                    filtroModoJogo = "Todos"
-                                    filtroPublico = "Todos"
-                                    filtroOrigem = "Todos"
-                                }
-                            )
-                            AbaOrigemPill(
-                                titulo = "📖 Histórias",
-                                selecionado = filtroModoJogo == "Historia",
-                                aoClicar = {
-                                    filtroModoJogo = if (filtroModoJogo == "Historia") "Todos" else "Historia"
-                                }
-                            )
-                            AbaOrigemPill(
-                                titulo = "🎲 RPG de Mesa",
-                                selecionado = filtroModoJogo == "RPG",
-                                aoClicar = {
-                                    filtroModoJogo = if (filtroModoJogo == "RPG") "Todos" else "RPG"
-                                }
-                            )
-                            AbaOrigemPill(
-                                titulo = "🌸 Para Elas",
-                                selecionado = filtroPublico == "Feminino",
-                                aoClicar = {
-                                    filtroPublico = if (filtroPublico == "Feminino") "Todos" else "Feminino"
-                                }
-                            )
-                            AbaOrigemPill(
-                                titulo = "⚡ Para Eles",
-                                selecionado = filtroPublico == "Masculino",
-                                aoClicar = {
-                                    filtroPublico = if (filtroPublico == "Masculino") "Todos" else "Masculino"
-                                }
-                            )
-                            AbaOrigemPill(
-                                titulo = "👥 Comunidade",
-                                selecionado = filtroOrigem == "Usuarios",
-                                aoClicar = {
-                                    filtroOrigem = if (filtroOrigem == "Usuarios") "Todos" else "Usuarios"
-                                }
-                            )
-                        }
-
-                        // Linha 2: Busca elegante com cantos 3D
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        // Linha 1: Busca elegante com cantos 3D
                         OutlinedTextField(
                             value = busca,
                             onValueChange = { busca = it.take(60) },
@@ -2158,31 +2111,227 @@ private fun AbaExplorar(
                             modifier = Modifier.fillMaxWidth()
                         )
 
-                        // Linha 3: Chips de estilo/gênero rápidos
+                        // Linha 2: Listas Suspensas (Dropdowns) para Modo, Público e Gênero
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            estilosDisponiveis.forEach { estilo ->
-                                val ativo = estilo == estiloFiltro
+                            // 1. Dropdown Modo de Jogo & Origem
+                            val modoLabel = when {
+                                filtroModoJogo == "Historia" -> "📖 Histórias"
+                                filtroModoJogo == "RPG" -> "🎲 RPG de Mesa"
+                                filtroOrigem == "Usuarios" -> "👥 Comunidade"
+                                filtroOrigem == "IA" -> "🤖 Oficiais IA"
+                                else -> "🌟 Modo: Todos"
+                            }
+                            val modoAtivo = filtroModoJogo != "Todos" || filtroOrigem != "Todos"
+
+                            Box {
                                 Surface(
-                                    color = if (ativo) Ouro.copy(alpha = 0.22f) else Color(0xFF131522),
+                                    color = if (modoAtivo) Ouro.copy(alpha = 0.18f) else Color(0xFF161824),
                                     shape = RoundedCornerShape(12.dp),
-                                    border = BorderStroke(1.dp, if (ativo) Ouro else Color.White.copy(alpha = 0.08f)),
-                                    shadowElevation = if (ativo) 4.dp else 1.dp,
-                                    modifier = Modifier.interativo3D(escalaPressionado = 0.92f) {
-                                        estiloFiltro = if (ativo) "Todos" else estilo
+                                    border = BorderStroke(1.dp, if (modoAtivo) Ouro else Color.White.copy(alpha = 0.12f)),
+                                    shadowElevation = if (modoAtivo) 4.dp else 1.dp,
+                                    modifier = Modifier.interativo3D(escalaPressionado = 0.94f) {
+                                        menuModoAberto = true
                                     }
                                 ) {
-                                    Text(
-                                        text = estilo,
-                                        color = if (ativo) Ouro else TextoSuave,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = if (ativo) FontWeight.Bold else FontWeight.Normal,
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = modoLabel,
+                                            color = if (modoAtivo) Ouro else Color.White,
+                                            fontSize = 12.sp,
+                                            fontWeight = if (modoAtivo) FontWeight.Bold else FontWeight.Medium
+                                        )
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("▾", color = if (modoAtivo) Ouro else TextoSuave, fontSize = 11.sp)
+                                    }
+                                }
+
+                                DropdownMenu(
+                                    expanded = menuModoAberto,
+                                    onDismissRequest = { menuModoAberto = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("🌟 Todos os Modos", fontWeight = if (!modoAtivo) FontWeight.Bold else FontWeight.Normal) },
+                                        onClick = {
+                                            filtroModoJogo = "Todos"
+                                            filtroOrigem = "Todos"
+                                            menuModoAberto = false
+                                        }
                                     )
+                                    DropdownMenuItem(
+                                        text = { Text("📖 Histórias Interativas", fontWeight = if (filtroModoJogo == "Historia") FontWeight.Bold else FontWeight.Normal) },
+                                        onClick = {
+                                            filtroModoJogo = "Historia"
+                                            filtroOrigem = "Todos"
+                                            menuModoAberto = false
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("🎲 RPG de Mesa", fontWeight = if (filtroModoJogo == "RPG") FontWeight.Bold else FontWeight.Normal) },
+                                        onClick = {
+                                            filtroModoJogo = "RPG"
+                                            filtroOrigem = "Todos"
+                                            menuModoAberto = false
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("👥 Criações da Comunidade", fontWeight = if (filtroOrigem == "Usuarios") FontWeight.Bold else FontWeight.Normal) },
+                                        onClick = {
+                                            filtroOrigem = "Usuarios"
+                                            filtroModoJogo = "Todos"
+                                            menuModoAberto = false
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("🤖 Oficiais IA (LivennIA)", fontWeight = if (filtroOrigem == "IA") FontWeight.Bold else FontWeight.Normal) },
+                                        onClick = {
+                                            filtroOrigem = "IA"
+                                            filtroModoJogo = "Todos"
+                                            menuModoAberto = false
+                                        }
+                                    )
+                                }
+                            }
+
+                            // 2. Dropdown Público (Correlacionado: Homens interagem com mulheres, mulheres com homens)
+                            val publicoLabel = when (filtroPublico) {
+                                "Masculino" -> "👨 Para Homens (Elas)"
+                                "Feminino" -> "👩 Para Mulheres (Eles)"
+                                else -> "🌐 Público: Todos"
+                            }
+                            val publicoAtivo = filtroPublico != "Todos"
+
+                            Box {
+                                Surface(
+                                    color = if (publicoAtivo) Ouro.copy(alpha = 0.18f) else Color(0xFF161824),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, if (publicoAtivo) Ouro else Color.White.copy(alpha = 0.12f)),
+                                    shadowElevation = if (publicoAtivo) 4.dp else 1.dp,
+                                    modifier = Modifier.interativo3D(escalaPressionado = 0.94f) {
+                                        menuPublicoAberto = true
+                                    }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = publicoLabel,
+                                            color = if (publicoAtivo) Ouro else Color.White,
+                                            fontSize = 12.sp,
+                                            fontWeight = if (publicoAtivo) FontWeight.Bold else FontWeight.Medium
+                                        )
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("▾", color = if (publicoAtivo) Ouro else TextoSuave, fontSize = 11.sp)
+                                    }
+                                }
+
+                                DropdownMenu(
+                                    expanded = menuPublicoAberto,
+                                    onDismissRequest = { menuPublicoAberto = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("🌐 Todos os Públicos", fontWeight = if (filtroPublico == "Todos") FontWeight.Bold else FontWeight.Normal) },
+                                        onClick = {
+                                            filtroPublico = "Todos"
+                                            menuPublicoAberto = false
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("👨 Para Homens (Interagir com Elas)", fontWeight = if (filtroPublico == "Masculino") FontWeight.Bold else FontWeight.Normal) },
+                                        onClick = {
+                                            filtroPublico = "Masculino"
+                                            menuPublicoAberto = false
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("👩 Para Mulheres (Interagir com Eles)", fontWeight = if (filtroPublico == "Feminino") FontWeight.Bold else FontWeight.Normal) },
+                                        onClick = {
+                                            filtroPublico = "Feminino"
+                                            menuPublicoAberto = false
+                                        }
+                                    )
+                                }
+                            }
+
+                            // 3. Dropdown Gênero / Estilo Narrativo
+                            val estiloLabel = if (estiloFiltro == "Todos") "✨ Gêneros" else "✨ $estiloFiltro"
+                            val estiloAtivo = estiloFiltro != "Todos"
+
+                            Box {
+                                Surface(
+                                    color = if (estiloAtivo) Ouro.copy(alpha = 0.18f) else Color(0xFF161824),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, if (estiloAtivo) Ouro else Color.White.copy(alpha = 0.12f)),
+                                    shadowElevation = if (estiloAtivo) 4.dp else 1.dp,
+                                    modifier = Modifier.interativo3D(escalaPressionado = 0.94f) {
+                                        menuEstiloAberto = true
+                                    }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = estiloLabel,
+                                            color = if (estiloAtivo) Ouro else Color.White,
+                                            fontSize = 12.sp,
+                                            fontWeight = if (estiloAtivo) FontWeight.Bold else FontWeight.Medium
+                                        )
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("▾", color = if (estiloAtivo) Ouro else TextoSuave, fontSize = 11.sp)
+                                    }
+                                }
+
+                                DropdownMenu(
+                                    expanded = menuEstiloAberto,
+                                    onDismissRequest = { menuEstiloAberto = false }
+                                ) {
+                                    estilosDisponiveis.forEach { estilo ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    text = if (estilo == "Todos") "✨ Todos os Gêneros" else estilo,
+                                                    fontWeight = if (estiloFiltro == estilo) FontWeight.Bold else FontWeight.Normal
+                                                )
+                                            },
+                                            onClick = {
+                                                estiloFiltro = estilo
+                                                menuEstiloAberto = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Botão de Limpar Filtros quando algum filtro estiver ativo
+                            if (modoAtivo || publicoAtivo || estiloAtivo || busca.isNotBlank()) {
+                                Surface(
+                                    color = Color(0xFF2C1B1F),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.45f)),
+                                    modifier = Modifier.interativo3D(escalaPressionado = 0.92f) {
+                                        filtroModoJogo = "Todos"
+                                        filtroPublico = "Todos"
+                                        filtroOrigem = "Todos"
+                                        estiloFiltro = "Todos"
+                                        busca = ""
+                                    }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("✕ Limpar", color = Color(0xFFFF8A80), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                    }
                                 }
                             }
                         }
@@ -2356,313 +2505,212 @@ private fun AbaOrigemPill(titulo: String, selecionado: Boolean, aoClicar: () -> 
 @Composable
 
 private fun CardCenario(
-
     cenario: CenarioDto,
-
     versao: Int,
-
     gerando: Boolean,
-
     habilitado: Boolean,
-
     onAbrir: () -> Unit,
-
     onAbrirInfo: () -> Unit = {},
-
     onGerarCapa: () -> Unit
-
 ) {
-
     val pressInteraction = remember { MutableInteractionSource() }
     val isPressed by pressInteraction.collectIsPressedAsState()
     val cardScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.94f else 1f,
+        targetValue = if (isPressed) 0.95f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
         label = "cardCenarioScale"
     )
 
-    Box(
+    val corDestaque = remember(cenario.criadoPorUsuario, cenario.modoSeguro) {
+        when {
+            cenario.criadoPorUsuario -> Color(0xFFA78BFA)
+            cenario.modoSeguro == "rpg" -> Color(0xFFFF9F43)
+            else -> Color(0xFF38BDF8)
+        }
+    }
+
+    Surface(
+        color = Color(0xFF13141F),
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(
+            1.5.dp,
+            Brush.verticalGradient(
+                listOf(
+                    corDestaque.copy(alpha = 0.75f),
+                    Color(0xFF7C4DFF).copy(alpha = 0.35f),
+                    Color(0xFF13141F).copy(alpha = 0.15f)
+                )
+            )
+        ),
+        shadowElevation = if (isPressed) 3.dp else 8.dp,
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(0.68f)
+            .aspectRatio(0.60f)
             .scale(cardScale)
-            .shadow(
-                elevation = if (isPressed) 4.dp else 12.dp,
-                shape = RoundedCornerShape(22.dp)
-            )
-            .clip(RoundedCornerShape(22.dp))
-            .border(
-                BorderStroke(
-                    1.8.dp,
-                    Brush.verticalGradient(
-                        listOf(
-                            if (cenario.criadoPorUsuario) Color(0xFFA78BFA) else Color(0xFF38BDF8),
-                            Color(0xFF7C4DFF).copy(alpha = 0.5f),
-                            Color(0xFF131522).copy(alpha = 0.25f)
-                        )
-                    )
-                ),
-                RoundedCornerShape(22.dp)
-            )
             .clickable(
                 enabled = habilitado,
                 interactionSource = pressInteraction,
                 indication = null
             ) { onAbrir() }
     ) {
-
-        CapaCenario(
-
-            cenarioId = cenario.id,
-
-            temCapa = cenario.capa,
-
-            emoji = cenario.emojiSeguro,
-
-            nome = cenario.nome,
-
-            versao = versao,
-
-            modifier = Modifier.fillMaxSize(),
-
-            recorte = RoundedCornerShape(16.dp)
-
-        )
-
-
-
-        // Selo de origem (Comunidade vs Oficial IA) no canto superior esquerdo
-
-        Surface(
-
-            color = if (cenario.criadoPorUsuario) Color(0xFF6C5CE7).copy(alpha = 0.85f) else Color.Black.copy(alpha = 0.70f),
-
-            shape = Cantos.pilula,
-
+        Column(
             modifier = Modifier
-
-                .align(Alignment.TopStart)
-
+                .fillMaxSize()
                 .padding(8.dp)
-
         ) {
-
-            Text(
-
-                text = if (cenario.criadoPorUsuario) "👥 ${cenario.autorNomeSeguro}" else "🤖 ${cenario.generoSeguro}",
-
-                color = Color.White.copy(alpha = 0.95f),
-
-                style = MaterialTheme.typography.labelSmall,
-
-                fontWeight = FontWeight.Medium,
-
-                maxLines = 1,
-
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-
-            )
-
-        }
-
-
-
-        // Badges no canto superior direito (Formato/Engajamento Real + Botão Info do Perfil)
-
-        Row(
-
-            modifier = Modifier
-
-                .align(Alignment.TopEnd)
-
-                .padding(8.dp),
-
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-
-            verticalAlignment = Alignment.CenterVertically
-
-        ) {
-
-            Surface(
-
-                color = Color.Black.copy(alpha = 0.70f),
-
-                shape = Cantos.pilula
-
-            ) {
-
-                Row(
-
-                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
-
-                    verticalAlignment = Alignment.CenterVertically
-
-                ) {
-
-                    Text(if (cenario.modoSeguro == "rpg") "⚔️" else "📜", style = MaterialTheme.typography.labelSmall)
-
-                    Spacer(Modifier.width(3.dp))
-
-                    Text(
-
-                        text = "${cenario.chats}",
-
-                        color = Ouro,
-
-                        style = MaterialTheme.typography.labelSmall,
-
-                        fontWeight = FontWeight.Bold
-
-                    )
-
-                }
-
-            }
-
-
-
-            Surface(
-
-                color = Color.Black.copy(alpha = 0.70f),
-
-                shape = CircleShape,
-
+            // Imagem Moldurada (Estilo Modelos de Persona)
+            Box(
                 modifier = Modifier
-
-                    .size(24.dp)
-
-                    .clickable { onAbrirInfo() }
-
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color(0xFF0D0E15))
             ) {
-
-                Box(contentAlignment = Alignment.Center) {
-
-                    Text("ℹ️", fontSize = 11.sp)
-
-                }
-
-            }
-
-        }
-
-
-
-        // Degradê escuro de baixo para cima
-
-        Box(
-
-            modifier = Modifier
-
-                .align(Alignment.BottomCenter)
-
-                .fillMaxWidth()
-
-                .fillMaxHeight(0.72f)
-
-                .background(
-
-                    Brush.verticalGradient(
-
-                        0f to Color.Transparent,
-
-                        0.32f to Color.Black.copy(alpha = 0.65f),
-
-                        1f to Color.Black.copy(alpha = 0.96f)
-
-                    )
-
+                CapaCenario(
+                    cenarioId = cenario.id,
+                    temCapa = cenario.capa,
+                    emoji = cenario.emojiSeguro,
+                    nome = cenario.nome,
+                    versao = versao,
+                    modifier = Modifier.fillMaxSize(),
+                    recorte = RoundedCornerShape(14.dp)
                 )
 
-        )
+                // Suave gradiente escuro de transição no fundo da moldura da imagem
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(38.dp)
+                        .align(Alignment.BottomCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(Color.Transparent, Color(0xFF13141F).copy(alpha = 0.70f))
+                            )
+                        )
+                )
 
+                // Selo de origem no canto superior esquerdo
+                Surface(
+                    color = if (cenario.criadoPorUsuario) Color(0xFF6C5CE7).copy(alpha = 0.90f) else Color.Black.copy(alpha = 0.65f),
+                    shape = Cantos.pilula,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(6.dp)
+                ) {
+                    Text(
+                        text = if (cenario.criadoPorUsuario) "👥 ${cenario.autorNomeSeguro}" else "🤖 ${cenario.generoSeguro}",
+                        color = Color.White.copy(alpha = 0.95f),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
 
+                // Badges no canto superior direito (Engajamento / Info)
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.65f),
+                        shape = Cantos.pilula
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(if (cenario.modoSeguro == "rpg") "⚔️" else "📜", fontSize = 9.sp)
+                            Spacer(Modifier.width(2.dp))
+                            Text(
+                                text = "${cenario.chats}",
+                                color = Ouro,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
 
-        // Nome, subtítulo, sinopse e tags
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.65f),
+                        shape = CircleShape,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clickable { onAbrirInfo() }
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text("ℹ️", fontSize = 9.sp)
+                        }
+                    }
+                }
+            }
 
-        Column(
+            Spacer(Modifier.height(8.dp))
 
-            modifier = Modifier
-
-                .align(Alignment.BottomStart)
-
-                .fillMaxWidth()
-
-                .padding(10.dp),
-
-            verticalArrangement = Arrangement.spacedBy(3.dp)
-
-        ) {
-
+            // Informações abaixo da imagem (Idêntico aos Modelos de Persona)
             Text(
-
                 "${cenario.emojiSeguro} ${cenario.nome}",
-
                 color = Color.White,
-
-                style = MaterialTheme.typography.titleMedium,
-
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-
+                fontSize = 13.sp,
                 maxLines = 1,
-
                 overflow = TextOverflow.Ellipsis
-
             )
 
             if (cenario.subtituloSeguro.isNotBlank()) {
-
+                Spacer(Modifier.height(1.dp))
                 Text(
-
                     cenario.subtituloSeguro,
-
                     color = Ouro,
-
                     style = MaterialTheme.typography.labelSmall,
-
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold,
-
                     maxLines = 1,
-
                     overflow = TextOverflow.Ellipsis
-
                 )
-
             }
 
+            Spacer(Modifier.height(2.dp))
+
             Text(
-
                 cenario.sinopseSegura,
-
-                color = Color.White.copy(alpha = 0.82f),
-
-                style = MaterialTheme.typography.labelSmall,
-
+                color = TextoSuave,
+                style = MaterialTheme.typography.bodySmall,
+                fontSize = 10.sp,
+                lineHeight = 13.sp,
                 maxLines = 2,
-
                 overflow = TextOverflow.Ellipsis
-
             )
 
             if (cenario.tagsSeguras.isNotEmpty()) {
-
-                FlowRow(
-
+                Spacer(Modifier.height(4.dp))
+                Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
-
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-
-                    cenario.tagsSeguras.take(2).forEach { tag -> ChipSobreArte(tag) }
-
+                    cenario.tagsSeguras.take(2).forEach { tag ->
+                        Surface(
+                            color = Color.White.copy(alpha = 0.07f),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = tag,
+                                color = TextoSuave,
+                                fontSize = 9.sp,
+                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
                 }
-
             }
-
         }
-
     }
-
 }
 
 

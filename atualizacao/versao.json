@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 39,
-  "versaoNome": "1.7.9",
-  "notas": "Atualização 1.7.9: Artes de capa exclusivas para cada história e RPG geradas com base nos personagens e premissas. Botão para gerar novas artes.",
+  "versaoCodigo": 40,
+  "versaoNome": "1.8.0",
+  "notas": "Atualização 1.8.0: Retrato da persona estabilizado com geração individual ultra-rápida. Menu Explorar clean com listas suspensas (Modo, Público e Gênero), histórias correlacionadas por público (homens interagem com mulheres e vice-versa) e capas emolduradas no estilo Modelos de Persona.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

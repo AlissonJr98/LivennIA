@@ -2632,15 +2632,8 @@ def gerar_candidatos_persona(dados: PersonaRetratoIn, jogador=Depends(jogador_at
     token_polli = getattr(config, "POLLINATIONS_TOKEN", "") or ""
     imagens_cortadas = {}
 
-    largura = config.POLLINATIONS_LARGURA or 768
-    altura = config.POLLINATIONS_ALTURA or 1024
-    modelo_flux = config.POLLINATIONS_MODELO or "flux"
-
     params = {
-        "width": largura,
-        "height": altura,
         "seed": seeds[0],
-        "model": modelo_flux,
         "nologo": "true"
     }
     if token_polli:
@@ -2649,19 +2642,31 @@ def gerar_candidatos_persona(dados: PersonaRetratoIn, jogador=Depends(jogador_at
     url_direta = f"{url_base_polli}/{urllib.parse.quote(prompt_portrait[:1400])}?{urllib.parse.urlencode(params)}"
 
     with _lock_pollinations:
-        agora = time.time()
-        espera = max(0.0, _ultimo_polli_ts[0] + 2 - agora)
-        if 0 < espera <= 10:
-            time.sleep(espera)
-
         try:
-            req = urllib.request.Request(url_direta, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": "https://livennia.app/"})
+            req = urllib.request.Request(
+                url_direta,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Referer": "https://livennia.app/"
+                }
+            )
             with urllib.request.urlopen(req, timeout=30) as resp:
                 dados_img = resp.read()
             _ultimo_polli_ts[0] = time.time()
-            imagens_cortadas[0] = dados_img
+            if dados_img and len(dados_img) > 1000:
+                imagens_cortadas[0] = dados_img
         except Exception as e:
-            logging.warning("Imagem da persona %s não baixada de imediato (%s); link direto ativo.", lote_id, e)
+            logging.warning("Imagem da persona %s não baixada de imediato (%s). Usando fallback temático.", lote_id, e)
+            # Fallback seguro com base no gênero e estilo da persona
+            gen = str(dados.genero or "").lower()
+            p_cand = None
+            if "masculin" in gen or "homem" in gen:
+                p_cand = os.path.join(config.PASTA_CAPAS, "dante-moretti.png")
+            else:
+                p_cand = os.path.join(config.PASTA_CAPAS, "seraphina-vale.png")
+            if p_cand and os.path.exists(p_cand):
+                with open(p_cand, "rb") as f:
+                    imagens_cortadas[0] = f.read()
 
     agora_ts = time.time()
     with _lock_candidatos:
@@ -2710,10 +2715,7 @@ def obter_candidato_imagem(lote_id: str, indice: int):
     url_base_polli = config.POLLINATIONS_URL or "https://image.pollinations.ai/prompt"
     token_polli = getattr(config, "POLLINATIONS_TOKEN", "") or ""
     params = {
-        "width": largura,
-        "height": altura,
         "seed": seed,
-        "model": modelo_flux,
         "nologo": "true"
     }
     if token_polli:
@@ -2722,21 +2724,31 @@ def obter_candidato_imagem(lote_id: str, indice: int):
     url = f"{url_base_polli}/{urllib.parse.quote(prompt_en[:1400])}?{urllib.parse.urlencode(params)}"
 
     with _lock_pollinations:
-        agora = time.time()
-        espera = max(0.0, _ultimo_polli_ts[0] + 46 - agora)
-        if 0 < espera <= 45:
-            time.sleep(espera)
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": "https://livennia.app/"})
-            with urllib.request.urlopen(req, timeout=45) as resp:
+            req = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Referer": "https://livennia.app/"
+                }
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
                 dados_img = resp.read()
             _ultimo_polli_ts[0] = time.time()
-            with _lock_candidatos:
-                lote.setdefault("imagens", {})[indice] = dados_img
-            return Response(content=dados_img, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=3600"})
+            if dados_img and len(dados_img) > 1000:
+                with _lock_candidatos:
+                    lote.setdefault("imagens", {})[indice] = dados_img
+                return Response(content=dados_img, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=3600"})
         except Exception as e:
             logging.warning("Erro ao baixar candidato %s do lote %s: %s", indice, lote_id, e)
-            raise HTTPException(503, "Falha ao gerar esta variação de imagem.")
+
+    # Fallback se falhar download externo
+    p_cand = os.path.join(config.PASTA_CAPAS, "dante-moretti.png")
+    if os.path.exists(p_cand):
+        with open(p_cand, "rb") as f:
+            dados_fallback = f.read()
+            return Response(content=dados_fallback, media_type="image/png", headers={"Cache-Control": "public, max-age=3600"})
+    raise HTTPException(503, "Falha ao gerar esta variação de imagem.")
 
 
 @app.post("/personas/{persona_id}/confirmar-candidato", response_model=RetratoOut)
@@ -2754,23 +2766,36 @@ def confirmar_candidato_persona(persona_id: int, dados: ConfirmarCandidatoIn, jo
     elif lote and dados.indice in range(len(lote["seeds"])):
         seed = lote["seeds"][dados.indice]
         prompt_en = lote.get("prompts_en", [lote["prompt_en"]] * 4)[dados.indice]
-        largura = config.POLLINATIONS_LARGURA or 768
-        altura = config.POLLINATIONS_ALTURA or 1024
-        modelo_flux = config.POLLINATIONS_MODELO or "flux"
         url_base_polli = config.POLLINATIONS_URL or "https://image.pollinations.ai/prompt"
         token_polli = getattr(config, "POLLINATIONS_TOKEN", "") or ""
-        params = {"width": largura, "height": altura, "seed": seed, "model": modelo_flux, "nologo": "true"}
+        params = {"seed": seed, "nologo": "true"}
         if token_polli:
             params["token"] = token_polli
             params["key"] = token_polli
         url = f"{url_base_polli}/{urllib.parse.quote(prompt_en[:1400])}?{urllib.parse.urlencode(params)}"
         with _lock_pollinations:
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": "https://livennia.app/"})
-            with urllib.request.urlopen(req, timeout=50) as resp:
-                dados_img = resp.read()
-            _ultimo_polli_ts[0] = time.time()
-            with _lock_candidatos:
-                lote.setdefault("imagens", {})[dados.indice] = dados_img
+            try:
+                req = urllib.request.Request(
+                    url,
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                        "Referer": "https://livennia.app/"
+                    }
+                )
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    dados_img = resp.read()
+                _ultimo_polli_ts[0] = time.time()
+                with _lock_candidatos:
+                    lote.setdefault("imagens", {})[dados.indice] = dados_img
+            except Exception as e:
+                logging.warning("Erro ao baixar imagem da persona para salvar: %s", e)
+
+    if not dados_img:
+        # Fallback para salvar
+        p_cand = os.path.join(config.PASTA_CAPAS, "dante-moretti.png")
+        if os.path.exists(p_cand):
+            with open(p_cand, "rb") as f:
+                dados_img = f.read()
 
     if not dados_img:
         raise HTTPException(400, "Imagem do candidato não encontrada. Tente gerar novamente.")
@@ -2841,23 +2866,36 @@ def confirmar_candidato_conta(dados: ConfirmarCandidatoIn, jogador=Depends(jogad
     elif lote and dados.indice in range(len(lote["seeds"])):
         seed = lote["seeds"][dados.indice]
         prompt_en = lote.get("prompts_en", [lote["prompt_en"]] * 4)[dados.indice]
-        largura = config.POLLINATIONS_LARGURA or 768
-        altura = config.POLLINATIONS_ALTURA or 1024
-        modelo_flux = config.POLLINATIONS_MODELO or "flux"
         url_base_polli = config.POLLINATIONS_URL or "https://image.pollinations.ai/prompt"
         token_polli = getattr(config, "POLLINATIONS_TOKEN", "") or ""
-        params = {"width": largura, "height": altura, "seed": seed, "model": modelo_flux, "nologo": "true"}
+        params = {"seed": seed, "nologo": "true"}
         if token_polli:
             params["token"] = token_polli
             params["key"] = token_polli
         url = f"{url_base_polli}/{urllib.parse.quote(prompt_en[:1400])}?{urllib.parse.urlencode(params)}"
         with _lock_pollinations:
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": "https://livennia.app/"})
-            with urllib.request.urlopen(req, timeout=50) as resp:
-                dados_img = resp.read()
-            _ultimo_polli_ts[0] = time.time()
-            with _lock_candidatos:
-                lote.setdefault("imagens", {})[dados.indice] = dados_img
+            try:
+                req = urllib.request.Request(
+                    url,
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                        "Referer": "https://livennia.app/"
+                    }
+                )
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    dados_img = resp.read()
+                _ultimo_polli_ts[0] = time.time()
+                with _lock_candidatos:
+                    lote.setdefault("imagens", {})[dados.indice] = dados_img
+            except Exception as e:
+                logging.warning("Erro ao baixar imagem da persona para salvar: %s", e)
+
+    if not dados_img:
+        # Fallback para salvar
+        p_cand = os.path.join(config.PASTA_CAPAS, "dante-moretti.png")
+        if os.path.exists(p_cand):
+            with open(p_cand, "rb") as f:
+                dados_img = f.read()
 
     if not dados_img:
         raise HTTPException(400, "Imagem do candidato não encontrada. Tente gerar novamente.")

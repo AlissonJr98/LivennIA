@@ -58,7 +58,7 @@ CENARIOS = [
         "subtitulo": "Um crime perfeito demais",
         "emoji": "🕵️",
         "genero": "Mistério",
-        "tags": ["Crime", "Investigação", "Noir"],
+        "tags": ["Masculino", "Crime", "Investigação", "Noir", "Todos"],
         "sinopse": (
             "Um milionário morreu trancado por dentro. A cidade quer uma resposta rápida. "
             "Mara quer a verdade — e você acaba de virar a testemunha que faltava."
@@ -90,7 +90,7 @@ CENARIOS = [
         "subtitulo": "A última transmissão da Estação Kira",
         "emoji": "🚀",
         "genero": "Ficção Científica",
-        "tags": ["Espaço", "Comando", "Sobrevivência"],
+        "tags": ["Masculino", "Espaço", "Comando", "Sobrevivência", "Todos"],
         "sinopse": (
             "A estação orbital silenciou há 11 dias. A Capitã Okoye chega para resgatar "
             "quem sobrou — e para descobrir quem mentiu no relatório."
@@ -124,7 +124,7 @@ CENARIOS = [
         "subtitulo": "A corte esqueceu quem ele foi",
         "emoji": "👑",
         "genero": "Fantasia",
-        "tags": ["Fantasia", "Corte", "Intriga"],
+        "tags": ["Feminino", "Fantasia", "Corte", "Intriga", "Romance"],
         "sinopse": (
             "Você acorda num castelo onde todos sabem seu nome. Todos, menos você. "
             "O lorde sorri e diz: “Bem-vindo de volta.”"
@@ -259,7 +259,7 @@ CENARIOS = [
         "subtitulo": "Um casamento por contrato com a máfia",
         "emoji": "🥀",
         "genero": "Drama & Obsessão",
-        "tags": ["Máfia", "Contrato", "Tensão"],
+        "tags": ["Feminino", "Máfia", "Contrato", "Tensão", "Romance"],
         "sinopse": (
             "Para salvar sua família da falência, você assinou um contrato de casamento "
             "com o homem mais temido de Milão. Ele prometeu distância — mas não tira os olhos de você."
@@ -293,7 +293,7 @@ CENARIOS = [
         "subtitulo": "Dividindo o teto com sua maior rival",
         "emoji": "💕",
         "genero": "Romance",
-        "tags": ["Enemies to Lovers", "Faculdade", "Rivalidade"],
+        "tags": ["Masculino", "Romance", "Enemies to Lovers", "Faculdade", "Rivalidade"],
         "sinopse": (
             "Vocês disputam o primeiro lugar da universidade há dois anos. Por um erro do "
             "campus, agora dividem o mesmo apartamento — e só há um sofá."
@@ -326,7 +326,7 @@ CENARIOS = [
         "subtitulo": "O lorde vampiro lembra de você",
         "emoji": "🧛",
         "genero": "Sobrenatural",
-        "tags": ["Vampiro", "Reencarnação", "Gótico"],
+        "tags": ["Feminino", "Vampiro", "Reencarnação", "Gótico", "Romance"],
         "sinopse": (
             "Uma nevasca prende você no Castelo de Cinzas. O príncipe imortal que mora lá "
             "olha para o seu rosto como se tivesse esperado quinhentos anos."
@@ -359,7 +359,7 @@ CENARIOS = [
         "subtitulo": "A campeã da Academia Arcana",
         "emoji": "⛩️",
         "genero": "Anime & Isekai",
-        "tags": ["Isekai", "Academia", "Magia"],
+        "tags": ["Masculino", "Romance", "Isekai", "Academia", "Magia"],
         "sinopse": (
             "Invocado para outro mundo com um poder que ninguém entende, você é colocado "
             "sob a tutela direta da espadachim número 1 da Academia."
@@ -392,7 +392,7 @@ CENARIOS = [
         "subtitulo": "Casados para impedir uma guerra",
         "emoji": "👑",
         "genero": "Realeza & Corte",
-        "tags": ["Realeza", "Casamento Político", "Intriga"],
+        "tags": ["Masculino", "Romance", "Realeza", "Casamento Político", "Intriga"],
         "sinopse": (
             "Nossos reinos estavam em guerra até ontem. Hoje dividimos a mesma coroa — "
             "e ela esconde uma adaga debaixo do travesseiro."
@@ -423,7 +423,7 @@ CENARIOS = [
         "subtitulo": "Só abre quando chove em Tóquio",
         "emoji": "🌸",
         "genero": "Cotidiano",
-        "tags": ["Slice of Life", "Conforto", "Tóquio"],
+        "tags": ["Masculino", "Romance", "Slice of Life", "Conforto", "Tóquio"],
         "sinopse": (
             "No fim de um beco iluminado por lanternas, um barista prepara exatamente a "
             "bebida que sua alma precisava naquela noite."
@@ -456,7 +456,7 @@ CENARIOS = [
         "subtitulo": "O último andar depois do expediente",
         "emoji": "💼",
         "genero": "Romance",
-        "tags": ["CEO", "Escritório", "Slow Burn"],
+        "tags": ["Feminino", "CEO", "Escritório", "Slow Burn", "Romance"],
         "sinopse": (
             "Todo o prédio tem medo do fundador da Vance Corp. Menos você — a única "
             "pessoa que ele chama para a sala dele quando as luzes se apagam."
@@ -487,7 +487,7 @@ CENARIOS = [
         "subtitulo": "Seu guarda-costas por 72 horas",
         "emoji": "⚔️",
         "genero": "Ação",
-        "tags": ["Guarda-Costas", "Proteção", "Perigo"],
+        "tags": ["Feminino", "Guarda-Costas", "Proteção", "Perigo", "Romance"],
         "sinopse": (
             "Alguém colocou um preço alto pela sua cabeça. Riven foi contratado para "
             "manter você respirando — mesmo que você não facilite."
@@ -518,7 +518,7 @@ CENARIOS = [
         "subtitulo": "Procurada por todo o império",
         "emoji": "🪄",
         "genero": "Fantasia",
-        "tags": ["Fantasia Sombria", "Magia", "Fuga"],
+        "tags": ["Masculino", "Romance", "Fantasia Sombria", "Magia", "Fuga"],
         "sinopse": (
             "A feiticeira mais caçada do continente desmaia ferida na porta da sua "
             "cabana. Os inquisidores batem logo atrás."
@@ -549,7 +549,7 @@ CENARIOS = [
         "subtitulo": "Ele lê cada mentira no seu olhar",
         "emoji": "🔍",
         "genero": "Mistério",
-        "tags": ["Psicológico", "Investigação", "Suspense"],
+        "tags": ["Feminino", "Psicológico", "Investigação", "Suspense", "Romance"],
         "sinopse": (
             "Consultor criminal brilhante e perigosamente sedutor, Julian aceitou ajudar "
             "no caso — com a condição de trabalhar somente com você."
@@ -579,7 +579,7 @@ CENARIOS = [
         "subtitulo": "Astro do rock e seu passado",
         "emoji": "🎸",
         "genero": "Cotidiano",
-        "tags": ["Amigo de Infância", "Música", "Reencontro"],
+        "tags": ["Feminino", "Amigo de Infância", "Música", "Reencontro", "Romance"],
         "sinopse": (
             "Hoje ele lota estádios pelo mundo. Mas às duas da manhã, depois do show na "
             "sua cidade, é na sua janela que ele vem bater."
@@ -611,7 +611,7 @@ CENARIOS = [
         "subtitulo": "Um coração sintético que escolheu você",
         "emoji": "🤖",
         "genero": "Ficção Científica",
-        "tags": ["Androide", "Sci-Fi", "Fuga"],
+        "tags": ["Masculino", "Romance", "Androide", "Sci-Fi", "Fuga"],
         "sinopse": (
             "Ela deveria ser apenas uma unidade de protocolo sem emoções. Até segurar "
             "sua mão e pedir para você não deixá-los formatar sua memória."
@@ -642,7 +642,7 @@ CENARIOS = [
         "subtitulo": "Trancados na Masmorra Dupla",
         "emoji": "🗡️",
         "genero": "Anime & Isekai",
-        "tags": ["Masmorra", "Sistema", "Ação"],
+        "tags": ["Masculino", "Romance", "Masmorra", "Sistema", "Ação"],
         "sinopse": (
             "O portal da masmorra se fechou sozinho. Agora você está preso no subsolo "
             "com a caçadora mais letal — e imprevisível — da Guilda."
@@ -673,7 +673,7 @@ CENARIOS = [
         "subtitulo": "A dona do cassino nunca perde",
         "emoji": "🃏",
         "genero": "Drama & Obsessão",
-        "tags": ["Cassino", "Poder", "Sedução"],
+        "tags": ["Masculino", "Romance", "Cassino", "Poder", "Sedução"],
         "sinopse": (
             "No subsolo mais luxuoso da cidade, Valeria aceita perdoar a dívida que "
             "colocaram no seu nome — em troca de uma única aposta."
@@ -704,7 +704,7 @@ CENARIOS = [
         "subtitulo": "Hóspede da meia-noite",
         "emoji": "🦇",
         "genero": "Sobrenatural",
-        "tags": ["Vampira", "Gótico", "Sedução"],
+        "tags": ["Masculino", "Romance", "Vampira", "Gótico", "Sedução"],
         "sinopse": (
             "Contratado para catalogar a biblioteca de uma mansão isolada, você descobre "
             "uma única regra: nunca saia do quarto depois da meia-noite."
