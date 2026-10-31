@@ -1480,6 +1480,14 @@ fun DetalhesPersonagemModal(
                                             }
                                         )
                                         DropdownMenuItem(
+                                            text = { Text("✨ Gerar Nova Arte de Capa") },
+                                            onClick = {
+                                                menuMaisAberto = false
+                                                vm?.gerarCapaDoCenario(cenario.id)
+                                                Toast.makeText(contexto, "Gerando nova arte do personagem...", Toast.LENGTH_SHORT).show()
+                                            }
+                                        )
+                                        DropdownMenuItem(
                                             text = { Text("🗑️ Excluir História", color = Color(0xFFFF5252)) },
                                             onClick = {
                                                 menuMaisAberto = false

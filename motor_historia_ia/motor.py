@@ -1304,13 +1304,51 @@ def gerar_retrato(estado):
 
 
 def arte_do_cenario(cenario):
-    """O pedido de imagem da capa. Os cenários do catálogo já o trazem em inglês."""
+    """O pedido de imagem da capa. Gera com base no que a pessoa adicionou (personagem, tags, sinopse, gênero e estilo)."""
     if not isinstance(cenario, dict):
         return None
     arte = cenario.get("arte")
-    if not isinstance(arte, str) or not arte.strip():
-        return None
-    return arte.strip()
+    if isinstance(arte, str) and arte.strip():
+        return arte.strip()
+
+    nome = str(cenario.get("nome") or "Personagem").strip()
+    genero = str(cenario.get("genero") or "Fantasia").strip()
+    sinopse = str(cenario.get("sinopse") or "").strip()
+    tags = cenario.get("tags") or []
+    if isinstance(tags, str):
+        try:
+            import json
+            tags = json.loads(tags)
+        except Exception:
+            tags = [tags]
+    tags_str = ", ".join(str(t) for t in tags)
+
+    estilo = str(cenario.get("estilo_imagem") or cenario.get("estilo") or "semi_realistic").lower()
+    estilo_prompt = "cinematic semi-realistic digital art, masterpiece, 8k resolution"
+    if "anime" in estilo:
+        estilo_prompt = "high-end 2D anime illustration, vibrant colors, anime key visual, clean lines"
+    elif "realist" in estilo or "foto" in estilo:
+        estilo_prompt = "photorealistic character photography, 8k, hyper-detailed skin texture, studio lighting"
+    elif "cyber" in estilo:
+        estilo_prompt = "cyberpunk neon aesthetic, high-tech cybernetic details, atmospheric volumetric lighting"
+    elif "dark" in estilo or "fantasia" in estilo or "gotic" in estilo:
+        estilo_prompt = "dark fantasy art, dramatic chiaroscuro lighting, intricate gothic details"
+
+    modo = str(cenario.get("modo") or cenario.get("modoJogo") or "historia").lower()
+    tipo_arte = "tabletop RPG hero character portrait" if modo == "rpg" else "story character portrait"
+
+    partes = [
+        f"{tipo_arte} of {nome}",
+        f"genre: {genero}",
+    ]
+    if tags_str:
+        partes.append(f"character traits and archetype: {tags_str}")
+    if sinopse:
+        partes.append(f"story setting and mood: {sinopse[:200]}")
+    partes.append(estilo_prompt)
+    partes.append("expressive captivating eyes, charismatic pose, vertical composition, highly detailed, beautiful character design, no text, no watermark, no frame")
+
+    return ", ".join(partes)
 
 
 def gerar_capa(cenario):
@@ -1678,34 +1716,56 @@ def _traduzir_prompt_retrato(prompt):
 
 
 def _retrato_pollinations(prompt, traduzir=True, largura=None, altura=None):
-    """Imagem por difusão (Flux) via Pollinations."""
+    """Imagem por difusão (Flux/Turbo) via Pollinations."""
     # Se o prompt já está estruturado em inglês com tags de difusão, não traduz novamente
-    if traduzir and not ("1man" in prompt or "1woman" in prompt or "portrait" in prompt or "photorealistic" in prompt):
+    if traduzir and not ("1man" in prompt or "1woman" in prompt or "portrait" in prompt or "photorealistic" in prompt or "masterpiece" in prompt):
         prompt = _traduzir_prompt_retrato(prompt)
-    params = {
-        "width": largura or config.POLLINATIONS_LARGURA,
-        "height": altura or config.POLLINATIONS_ALTURA,
-        "seed": random.randint(1, 2_000_000_000),
-        "model": config.POLLINATIONS_MODELO or "flux",
-        "nologo": "true",
-    }
-    parametros = urllib.parse.urlencode(params)
-    url = f"{config.POLLINATIONS_URL}/{urllib.parse.quote(prompt[:1400])}?{parametros}"
-    pedido = urllib.request.Request(url, headers={"User-Agent": "LivennIA/1.0"})
-    try:
-        with urllib.request.urlopen(
-            pedido, timeout=config.TEMPO_LIMITE_BAIXO_IMAGEM_SEG
-        ) as resposta:
-            dados = resposta.read()
-    except urllib.error.HTTPError as erro:
-        if erro.code == 402:
-            _marcar_sem_cota("pollinations", "402: limite por IP")
-        raise ErroIA(f"Provedor grátis recusou o pedido ({erro.code}).")
-    except Exception as erro:  # noqa: BLE001 - qualquer falha de rede cai no fallback
-        raise ErroIA(f"Provedor grátis falhou ({type(erro).__name__}).")
-    if not _parece_imagem(dados):
-        raise ErroIA("O provedor grátis devolveu algo que não é imagem.")
-    return dados
+
+    modelos = [config.POLLINATIONS_MODELO or "flux", "turbo", None]
+    token = getattr(config, "POLLINATIONS_TOKEN", "") or ""
+    ultimo_erro = None
+
+    for mod in modelos:
+        params = {
+            "seed": random.randint(1, 2_000_000_000),
+            "nologo": "true",
+        }
+        if largura:
+            params["width"] = largura
+        if altura:
+            params["height"] = altura
+        if mod:
+            params["model"] = mod
+        if token:
+            params["token"] = token
+            params["key"] = token
+
+        parametros = urllib.parse.urlencode(params)
+        url = f"{config.POLLINATIONS_URL}/{urllib.parse.quote(prompt[:1400])}?{parametros}"
+        pedido = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Referer": "https://livennia.app/"
+            }
+        )
+        try:
+            with urllib.request.urlopen(pedido, timeout=config.TEMPO_LIMITE_BAIXO_IMAGEM_SEG) as resposta:
+                dados = resposta.read()
+                if _parece_imagem(dados):
+                    return dados
+        except urllib.error.HTTPError as erro:
+            ultimo_erro = erro
+            if erro.code in (402, 503):
+                continue
+            break
+        except Exception as erro:  # noqa: BLE001
+            ultimo_erro = erro
+            continue
+
+    if ultimo_erro and getattr(ultimo_erro, "code", None) == 402:
+        _marcar_sem_cota("pollinations", "402: limite por IP")
+    raise ErroIA(f"Provedor grátis falhou ({ultimo_erro}).")
 
 
 def _ordem_de_modelos(estado):

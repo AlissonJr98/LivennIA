@@ -937,6 +937,24 @@ def criar_cenario_comunidade(dados: NovoCenarioIn, jogador=Depends(jogador_atual
         modo_jogo=dados.modo_jogo or "historia",
     )
     c_salvo = banco.obter_cenario_usuario(c_id)
+
+    # Gera ou atribui imediatamente a capa temática do personagem baseada no que o usuário adicionou
+    try:
+        os.makedirs(config.PASTA_CAPAS, exist_ok=True)
+        caminho_final = caminho_capa(c_id)
+        if not os.path.exists(caminho_final):
+            try:
+                img_data = motor.gerar_capa(c_salvo)
+                with open(caminho_final, "wb") as f:
+                    f.write(img_data)
+            except Exception:
+                fallback = obter_capa_tematica_personagem(c_salvo)
+                if fallback and os.path.exists(fallback):
+                    import shutil
+                    shutil.copyfile(fallback, caminho_final)
+    except Exception as e:
+        logging.warning("Não foi possível gerar capa inicial para %s: %s", c_id, e)
+
     return CenarioOut(
         id=c_salvo["id"],
         nome=c_salvo["nome"],
@@ -1606,67 +1624,158 @@ def ver_retrato_da_persona(token: Optional[str] = None, credenciais: Optional[HT
 
 @app.post("/catalogo/{cenario_id}/capa", response_model=CapaOut)
 def gerar_capa_do_cenario(cenario_id: IdDoCenario, jogador=Depends(jogador_atual)):
-    """Gera (uma única vez) a arte de capa de um cenário. Depois ela fica salva."""
+    """Gera ou regenera a arte de capa de um cenário baseada no personagem e na história."""
     item = catalogo.cenario(cenario_id)
     if item is None:
         raise HTTPException(404, "Cenário não encontrado.")
-    if tem_capa(item["id"]):
-        return CapaOut(capa=True)
-    usaveis = [
-        p
-        for p in config.PROVEDORES_IMAGEM
-        if p == "pollinations" or (p == "gemini" and config.CHAVE_API)
-    ]
-    if not usaveis:
-        raise HTTPException(503, "A geração de imagens não está configurada no servidor.")
     if not limite_capa.permitir(f"capa:{jogador['id']}"):
         raise HTTPException(429, "Calma! Aguarde um pouco para gerar outra capa.")
     consumir_capa_do_dia()
+    imagem = None
     try:
         imagem = motor.gerar_capa(item)
-    except motor.ErroIA as erro:
-        logging.warning("Capa não gerada (%s): %s", item["id"], erro)
-        raise HTTPException(
-            503, "Não foi possível gerar a capa agora. Tente de novo em instantes."
-        )
-    except HTTPException:
-        raise
     except Exception as erro:
-        logging.warning("Falha ao gerar capa (%s): %s", item["id"], erro)
-        raise HTTPException(503, "Não foi possível gerar a capa agora.")
+        logging.warning("Geração online de capa (%s) falhou: %s. Aplicando retrato temático.", item["id"], erro)
+        fallback = obter_capa_tematica_personagem(item)
+        if fallback and os.path.exists(fallback):
+            with open(fallback, "rb") as f:
+                imagem = f.read()
+
+    if not imagem:
+        raise HTTPException(503, "Não foi possível gerar a capa agora. Tente de novo em instantes.")
+
     os.makedirs(config.PASTA_CAPAS, exist_ok=True)
     with open(caminho_capa(item["id"]), "wb") as arquivo:
         arquivo.write(imagem)
     return CapaOut(capa=True)
 
 
+def obter_capa_tematica_personagem(item):
+    """Encontra o melhor retrato de personagem temático baseado no que foi adicionado na história."""
+    if not isinstance(item, dict):
+        return None
+    pasta_capas = config.PASTA_CAPAS
+    modo = str(item.get("modo") or item.get("modoJogo") or "").lower()
+    genero = str(item.get("genero") or "").lower()
+    nome = str(item.get("nome") or "").lower()
+    sinopse = str(item.get("sinopse") or "").lower()
+    tags = item.get("tags") or []
+    if isinstance(tags, str):
+        try:
+            import json
+            tags = json.loads(tags)
+        except Exception:
+            tags = [tags]
+    tags_texto = " ".join(str(t).lower() for t in tags)
+    texto_geral = f"{nome} {genero} {tags_texto} {sinopse}"
+
+    # 1. Cenários de RPG
+    if modo == "rpg" or "rpg" in texto_geral:
+        if any(w in texto_geral for w in ["cyber", "hacker", "futuro", "tech", "distopia", "robo"]):
+            cand = os.path.join(pasta_capas, "rpg-cyberpunk-omega.png")
+            if os.path.exists(cand): return cand
+        if any(w in texto_geral for w in ["magia", "arcano", "feiticeir", "mago", "grimorio", "escola"]):
+            cand = os.path.join(pasta_capas, "rpg-academia-feiticaria.png")
+            if os.path.exists(cand): return cand
+        if any(w in texto_geral for w in ["investiga", "terror", "arkham", "ocult", "cthulhu", "detetive"]):
+            cand = os.path.join(pasta_capas, "rpg-chamado-arkham.png")
+            if os.path.exists(cand): return cand
+        if any(w in texto_geral for w in ["taverna", "guerreiro", "guilda", "barbaro", "cerveja", "aventura"]):
+            cand = os.path.join(pasta_capas, "rpg-taverna-javali.png")
+            if os.path.exists(cand): return cand
+        cand = os.path.join(pasta_capas, "rpg-cripta-lich.png")
+        if os.path.exists(cand): return cand
+
+    # 2. Histórias baseadas nas características e tags do personagem
+    if any(w in texto_geral for w in ["vampir", "sangue", "gotic", "sombri", "imortal"]):
+        cand = os.path.join(pasta_capas, "carmilla-noctis.png")
+        if os.path.exists(cand): return cand
+
+    if any(w in texto_geral for w in ["mafi", "rival", "possessiv", "controlador", "bad boy", "perigo", "chefe"]):
+        cand = os.path.join(pasta_capas, "dante-moretti.png")
+        if os.path.exists(cand): return cand
+
+    if any(w in texto_geral for w in ["elf", "floresta", "natureza", "arqueir"]):
+        cand = os.path.join(pasta_capas, "kaelen-veyr.png")
+        if os.path.exists(cand): return cand
+
+    if any(w in texto_geral for w in ["brux", "feiticeir", "sobrenatural", "maldicao"]):
+        cand = os.path.join(pasta_capas, "nyx-feiticeira.png")
+        if os.path.exists(cand): return cand
+
+    if any(w in texto_geral for w in ["princesa", "rainha", "nobre", "realeza", "imperatriz"]):
+        cand = os.path.join(pasta_capas, "lady-lyra.png")
+        if os.path.exists(cand): return cand
+
+    if any(w in texto_geral for w in ["lorde", "cavaleiro", "duque", "rei", "espadachim"]):
+        cand = os.path.join(pasta_capas, "lorde-aldric.png")
+        if os.path.exists(cand): return cand
+
+    if any(w in texto_geral for w in ["guarda", "protetor", "forte", "soldado"]):
+        cand = os.path.join(pasta_capas, "riven-guarda-costas.png")
+        if os.path.exists(cand): return cand
+
+    if any(w in texto_geral for w in ["rock", "musica", "astro", "rebelde", "cantor"]):
+        cand = os.path.join(pasta_capas, "aiden-rockstar.png")
+        if os.path.exists(cand): return cand
+
+    if any(w in texto_geral for w in ["cacador", "rank", "dungeon", "level", "anime"]):
+        cand = os.path.join(pasta_capas, "kira-rank-s.png")
+        if os.path.exists(cand): return cand
+
+    if any(w in texto_geral for w in ["cyber", "futur", "androide", "ia"]):
+        cand = os.path.join(pasta_capas, "seul-2099.png")
+        if os.path.exists(cand): return cand
+
+    if any(w in texto_geral for w in ["gentil", "amigo", "carinhos", "doce"]):
+        cand = os.path.join(pasta_capas, "elian-vance.png")
+        if os.path.exists(cand): return cand
+
+    if any(w in texto_geral for w in ["sedutor", "atraente", "luxuria", "romantico"]):
+        cand = os.path.join(pasta_capas, "valeria-rossi.png")
+        if os.path.exists(cand): return cand
+
+    # Fallbacks variados de personagens para nunca repetir a mesma foto
+    variados = [
+        "seraphina-vale.png", "dante-moretti.png", "aoi-takahashi.png",
+        "kaelen-veyr.png", "lady-lyra.png", "julian-cross.png", "elian-vance.png"
+    ]
+    idx = abs(hash(str(item.get("id")))) % len(variados)
+    cand = os.path.join(pasta_capas, variados[idx])
+    if os.path.exists(cand):
+        return cand
+
+    return None
+
+
 @app.get("/catalogo/{cenario_id}/capa")
 def ver_capa(cenario_id: IdDoCenario):
-    """Devolve a arte de capa de um cenário (se já foi gerada ou fallback de estilo)."""
+    """Devolve a arte de capa de um cenário (se já foi gerada ou fallback temático do personagem)."""
     item = catalogo.cenario(cenario_id)
     if item is None:
         raise HTTPException(404, "Cenário não encontrado.")
     caminho = caminho_capa(item["id"])
     if not os.path.exists(caminho):
-        # Tenta gerar e salvar no disco
+        # Tenta gerar e salvar no disco com o motor de IA
         try:
             os.makedirs(config.PASTA_CAPAS, exist_ok=True)
             imagem = motor.gerar_capa(item)
             with open(caminho, "wb") as f:
                 f.write(imagem)
-        except Exception:
-            # Fallback seguro para amostra do estilo de arte
-            estilo = str(item.get("estilo_imagem") or item.get("genero") or "semi_realistic").lower()
-            mapa = {
-                "anime": "vibrant_anime",
-                "realista": "photorealistic",
-                "cyberpunk": "dark_fantasy",
-            }
-            nome_arq = f"{mapa.get(estilo, estilo)}.jpg"
+        except Exception as erro:
+            logging.info("Geração dinâmica de capa para '%s' usará retrato temático: %s", item["id"], erro)
+            fallback = obter_capa_tematica_personagem(item)
+            if fallback and os.path.exists(fallback):
+                import shutil
+                try:
+                    shutil.copyfile(fallback, caminho)
+                except Exception:
+                    pass
+                return FileResponse(fallback, media_type=tipo_de_imagem(fallback), headers={"Cache-Control": "public, max-age=86400"})
+
+            # Último recurso caso não encontre nenhuma capa específica
             pasta_ex = os.path.join(os.path.dirname(__file__), "dados", "estilos_exemplos")
-            caminho_ex = os.path.join(pasta_ex, nome_arq)
-            if not os.path.exists(caminho_ex):
-                caminho_ex = os.path.join(pasta_ex, "semi_realistic.jpg")
+            caminho_ex = os.path.join(pasta_ex, "semi_realistic.jpg")
             if os.path.exists(caminho_ex):
                 return FileResponse(caminho_ex, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
             raise HTTPException(404, "Este cenário ainda não tem capa.")
