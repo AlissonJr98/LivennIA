@@ -1350,7 +1350,7 @@ def arte_do_cenario(cenario):
     if sinopse:
         partes.append(f"story setting and mood: {sinopse[:200]}")
     partes.append(estilo_prompt)
-    partes.append("expressive captivating eyes, charismatic pose, vertical composition, highly detailed face and eyes, beautiful character design, ultra sharp focus, 8k resolution, professional studio quality, no text, no watermark, no frame, no blur")
+    partes.append("well framed, entire head and hair fully visible with generous headroom at the top, perfectly centered subject, upper body portrait with clear space above head, expressive captivating eyes, charismatic pose, vertical composition, highly detailed face and eyes, beautiful character design, ultra sharp focus, 8k resolution, professional studio quality, no text, no watermark, no frame, no blur")
 
     return ", ".join(partes)
 

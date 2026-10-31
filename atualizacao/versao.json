@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 46,
-  "versaoNome": "1.8.6",
-  "notas": "Atualização 1.8.6: Modo Cinema Visual Novel em Tela Cheia, Termômetro de Humor & Emoção Dinâmico, Revelar Pensamentos Secretos do personagem, Árvore de Linha do Tempo Visual nos Savepoints, Exportação de História Completa em Livro Digital PDF nativo, Cartas de Memória Holográficas 3D, Filtro por Tropes/Arquétipos no Explorar e Capas de Histórias com enquadramento aprimorado e zoom em tela cheia.",
+  "versaoCodigo": 47,
+  "versaoNome": "1.8.7",
+  "notas": "Atualização 1.8.7 (Inspiração Emochi & Assinatura LivennIA): Galeria de Momentos & Memórias Secretas (CG Gallery desbloqueável por afinidade), Sistema de Presentes & Mimos Interativos com reações emocionais imediatas em tempo real, Modulação de Voz Inteligente no TTS (Pitch & Speed adaptados ao arquétipo do personagem), Status de Presença em Tempo Real, enquadramento de capas aprimorado sem cortes e layout de detalhes limpo e imersivo.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

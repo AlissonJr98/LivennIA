@@ -88,6 +88,8 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -336,6 +338,312 @@ fun exportarHistoriaPdf(context: android.content.Context, jogo: JogoResponse, ch
         context.startActivity(Intent.createChooser(shareIntent, "Exportar Livro Digital (PDF)"))
     } catch (e: Exception) {
         android.widget.Toast.makeText(context, "Erro ao exportar PDF: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+    }
+}
+
+fun modularVozTTS(tts: TextToSpeech?, genero: String, personagem: String? = null) {
+    val p = personagem?.lowercase() ?: ""
+    val g = genero.lowercase()
+    when {
+        "rainha" in p || "princesa" in p || "garota" in p || "menina" in p || "mulher" in p || "elfa" in p || "maga" in p || "romance" in g || "elas" in g -> {
+            tts?.setPitch(1.18f)
+            tts?.setSpeechRate(1.02f)
+        }
+        "cyberpunk" in g || "guerreiro" in p || "cavaleiro" in p || "monstro" in p || "vilão" in p || "máfia" in g || "sombria" in g -> {
+            tts?.setPitch(0.85f)
+            tts?.setSpeechRate(0.96f)
+        }
+        "ação" in g || "aventura" in g -> {
+            tts?.setPitch(1.04f)
+            tts?.setSpeechRate(1.05f)
+        }
+        else -> {
+            tts?.setPitch(1.0f)
+            tts?.setSpeechRate(1.0f)
+        }
+    }
+}
+
+data class PresenteItem(
+    val icone: String,
+    val nome: String,
+    val descricao: String,
+    val afeto: Int,
+    val custoLivens: Int,
+    val acaoNarrativa: String
+)
+
+@Composable
+fun ModalPresentearPersonagem(
+    nomePersonagem: String,
+    saldoLivens: Int,
+    onEnviarPresente: (PresenteItem) -> Unit,
+    onFechar: () -> Unit
+) {
+    val presentes = listOf(
+        PresenteItem("☕", "Café Quente Especial", "Aquece a conversa e relaxa a tensão", 15, 5, "*Oferece uma xícara fumegante de café fresco para $nomePersonagem.*"),
+        PresenteItem("💐", "Flores de Neon Silvestres", "Um gesto de carinho e apreciação visual", 25, 10, "*Presenteia $nomePersonagem com um lindo arranjo de flores luminescentes.*"),
+        PresenteItem("🍷", "Taça de Vinho Envelhecido", "Abre espaço para confissões íntimas e risadas", 35, 15, "*Serve duas taças de vinho nobre e brinda com $nomePersonagem.*"),
+        PresenteItem("🗡️", "Adaga de Prata Gravada", "Símbolo de proteção e confiança mútua", 50, 20, "*Entrega a $nomePersonagem uma lâmina refinada forjada com runas de proteção.*"),
+        PresenteItem("📜", "Pergaminho com Poema", "Palavras sinceras tocando a alma", 45, 18, "*Entrega uma carta escrita à mão com palavras dedicadas a $nomePersonagem.*"),
+        PresenteItem("✨", "Orbe de Luz Eterna", "Uma relíquia misteriosa e cativante", 60, 25, "*Coloca nas mãos de $nomePersonagem uma esfera luminosa que irradia calma e calor.*")
+    )
+
+    AlertDialog(
+        onDismissRequest = onFechar,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("🎁", fontSize = 22.sp)
+                Spacer(Modifier.width(8.dp))
+                Column {
+                    Text("Presentear $nomePersonagem", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Seus Livens: ✨ $saldoLivens", style = MaterialTheme.typography.labelSmall, color = Ouro)
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    "Envie um agrado para surpreender $nomePersonagem! A IA responderá imediatamente com uma reação emocional personalizada e o vínculo aumentará.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextoSuave
+                )
+                presentes.forEach { p ->
+                    val podePagar = saldoLivens >= p.custoLivens
+                    Surface(
+                        color = Color(0xFF161826),
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, if (podePagar) Ouro.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.08f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .cliqueFuturista3D {
+                                onEnviarPresente(p)
+                                onFechar()
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(p.icone, fontSize = 28.sp)
+                            Spacer(Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(p.nome, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text(p.descricao, color = TextoSuave, fontSize = 11.sp)
+                                Spacer(Modifier.height(2.dp))
+                                Text("💖 +${p.afeto} Vínculo", color = Color(0xFFFF80AB), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                            Surface(
+                                color = if (podePagar) Ouro.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f),
+                                shape = Cantos.pilula,
+                                border = BorderStroke(1.dp, if (podePagar) Ouro else Color.White.copy(alpha = 0.1f))
+                            ) {
+                                Text(
+                                    "✨ ${p.custoLivens}",
+                                    color = if (podePagar) Ouro else TextoSuave,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onFechar) { Text("Fechar") }
+        }
+    )
+}
+
+data class MomentoCG(
+    val id: String,
+    val titulo: String,
+    val subtitulo: String,
+    val nivelNecessario: Int,
+    val descricaoLore: String
+)
+
+@Composable
+fun ModalGaleriaMomentos(
+    nomePersonagem: String,
+    cenarioId: String?,
+    nivelVinculoAtual: Int,
+    onFechar: () -> Unit
+) {
+    val momentos = listOf(
+        MomentoCG("1", "Primeiro Encontro", "O início de tudo", 1, "O olhar trocado quando seus caminhos se cruzaram pela primeira vez."),
+        MomentoCG("2", "Chuva & Confidências", "Quebrando o gelo", 2, "Um momento a sós onde o silêncio falou mais alto que o perigo ao redor."),
+        MomentoCG("3", "Cúmplices no Perigo", "Confiança forjada no caos", 3, "De costas um para o outro, sabendo que suas vidas dependem dessa sintonia."),
+        MomentoCG("4", "Confissão à Meia-Noite", "Segredos sem máscaras", 4, "A vulnerabilidade que nunca foi mostrada a ninguém antes de você."),
+        MomentoCG("5", "Juramento Inquebrável", "Destinos entrelaçados", 5, "Uma aliança além das palavras, eternizada em cada decisão tomada juntos.")
+    )
+
+    var momentoEmZoom by remember { mutableStateOf<MomentoCG?>(null) }
+    val contexto = LocalContext.current
+
+    AlertDialog(
+        onDismissRequest = onFechar,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("📸", fontSize = 22.sp)
+                Spacer(Modifier.width(8.dp))
+                Column {
+                    Text("Galeria de Momentos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("$nomePersonagem • Memórias Exclusivas", style = MaterialTheme.typography.labelSmall, color = Ouro)
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    "Momentos visuais memoráveis inspirados na sua jornada. Conforme você conversa e fortalece o Vínculo com $nomePersonagem, novas memórias são reveladas!",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextoSuave
+                )
+
+                momentos.forEach { m ->
+                    val desbloqueado = nivelVinculoAtual >= m.nivelNecessario
+                    Surface(
+                        color = if (desbloqueado) Color(0xFF161928) else Color(0xFF0F1018),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, if (desbloqueado) Ouro.copy(alpha = 0.45f) else Color.White.copy(alpha = 0.08f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .cliqueFuturista3D {
+                                if (desbloqueado) {
+                                    momentoEmZoom = m
+                                } else {
+                                    Toast.makeText(contexto, "🔒 Desbloqueia no Nível ${m.nivelNecessario} de Vínculo! Continue jogando com $nomePersonagem.", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(54.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(if (desbloqueado) Color(0xFF22263D) else Color(0xFF14151E)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (desbloqueado) {
+                                    Text("🖼️", fontSize = 24.sp)
+                                } else {
+                                    Text("🔒", fontSize = 20.sp)
+                                }
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = m.titulo,
+                                        color = if (desbloqueado) Color.White else TextoSuave,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    if (desbloqueado) {
+                                        Surface(color = Ouro.copy(alpha = 0.2f), shape = Cantos.pilula) {
+                                            Text("REVELADO", color = Ouro, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                        }
+                                    }
+                                }
+                                Text(
+                                    text = if (desbloqueado) m.descricaoLore else "Requer Vínculo Nível ${m.nivelNecessario} (${m.subtitulo})",
+                                    color = if (desbloqueado) Color.White.copy(alpha = 0.85f) else TextoSuave.copy(alpha = 0.6f),
+                                    fontSize = 11.sp,
+                                    lineHeight = 15.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onFechar) { Text("Fechar") }
+        }
+    )
+
+    momentoEmZoom?.let { mz ->
+        Dialog(
+            onDismissRequest = { momentoEmZoom = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+            ) {
+                if (!cenarioId.isNullOrBlank()) {
+                    CapaCenario(
+                        cenarioId = cenarioId,
+                        temCapa = true,
+                        emoji = "📸",
+                        nome = nomePersonagem,
+                        alignment = Alignment.Center,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.6f),
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.9f)
+                                )
+                            )
+                        )
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("📸 Momento: ${mz.titulo}", color = Ouro, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    IconButton(onClick = { momentoEmZoom = null }) {
+                        Icon(Icons.Default.Close, contentDescription = "Fechar", tint = Color.White)
+                    }
+                }
+
+                Surface(
+                    color = Color(0xFF0F101A).copy(alpha = 0.92f),
+                    shape = RoundedCornerShape(20.dp),
+                    border = BorderStroke(1.dp, Ouro.copy(alpha = 0.4f)),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
+                        .padding(16.dp)
+                        .fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(mz.titulo, color = Ouro, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Spacer(Modifier.height(4.dp))
+                        Text(mz.descricaoLore, color = Color.White, fontSize = 13.sp, lineHeight = 19.sp)
+                        Spacer(Modifier.height(8.dp))
+                        Text("★ Registro Oficial LivennIA • Memória Guardada", color = TextoSuave, fontSize = 11.sp)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -617,6 +925,8 @@ fun JogoTela(vm: AppViewModel) {
     var dialogo by remember { mutableStateOf<DialogoAberto?>(null) }
     var indiceEdicao by remember { mutableStateOf<Int?>(null) }
     var modoCinema by remember { mutableStateOf(false) }
+    var modalPresentesAberto by remember { mutableStateOf(false) }
+    var modalGaleriaAberto by remember { mutableStateOf(false) }
     val corFala = MaterialTheme.colorScheme.onBackground
     val corAcao = TextoSuave
     val corNormal = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.90f)
@@ -798,6 +1108,7 @@ fun JogoTela(vm: AppViewModel) {
                     Spacer(Modifier.width(6.dp))
                     IconButton(onClick = {
                         tts?.stop()
+                        modularVozTTS(tts, jogo.genero, jogo.cenario?.nome)
                         tts?.speak(narrativaAtual, TextToSpeech.QUEUE_FLUSH, null, "narrativa")
                     }) {
                         Icon(
@@ -887,7 +1198,9 @@ fun JogoTela(vm: AppViewModel) {
                 jogo = jogo,
                 onAbrirDialogo = { dialogo = it },
                 onAtivarModoCinema = { modoCinema = true },
-                onExportarPdf = { exportarHistoriaPdf(contexto, jogo, chat) }
+                onExportarPdf = { exportarHistoriaPdf(contexto, jogo, chat) },
+                onAbrirPresentes = { modalPresentesAberto = true },
+                onAbrirGaleria = { modalGaleriaAberto = true }
             )
 
             // ---- Termômetro de Vínculo & Nível de Afinidade (Estilo Emochi/Visual Novel) ----
@@ -1068,6 +1381,7 @@ fun JogoTela(vm: AppViewModel) {
                                         aoCopiar = { areaDeCopia.setText(AnnotatedString(bloco.texto)) },
                                         aoOuvir = {
                                             tts?.stop()
+                                            modularVozTTS(tts, jogo.genero, jogo.cenario?.nome)
                                             tts?.speak(bloco.texto, TextToSpeech.QUEUE_FLUSH, null, "fala_${indice}_$bIdx")
                                         },
                                         rodape = if (ehUltimoBloco) {
@@ -1553,6 +1867,32 @@ fun JogoTela(vm: AppViewModel) {
         aoInserirNoChat = { texto -> acaoLivre = if (acaoLivre.isBlank()) texto else "$acaoLivre $texto" }
     )
 
+    if (modalPresentesAberto) {
+        val nomeP = jogo.cenario?.nome ?: "Personagem"
+        val saldo = vm.conta?.livens ?: jogo.livens ?: 0
+        ModalPresentearPersonagem(
+            nomePersonagem = nomeP,
+            saldoLivens = saldo,
+            onEnviarPresente = { presente ->
+                modalPresentesAberto = false
+                vm.jogarAcao(presente.acaoNarrativa)
+                Toast.makeText(contexto, "Você presenteou $nomeP com ${presente.icone} ${presente.nome}!", Toast.LENGTH_SHORT).show()
+            },
+            onFechar = { modalPresentesAberto = false }
+        )
+    }
+
+    if (modalGaleriaAberto) {
+        val nomeP = jogo.cenario?.nome ?: "Personagem"
+        val vinculoAtual = calcularVinculo(jogo.turno).nivel
+        ModalGaleriaMomentos(
+            nomePersonagem = nomeP,
+            cenarioId = jogo.cenario?.id,
+            nivelVinculoAtual = vinculoAtual,
+            onFechar = { modalGaleriaAberto = false }
+        )
+    }
+
     if (mostrarPersonaModal) {
         ModalMinhaPersona(
             vm = vm,
@@ -1997,6 +2337,8 @@ private fun JogoModoHistoria(vm: AppViewModel) {
     var dialogo by remember { mutableStateOf<DialogoAberto?>(null) }
     var indiceEdicao by remember { mutableStateOf<Int?>(null) }
     var modoCinema by remember { mutableStateOf(false) }
+    var modalPresentesAberto by remember { mutableStateOf(false) }
+    var modalGaleriaAberto by remember { mutableStateOf(false) }
 
     LaunchedEffect(chat.size, vm.ocupado, vm.acaoPendente) {
         val extras = if (vm.ocupado) (if (vm.acaoPendente != null) 2 else 1) else 0
@@ -2161,13 +2503,21 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Text(
-                            text = "Por ${cenarioCompleto.autorNomeSeguro} • Cap. ${jogo.turno}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = TextoSuave,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(7.dp)
+                                    .background(Color(0xFF00E676), CircleShape)
+                            )
+                            Spacer(Modifier.width(5.dp))
+                            Text(
+                                text = "Online • ${cenarioCompleto.autorNomeSeguro} • Cap. ${jogo.turno}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = TextoSuave,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                     Spacer(Modifier.width(4.dp))
                     if (!ehHistoriaPura) {
@@ -2188,6 +2538,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                     }
                     IconButton(onClick = {
                         tts?.stop()
+                        modularVozTTS(tts, jogo.genero, jogo.cenario?.nome)
                         tts?.speak(narrativaAtual, TextToSpeech.QUEUE_FLUSH, null, "narrativa")
                     }) {
                         Icon(
@@ -2214,7 +2565,9 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                 jogo = jogo,
                 onAbrirDialogo = { dialogo = it },
                 onAtivarModoCinema = { modoCinema = true },
-                onExportarPdf = { exportarHistoriaPdf(contexto, jogo, chat) }
+                onExportarPdf = { exportarHistoriaPdf(contexto, jogo, chat) },
+                onAbrirPresentes = { modalPresentesAberto = true },
+                onAbrirGaleria = { modalGaleriaAberto = true }
             )
 
             // ---- Termômetro de Vínculo & Nível de Afinidade (Estilo Emochi/Visual Novel) ----
@@ -2389,6 +2742,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                                         aoCopiar = { areaDeCopia.setText(AnnotatedString(bloco.texto)) },
                                         aoOuvir = {
                                             tts?.stop()
+                                            modularVozTTS(tts, jogo.genero, jogo.cenario?.nome)
                                             tts?.speak(bloco.texto, TextToSpeech.QUEUE_FLUSH, null, "fala_${indice}_$bIdx")
                                         },
                                         rodape = if (ehUltimoBloco) {
@@ -2434,6 +2788,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                                         IconButton(
                                             onClick = {
                                                 tts?.stop()
+                                                modularVozTTS(tts, jogo.genero, jogo.cenario?.nome)
                                                 tts?.speak(msg.narrativa, TextToSpeech.QUEUE_FLUSH, null, "fala_$indice")
                                             },
                                             modifier = Modifier.size(28.dp)
@@ -3014,6 +3369,32 @@ private fun JogoModoHistoria(vm: AppViewModel) {
         aoInserirNoChat = { texto -> acaoLivre = if (acaoLivre.isBlank()) texto else "$acaoLivre $texto" }
     )
 
+    if (modalPresentesAberto) {
+        val nomeP = jogo.cenario?.nome ?: cenarioCompleto.nome
+        val saldo = vm.conta?.livens ?: jogo.livens ?: 0
+        ModalPresentearPersonagem(
+            nomePersonagem = nomeP,
+            saldoLivens = saldo,
+            onEnviarPresente = { presente ->
+                modalPresentesAberto = false
+                vm.jogarAcao(presente.acaoNarrativa)
+                Toast.makeText(contexto, "Você presenteou $nomeP com ${presente.icone} ${presente.nome}!", Toast.LENGTH_SHORT).show()
+            },
+            onFechar = { modalPresentesAberto = false }
+        )
+    }
+
+    if (modalGaleriaAberto) {
+        val nomeP = jogo.cenario?.nome ?: cenarioCompleto.nome
+        val vinculoAtual = calcularVinculo(jogo.turno).nivel
+        ModalGaleriaMomentos(
+            nomePersonagem = nomeP,
+            cenarioId = jogo.cenario?.id,
+            nivelVinculoAtual = vinculoAtual,
+            onFechar = { modalGaleriaAberto = false }
+        )
+    }
+
     if (mostrarPerfilHistoria) {
         DetalhesPersonagemModal(
             cenario = cenarioCompleto,
@@ -3042,7 +3423,9 @@ private fun BarraFerramentasLiven(
     jogo: JogoResponse,
     onAbrirDialogo: (DialogoAberto) -> Unit,
     onAtivarModoCinema: (() -> Unit)? = null,
-    onExportarPdf: (() -> Unit)? = null
+    onExportarPdf: (() -> Unit)? = null,
+    onAbrirPresentes: (() -> Unit)? = null,
+    onAbrirGaleria: (() -> Unit)? = null
 ) {
     val saldoLivens = vm.conta?.livens ?: jogo.livens ?: 0
     val podeResgatarHoje = vm.conta?.resgateDiarioDisponivel == true
@@ -3205,6 +3588,38 @@ private fun BarraFerramentasLiven(
                     color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                 )
+            }
+        }
+
+        if (onAbrirPresentes != null) {
+            Surface(
+                color = Color(0xFFFF4081).copy(alpha = 0.22f),
+                shape = Cantos.pilula,
+                border = BorderStroke(1.dp, Color(0xFFFF4081).copy(alpha = 0.60f)),
+                modifier = Modifier.cliqueFuturista3D { onAbrirPresentes() }
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("🎁 Presentear", style = MaterialTheme.typography.labelSmall, color = Color(0xFFFF80AB), fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        if (onAbrirGaleria != null) {
+            Surface(
+                color = Color(0xFF00E5FF).copy(alpha = 0.20f),
+                shape = Cantos.pilula,
+                border = BorderStroke(1.dp, Color(0xFF00E5FF).copy(alpha = 0.50f)),
+                modifier = Modifier.cliqueFuturista3D { onAbrirGaleria() }
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("📸 Galeria CG", style = MaterialTheme.typography.labelSmall, color = Color(0xFF80D8FF), fontWeight = FontWeight.Bold)
+                }
             }
         }
     }

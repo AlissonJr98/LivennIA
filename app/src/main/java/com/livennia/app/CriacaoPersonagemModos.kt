@@ -1365,7 +1365,7 @@ fun DetalhesPersonagemModal(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .aspectRatio(0.68f)
+                            .aspectRatio(0.72f)
                             .clickable { visualizandoCapaTelaCheia = true }
                     ) {
                         CapaCenario(
@@ -1427,18 +1427,6 @@ fun DetalhesPersonagemModal(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                if (ehAutor) {
-                                    Surface(
-                                        color = Color.Black.copy(alpha = 0.50f),
-                                        shape = CircleShape,
-                                        modifier = Modifier.size(38.dp)
-                                    ) {
-                                        IconButton(onClick = { mostrarDialogoExcluir = true }) {
-                                            Icon(Icons.Default.Delete, contentDescription = "Excluir História", tint = Color(0xFFFF5252))
-                                        }
-                                    }
-                                }
-
                                 Box {
                                     Surface(
                                         color = Color.Black.copy(alpha = 0.50f),
@@ -1679,6 +1667,94 @@ fun DetalhesPersonagemModal(
                                     tint = if (salvo) Color(0xFFE5FF2E) else Color.White,
                                     modifier = Modifier.size(22.dp)
                                 )
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(20.dp))
+
+                    // Seção de Momentos & Memórias Secretas (Estilo Emochi CGs)
+                    Column(modifier = Modifier.padding(horizontal = 18.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "📸 Galeria de Momentos",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "5 Memórias",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFFF5C842)
+                            )
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = "Momentos visuais exclusivos que se revelam conforme seu Vínculo com ${cenario.nome} aumenta.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF8E8E93)
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        val momentosPrevia = listOf(
+                            Triple("✨", "Primeiro Encontro", "Desbloqueado"),
+                            Triple("🌙", "Chuva & Confidências", "Vínculo Nível 2"),
+                            Triple("💖", "Momento Vulnerável", "Vínculo Nível 3"),
+                            Triple("🔥", "Juramento Eterno", "Vínculo Nível 4"),
+                            Triple("👑", "Final Secreto", "Vínculo Nível 5")
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            momentosPrevia.forEachIndexed { idx, (emoji, tit, req) ->
+                                val desbloq = idx == 0
+                                Surface(
+                                    color = if (desbloq) Color(0xFF1B1D2C) else Color(0xFF12131A),
+                                    shape = RoundedCornerShape(14.dp),
+                                    border = BorderStroke(1.dp, if (desbloq) Color(0xFFF5C842).copy(alpha = 0.5f) else Color.White.copy(alpha = 0.08f)),
+                                    modifier = Modifier
+                                        .width(135.dp)
+                                        .clickable {
+                                            if (desbloq) {
+                                                visualizandoCapaTelaCheia = true
+                                            } else {
+                                                Toast.makeText(contexto, "🔒 Desbloqueie $req conversando com ${cenario.nome}!", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                ) {
+                                    Column(modifier = Modifier.padding(10.dp)) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(75.dp)
+                                                .clip(RoundedCornerShape(10.dp))
+                                                .background(if (desbloq) Color(0xFF25283D) else Color(0xFF0A0B10)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(if (desbloq) emoji else "🔒", fontSize = 28.sp)
+                                        }
+                                        Spacer(Modifier.height(6.dp))
+                                        Text(
+                                            text = tit,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.sp,
+                                            color = if (desbloq) Color.White else Color(0xFF8E8E93),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = req,
+                                            fontSize = 10.sp,
+                                            color = if (desbloq) Color(0xFFF5C842) else Color(0xFF5E5E63)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
