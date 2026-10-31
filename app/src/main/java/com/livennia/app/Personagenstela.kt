@@ -673,19 +673,13 @@ private fun AbaAventuras(vm: AppViewModel) {
 
 
             items(jogosRpg, key = { it.jogoId }) { jogo ->
-
                 LinhaAventura(
-
                     jogo = jogo,
-
+                    vm = vm,
                     habilitado = !vm.ocupado,
-
                     onAbrir = { vm.abrirJogo(jogo.jogoId) },
-
                     onApagar = { jogoParaApagar = jogo }
-
                 )
-
             }
 
         }
@@ -875,19 +869,13 @@ private fun AbaHistorias(vm: AppViewModel) {
 
 
             items(historias, key = { it.jogoId }) { jogo ->
-
                 LinhaHistoria(
-
                     jogo = jogo,
-
+                    vm = vm,
                     habilitado = !vm.ocupado,
-
                     onAbrir = { vm.abrirJogo(jogo.jogoId) },
-
                     onApagar = { jogoParaApagar = jogo }
-
                 )
-
             }
 
         }
@@ -924,22 +912,86 @@ private fun AbaHistorias(vm: AppViewModel) {
 
 
 
-// Card de uma história no Modo História (Livro / Conversa viva).
-
+// Componente robusto de Capa/Avatar de um jogo salvo (História ou RPG).
+// Garante que o pôster/capa gerada pela IA ou do catálogo continue sempre salvo e visível,
+// em vez de cair na letra inicial.
 @Composable
-
-private fun LinhaHistoria(
-
+private fun CapaOuRetratoJogo(
     jogo: JogoResumo,
-
-    habilitado: Boolean,
-
-    onAbrir: () -> Unit,
-
-    onApagar: () -> Unit
-
+    vm: AppViewModel,
+    tamanho: Int = 62,
+    recorte: androidx.compose.ui.graphics.Shape = RoundedCornerShape(16.dp)
 ) {
+    val cenarioCatalogo = remember(jogo.cenarioId, jogo.cenarioNome, vm.catalogo) {
+        if (!jogo.cenarioId.isNullOrBlank()) {
+            vm.catalogo.firstOrNull { it.id == jogo.cenarioId }
+        } else if (!jogo.cenarioNome.isNullOrBlank()) {
+            vm.catalogo.firstOrNull { it.nome.equals(jogo.cenarioNome, ignoreCase = true) }
+        } else null
+    }
+    val cenarioId = jogo.cenarioId ?: cenarioCatalogo?.id
+    val temCapa = jogo.capa || cenarioCatalogo?.capa == true || !cenarioId.isNullOrBlank()
 
+    Surface(
+        color = Color(0xFF161824),
+        shape = recorte,
+        border = BorderStroke(1.2.dp, Ouro.copy(alpha = 0.5f)),
+        modifier = Modifier.size(tamanho.dp)
+    ) {
+        if (!cenarioId.isNullOrBlank() && temCapa) {
+            CapaCenario(
+                cenarioId = cenarioId,
+                temCapa = true,
+                emoji = cenarioCatalogo?.emojiSeguro ?: "📖",
+                nome = jogo.cenarioNome ?: jogo.nome,
+                versao = vm.capaVersao,
+                modifier = Modifier.fillMaxSize(),
+                recorte = recorte
+            )
+        } else if (jogo.retrato) {
+            RetratoPersonagem(
+                jogoId = jogo.jogoId,
+                seed = jogo.avatarSeed,
+                nome = jogo.nome,
+                temRetrato = true,
+                tamanho = tamanho,
+                versao = vm.retratoVersao,
+                modifier = Modifier.fillMaxSize(),
+                recorte = recorte
+            )
+        } else {
+            val personaAtiva = vm.personaAtiva
+            if (personaAtiva != null && personaAtiva.temRetrato) {
+                RetratoPersona(
+                    temRetrato = true,
+                    emojiOuPadrao = personaAtiva.genero.ifBlank { "👤" },
+                    tamanho = tamanho,
+                    versao = personaAtiva.versaoRetrato,
+                    personaId = personaAtiva.id,
+                    modifier = Modifier.fillMaxSize(),
+                    recorte = recorte
+                )
+            } else {
+                AvatarPersonagem(
+                    seed = jogo.avatarSeed,
+                    nome = jogo.cenarioNome ?: jogo.nome,
+                    tamanho = tamanho,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+    }
+}
+
+// Card de uma história no Modo História (Livro / Conversa viva).
+@Composable
+private fun LinhaHistoria(
+    jogo: JogoResumo,
+    vm: AppViewModel,
+    habilitado: Boolean,
+    onAbrir: () -> Unit,
+    onApagar: () -> Unit
+) {
     val pressInteraction = remember { MutableInteractionSource() }
     val isPressed by pressInteraction.collectIsPressedAsState()
     val cardScale by animateFloatAsState(
@@ -971,27 +1023,15 @@ private fun LinhaHistoria(
                 indication = null
             ) { onAbrir() }
     ) {
-
         Row(
-
             modifier = Modifier.padding(14.dp),
-
             verticalAlignment = Alignment.CenterVertically
-
         ) {
-
-            RetratoPersonagem(
-
-                jogoId = jogo.jogoId,
-
-                seed = jogo.avatarSeed,
-
-                nome = jogo.nome,
-
-                temRetrato = jogo.retrato,
-
-                tamanho = 62
-
+            CapaOuRetratoJogo(
+                jogo = jogo,
+                vm = vm,
+                tamanho = 62,
+                recorte = RoundedCornerShape(16.dp)
             )
 
             Spacer(Modifier.width(14.dp))
@@ -1081,21 +1121,14 @@ private fun LinhaHistoria(
 
 
 // Uma linha da lista de RPG: retrato, nome, situação, vida e gênero.
-
 @Composable
-
 private fun LinhaAventura(
-
     jogo: JogoResumo,
-
+    vm: AppViewModel,
     habilitado: Boolean,
-
     onAbrir: () -> Unit,
-
     onApagar: () -> Unit
-
 ) {
-
     val pressInteraction = remember { MutableInteractionSource() }
     val isPressed by pressInteraction.collectIsPressedAsState()
     val cardScale by animateFloatAsState(
@@ -1127,27 +1160,15 @@ private fun LinhaAventura(
                 indication = null
             ) { onAbrir() }
     ) {
-
         Row(
-
             modifier = Modifier.padding(12.dp),
-
             verticalAlignment = Alignment.CenterVertically
-
         ) {
-
-            RetratoPersonagem(
-
-                jogoId = jogo.jogoId,
-
-                seed = jogo.avatarSeed,
-
-                nome = jogo.nome,
-
-                temRetrato = jogo.retrato,
-
-                tamanho = 56
-
+            CapaOuRetratoJogo(
+                jogo = jogo,
+                vm = vm,
+                tamanho = 56,
+                recorte = RoundedCornerShape(16.dp)
             )
 
             Spacer(Modifier.width(12.dp))

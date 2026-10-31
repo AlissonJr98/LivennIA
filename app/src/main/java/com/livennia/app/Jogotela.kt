@@ -1449,28 +1449,6 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                    val personaAtivaHeader = vm.personaAtiva
-                    Surface(
-                        color = Color(0xFF7C4DFF).copy(alpha = 0.22f),
-                        shape = Cantos.pilula,
-                        border = BorderStroke(1.dp, Color(0xFFB388FF).copy(alpha = 0.55f)),
-                        modifier = Modifier.clickable { mostrarPersonaModal = true }
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp)
-                        ) {
-                            Text("🎭", fontSize = 11.sp)
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                text = personaAtivaHeader?.nome?.ifBlank { "Persona" } ?: "Minha Persona",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color(0xFFE0D4FF),
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1
-                            )
-                        }
-                    }
                     Spacer(Modifier.width(4.dp))
                     if (!ehHistoriaPura) {
                         Surface(
@@ -2262,34 +2240,6 @@ private fun BarraFerramentasLiven(
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
             )
-        }
-
-        // Seletor de Sabor de Modelo e Temperatura
-        val emojiModelo = jogo.modelo?.emoji?.ifBlank { "🤖" }
-            ?: vm.cerebros.firstOrNull { it.id == vm.cerebroSelecionado }?.emoji?.ifBlank { "🤖" }
-            ?: "🤖"
-        val nomeModelo = jogo.modelo?.nome
-            ?: vm.cerebros.firstOrNull { it.id == vm.cerebroSelecionado }?.nome
-            ?: "Modelo de IA"
-        Surface(
-            color = SuperficieAlta,
-            shape = Cantos.pilula,
-            border = BorderStroke(1.dp, Ouro.copy(alpha = 0.30f)),
-            modifier = Modifier.clickable { onAbrirDialogo(DialogoAberto.ModeloIA) }
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(emojiModelo, style = MaterialTheme.typography.labelSmall)
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    text = nomeModelo,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Ouro,
-                    fontWeight = FontWeight.Medium
-                )
-            }
         }
     }
 }

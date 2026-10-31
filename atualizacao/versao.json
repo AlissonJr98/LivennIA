@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 41,
-  "versaoNome": "1.8.1",
-  "notas": "Atualização 1.8.1: No chat, foto da capa da história no topo e clique no título abre o perfil completo com criador/sinopse. Botão de elenco substituído por Minha Persona, garantindo que a IA converse e interaja diretamente com a persona selecionada.",
+  "versaoCodigo": 42,
+  "versaoNome": "1.8.2",
+  "notas": "Atualização 1.8.2: Removido botão duplicado de Persona e de Modelo de IA no topo do chat (mantidos de forma clean no rodapé). Corrigido salvamento e exibição da capa/foto nas abas de Histórias e RPG (fim da inicial isolada).",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }
