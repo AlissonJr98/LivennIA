@@ -2791,15 +2791,10 @@ private fun DialogoPreviaCenario(
             ) {
 
                 // Banner / Poster superior de alta qualidade
-
                 Box(
-
                     modifier = Modifier
-
                         .fillMaxWidth()
-
-                        .height(230.dp)
-
+                        .height(290.dp)
                 ) {
 
                     CapaCenario(

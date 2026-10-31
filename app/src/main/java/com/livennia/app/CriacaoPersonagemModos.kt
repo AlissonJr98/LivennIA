@@ -1390,7 +1390,7 @@ fun DetalhesPersonagemModal(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(340.dp)
+                            .aspectRatio(0.82f)
                     ) {
                         CapaCenario(
                             cenarioId = cenario.id,
@@ -1398,6 +1398,7 @@ fun DetalhesPersonagemModal(
                             emoji = cenario.emojiSeguro,
                             nome = cenario.nome,
                             versao = versaoCapa,
+                            alignment = Alignment.TopCenter,
                             modifier = Modifier.fillMaxSize()
                         )
 
@@ -1408,7 +1409,8 @@ fun DetalhesPersonagemModal(
                                 .background(
                                     Brush.verticalGradient(
                                         colors = listOf(
-                                            Color.Black.copy(alpha = 0.45f),
+                                            Color.Black.copy(alpha = 0.40f),
+                                            Color.Transparent,
                                             Color.Transparent,
                                             Color.Black.copy(alpha = 0.85f),
                                             Color.Black
@@ -1445,32 +1447,36 @@ fun DetalhesPersonagemModal(
                                 RepositorioPersonagensComunidade.criacoes.any { it.id == cenario.id } ||
                                 vm?.conta?.dono == true
 
-                            if (ehAutor) {
-                                Surface(
-                                    color = Color.Black.copy(alpha = 0.50f),
-                                    shape = CircleShape,
-                                    modifier = Modifier.size(38.dp)
-                                ) {
-                                    IconButton(onClick = { mostrarDialogoExcluir = true }) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Excluir História", tint = Color(0xFFFF5252))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (ehAutor) {
+                                    Surface(
+                                        color = Color.Black.copy(alpha = 0.50f),
+                                        shape = CircleShape,
+                                        modifier = Modifier.size(38.dp)
+                                    ) {
+                                        IconButton(onClick = { mostrarDialogoExcluir = true }) {
+                                            Icon(Icons.Default.Delete, contentDescription = "Excluir História", tint = Color(0xFFFF5252))
+                                        }
                                     }
                                 }
-                            }
 
-                            Box {
-                                Surface(
-                                    color = Color.Black.copy(alpha = 0.50f),
-                                    shape = CircleShape,
-                                    modifier = Modifier.size(38.dp)
-                                ) {
-                                    IconButton(onClick = { menuMaisAberto = true }) {
-                                        Icon(Icons.Default.MoreVert, contentDescription = "Mais opções", tint = Color.White)
+                                Box {
+                                    Surface(
+                                        color = Color.Black.copy(alpha = 0.50f),
+                                        shape = CircleShape,
+                                        modifier = Modifier.size(38.dp)
+                                    ) {
+                                        IconButton(onClick = { menuMaisAberto = true }) {
+                                            Icon(Icons.Default.MoreVert, contentDescription = "Mais opções", tint = Color.White)
+                                        }
                                     }
-                                }
-                                DropdownMenu(
-                                    expanded = menuMaisAberto,
-                                    onDismissRequest = { menuMaisAberto = false }
-                                ) {
+                                    DropdownMenu(
+                                        expanded = menuMaisAberto,
+                                        onDismissRequest = { menuMaisAberto = false }
+                                    ) {
                                     if (ehAutor) {
                                         DropdownMenuItem(
                                             text = { Text("✏️ Editar História") },
@@ -1512,6 +1518,7 @@ fun DetalhesPersonagemModal(
                                 }
                             }
                         }
+                    }
 
                         // Título e Contagem no rodapé da capa (Exatamente como na Imagem 1)
                         Column(

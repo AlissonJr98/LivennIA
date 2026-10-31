@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 42,
-  "versaoNome": "1.8.2",
-  "notas": "Atualização 1.8.2: Removido botão duplicado de Persona e de Modelo de IA no topo do chat (mantidos de forma clean no rodapé). Corrigido salvamento e exibição da capa/foto nas abas de Histórias e RPG (fim da inicial isolada).",
+  "versaoCodigo": 43,
+  "versaoNome": "1.8.3",
+  "notas": "Atualização 1.8.3: Ajustado enquadramento da capa das histórias para preservar a cabeça e rosto dos personagens sem cortes. Reposicionado o botão de excluir história para o canto superior direito, removendo a lixeira do centro da imagem.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

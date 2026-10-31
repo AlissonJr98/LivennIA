@@ -481,6 +481,7 @@ fun RetratoPersonagem(
                 .build(),
             contentDescription = "Retrato de $nome",
             contentScale = ContentScale.Crop,
+            alignment = Alignment.TopCenter,
             modifier = modifier
                 .size(tamanho.dp)
                 .clip(recorte)
@@ -526,6 +527,7 @@ fun RetratoPersona(
                     .build(),
                 contentDescription = "Retrato da Persona",
                 contentScale = ContentScale.Crop,
+                alignment = Alignment.TopCenter,
                 modifier = Modifier.fillMaxSize(),
                 loading = {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().background(Color(0xFF161824))) {
@@ -602,7 +604,8 @@ fun CapaCenario(
     nome: String,
     versao: Int = 0,
     modifier: Modifier = Modifier,
-    recorte: Shape = Cantos.imagem
+    recorte: Shape = Cantos.imagem,
+    alignment: Alignment = Alignment.TopCenter
 ) {
     val url = remember(temCapa, cenarioId, versao) {
         if (!temCapa) null
@@ -618,6 +621,7 @@ fun CapaCenario(
                 .build(),
             contentDescription = "Capa de $nome",
             contentScale = ContentScale.Crop,
+            alignment = alignment,
             modifier = modifier.clip(recorte)
         )
     } else {
