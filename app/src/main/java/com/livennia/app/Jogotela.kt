@@ -1135,12 +1135,32 @@ fun JogoTela(vm: AppViewModel) {
     }
 
     val listaChat = rememberLazyListState()
+    val cenarioCompleto = remember(jogo.cenario, vm.catalogo) {
+        val cid = jogo.cenario?.id
+        if (cid != null) {
+            vm.catalogo.firstOrNull { it.id == cid }
+                ?: RepositorioPersonagensComunidade.criacoes.firstOrNull { it.id == cid }
+                ?: CenarioDto(
+                    id = cid,
+                    nome = jogo.cenario?.nome ?: jogo.personagem.nome,
+                    subtitulo = jogo.cenario?.subtitulo ?: "",
+                    genero = jogo.genero,
+                    sinopse = jogo.cenario?.sinopse ?: "",
+                    tags = jogo.cenario?.tags ?: emptyList(),
+                    emoji = jogo.cenario?.emoji?.ifBlank { "🎭" } ?: "🎭",
+                    capa = true,
+                    autorNome = jogo.cenario?.autorNome ?: "LivennIA"
+                )
+        } else null
+    }
+    var mostrarPerfilHistoria by remember { mutableStateOf(false) }
 
-    // Efeito "máquina de escrever" só na última fala do narrador.
+    // Efeito "máquina de escrever" suave que segue a leitura
     val narrativaAtual = chat.lastOrNull()?.narrativa ?: jogo.cena.narrativa
     var visiveis by remember(narrativaAtual) { mutableIntStateOf(0) }
+    val offsetIntro = if (jogo.cenario != null) 1 else 0
     LaunchedEffect(narrativaAtual) {
-        val ultimo = chat.size - 1
+        val ultimo = offsetIntro + (chat.size - 1)
         visiveis = 0
         while (visiveis < narrativaAtual.length) {
             delay(14)
@@ -1187,10 +1207,8 @@ fun JogoTela(vm: AppViewModel) {
     val corNormal = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.90f)
 
     LaunchedEffect(chat.size, vm.ocupado, vm.acaoPendente) {
-        // Itens extras no fim da lista: a fala já escolhida (enquanto a IA escreve a
-        // "situacao" dela) e o indicador de "digitando".
         val extras = if (vm.ocupado) (if (vm.acaoPendente != null) 2 else 1) else 0
-        val alvo = chat.size + extras - 1
+        val alvo = offsetIntro + chat.size + extras - 1
         if (alvo >= 0) listaChat.animateScrollToItem(alvo, 100000)
     }
 
@@ -1287,27 +1305,64 @@ fun JogoTela(vm: AppViewModel) {
                             modifier = Modifier.size(20.dp)
                         )
                     }
-                    RetratoPersonagem(
-                        jogoId = jogo.jogoId,
-                        seed = jogo.avatarSeed,
-                        nome = jogo.personagem.nome,
-                        temRetrato = jogo.retrato,
-                        tamanho = 38,
-                        versao = vm.retratoVersao
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .border(1.5.dp, Ouro.copy(alpha = 0.55f), CircleShape)
+                            .clickable {
+                                if (cenarioCompleto != null) {
+                                    mostrarPerfilHistoria = true
+                                } else {
+                                    dialogo = DialogoAberto.Vinculo
+                                }
+                            }
+                    ) {
+                        if (cenarioCompleto != null && cenarioCompleto.id.isNotBlank()) {
+                            CapaCenario(
+                                cenarioId = cenarioCompleto.id,
+                                temCapa = true,
+                                emoji = cenarioCompleto.emojiSeguro.ifBlank { "🎭" },
+                                nome = cenarioCompleto.nome,
+                                versao = vm.capaVersao,
+                                modifier = Modifier.fillMaxSize(),
+                                recorte = CircleShape
+                            )
+                        } else {
+                            RetratoPersonagem(
+                                jogoId = jogo.jogoId,
+                                seed = jogo.avatarSeed,
+                                nome = jogo.personagem.nome,
+                                temRetrato = jogo.retrato,
+                                tamanho = 42,
+                                versao = vm.retratoVersao
+                            )
+                        }
+                    }
                     Spacer(Modifier.width(10.dp))
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable {
+                                if (cenarioCompleto != null) mostrarPerfilHistoria = true
+                            }
+                    ) {
                         Text(
-                            jogo.personagem.nome,
+                            text = cenarioCompleto?.nome ?: jogo.personagem.nome,
                             style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onBackground,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(7.dp)
+                                    .background(Color(0xFF00E676), CircleShape)
+                            )
+                            Spacer(Modifier.width(5.dp))
                             Text(
-                                jogo.cenario?.let { c ->
-                                    "${c.emoji} ${c.nome} • turno ${jogo.turno}"
-                                } ?: "${jogo.personagem.local} • turno ${jogo.turno}",
+                                text = "Online • Turno ${jogo.turno}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = TextoSuave,
                                 maxLines = 1,
@@ -1434,69 +1489,6 @@ fun JogoTela(vm: AppViewModel) {
                 }
             }
 
-            // Card Flutuante de Introdução do Cenário (Imagem 1 e 5)
-            if (jogo.cenario != null) {
-                Surface(
-                    color = Color(0xFF13141F).copy(alpha = 0.88f),
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 4.dp)
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = jogo.cenario?.nome ?: jogo.personagem.nome,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = Color.White,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Text(
-                                    text = "@${jogo.cenario?.autorNome ?: "LivennIA"}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color(0xFFF5C842),
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-
-                            Surface(
-                                color = Color.White.copy(alpha = 0.12f),
-                                shape = RoundedCornerShape(50),
-                                modifier = Modifier.clickable {
-                                    Toast.makeText(contexto, "História salva nos seus favoritos!", Toast.LENGTH_SHORT).show()
-                                }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text("+ Salvar", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
-
-                        Spacer(Modifier.height(6.dp))
-
-                        Text(
-                            text = "Intro. ${jogo.cenario?.sinopse?.ifBlank { null } ?: jogo.cena.narrativa}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.85f),
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            lineHeight = 16.sp
-                        )
-                    }
-                }
-            }
-
             // ---- Barra de recursos LivennIA: Livens, Memória, Diário, Cartas, Saves, Motor/Temp ----
             BarraFerramentasLiven(
                 vm = vm,
@@ -1508,131 +1500,84 @@ fun JogoTela(vm: AppViewModel) {
                 onAbrirGaleria = { modalGaleriaAberto = true }
             )
 
-            // ---- Termômetro de Vínculo & Nível de Afinidade (Estilo Emochi/Visual Novel) ----
-            val progressoVinculo = remember(jogo.turno) {
-                ((jogo.turno * 12) % 100) / 100f
-            }
+            // ---- Barra de Status RPG Compacta e Elegante (Vida • Mochila • Vínculo) ----
+            var modalInventarioAberto by remember { mutableStateOf(false) }
             val nivelVinculo = remember(jogo.turno) {
                 when {
                     jogo.turno <= 3 -> "Desconhecido"
                     jogo.turno <= 7 -> "Curioso"
                     jogo.turno <= 14 -> "Amistoso"
-                    jogo.turno <= 22 -> "Companheiro Leal"
+                    jogo.turno <= 22 -> "Companheiro"
                     else -> "Vínculo Eterno"
                 }
             }
-            val humorAtual = remember(narrativaAtual, jogo.turno) { extrairHumorPersonagem(narrativaAtual, jogo.turno) }
-            Surface(
-                color = Color(0xFF131522),
-                shape = RoundedCornerShape(14.dp),
-                border = BorderStroke(1.dp, Color(0xFFFF4081).copy(alpha = 0.35f)),
-                shadowElevation = 4.dp,
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 4.dp)
-                    .clickable { dialogo = DialogoAberto.Vinculo }
+                    .padding(horizontal = 14.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Surface(
+                    color = Color(0xFF131522),
+                    shape = Cantos.pilula,
+                    border = BorderStroke(1.dp, Color(0xFFE53935).copy(alpha = 0.45f)),
+                    modifier = Modifier.weight(1f).clickable { modalInventarioAberto = true }
                 ) {
-                    Text("💖", fontSize = 13.sp)
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        "Vínculo: $nivelVinculo  •  ${humorAtual.first} ${humorAtual.second}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFFFF80AB),
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(Modifier.weight(1f))
-                    Box(
-                        modifier = Modifier
-                            .width(80.dp)
-                            .height(6.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(Color(0xFF232538))
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(progressoVinculo.coerceAtLeast(0.15f))
-                                .background(
-                                    Brush.horizontalGradient(
-                                        listOf(Color(0xFFFF4081), Color(0xFFFF80AB))
-                                    )
-                                )
+                        Text("❤️", fontSize = 11.sp)
+                        Spacer(Modifier.width(5.dp))
+                        Text(
+                            "${jogo.personagem.vida}/${jogo.personagem.vidaMax} HP",
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
-            }
 
-            // ---- Vida e itens: Mochila Interativa 3D ----
-            var modalInventarioAberto by remember { mutableStateOf(false) }
-
-            Surface(
-                color = SuperficieAlta,
-                shape = Cantos.cartao,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
-            ) {
-                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
-                    BarraDeVida(vida = jogo.personagem.vida, vidaMax = jogo.personagem.vidaMax)
-                    Spacer(Modifier.height(6.dp))
+                Surface(
+                    color = Color(0xFF131522),
+                    shape = Cantos.pilula,
+                    border = BorderStroke(1.dp, Ouro.copy(alpha = 0.45f)),
+                    modifier = Modifier.clickable { modalInventarioAberto = true }
+                ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Text("🎒", fontSize = 11.sp)
+                        Spacer(Modifier.width(5.dp))
                         Text(
-                            "🎒 Mochila & Equipamentos (${jogo.personagem.inventario.size})",
-                            style = MaterialTheme.typography.labelSmall,
+                            "Mochila (${jogo.personagem.inventario.size})",
                             color = Ouro,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            "Ver Todos ➔",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = TextoSuave,
-                            modifier = Modifier.cliqueFuturista3D { modalInventarioAberto = true }
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
-                    Spacer(Modifier.height(4.dp))
-                    if (jogo.personagem.inventario.isEmpty()) {
-                        Text("Mochila vazia no momento", style = MaterialTheme.typography.labelSmall, color = TextoSuave)
-                    } else {
-                        Row(
-                            modifier = Modifier.horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            jogo.personagem.inventario.forEach { itemNome ->
-                                val icone = when {
-                                    "espada" in itemNome.lowercase() || "lâmina" in itemNome.lowercase() || "adaga" in itemNome.lowercase() -> "🗡️"
-                                    "poção" in itemNome.lowercase() || "cura" in itemNome.lowercase() || "elixir" in itemNome.lowercase() -> "🧪"
-                                    "escudo" in itemNome.lowercase() || "armadura" in itemNome.lowercase() -> "🛡️"
-                                    "chave" in itemNome.lowercase() -> "🗝️"
-                                    "pergaminho" in itemNome.lowercase() || "livro" in itemNome.lowercase() || "mapa" in itemNome.lowercase() -> "📜"
-                                    "ouro" in itemNome.lowercase() || "moeda" in itemNome.lowercase() -> "🪙"
-                                    "anel" in itemNome.lowercase() || "amuleto" in itemNome.lowercase() || "joia" in itemNome.lowercase() -> "💍"
-                                    else -> "🎒"
-                                }
-                                Surface(
-                                    color = Color(0xFF181A26),
-                                    shape = RoundedCornerShape(8.dp),
-                                    border = BorderStroke(1.dp, Ouro.copy(alpha = 0.35f)),
-                                    modifier = Modifier.cliqueFuturista3D {
-                                        acaoLivre = "Usar $itemNome"
-                                    }
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(icone, fontSize = 12.sp)
-                                        Spacer(Modifier.width(4.dp))
-                                        Text(itemNome, style = MaterialTheme.typography.labelSmall, color = Color.White)
-                                    }
-                                }
-                            }
-                        }
+                }
+
+                Surface(
+                    color = Color(0xFF131522),
+                    shape = Cantos.pilula,
+                    border = BorderStroke(1.dp, Color(0xFFFF4081).copy(alpha = 0.45f)),
+                    modifier = Modifier.clickable { dialogo = DialogoAberto.Vinculo }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("💖", fontSize = 11.sp)
+                        Spacer(Modifier.width(5.dp))
+                        Text(
+                            nivelVinculo,
+                            color = Color(0xFFFF80AB),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
@@ -1648,13 +1593,76 @@ fun JogoTela(vm: AppViewModel) {
                 )
             }
 
-            // ---- Conversa ----
+            // ---- Conversa (Ajustada à tela com proporção e espaçamento fluidos) ----
             LazyColumn(
                 state = listaChat,
                 modifier = Modifier.weight(1f).fillMaxWidth(),
-                contentPadding = PaddingValues(vertical = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(30.dp)
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
+                // Card de Introdução no início da rolagem (para não comprimir o topo da tela)
+                if (jogo.cenario != null) {
+                    item(key = "card_intro_cenario") {
+                        Surface(
+                            color = Color(0xFF13141F).copy(alpha = 0.88f),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = jogo.cenario?.nome ?: jogo.personagem.nome,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = Color.White,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = "@${jogo.cenario?.autorNome ?: "LivennIA"}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color(0xFFF5C842),
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+
+                                    Surface(
+                                        color = Color.White.copy(alpha = 0.12f),
+                                        shape = RoundedCornerShape(50),
+                                        modifier = Modifier.clickable {
+                                            Toast.makeText(contexto, "História salva nos seus favoritos!", Toast.LENGTH_SHORT).show()
+                                        }
+                                    ) {
+                                        Text(
+                                            "+ Salvar",
+                                            color = Color.White,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                        )
+                                    }
+                                }
+
+                                Spacer(Modifier.height(6.dp))
+
+                                Text(
+                                    text = "Intro. ${jogo.cenario?.sinopse?.ifBlank { null } ?: jogo.cena.narrativa}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.85f),
+                                    maxLines = 3,
+                                    overflow = TextOverflow.Ellipsis,
+                                    lineHeight = 16.sp
+                                )
+                            }
+                        }
+                    }
+                }
                 items(chat.size) { indice ->
                     val msg = chat[indice]
                     val ehUltimo = indice == chat.size - 1
@@ -1821,63 +1829,7 @@ fun JogoTela(vm: AppViewModel) {
                     }
                 }
 
-                if (!jogo.cena.imagemUrl.isNullOrBlank()) {
-                    item(key = "arte_cena_atual_historia") {
-                        val base = remember { ApiClient.baseUrlAtual() }
-                        val fullUrl = remember(jogo.cena.imagemUrl, base) {
-                            val u = jogo.cena.imagemUrl
-                            if (base != null && u != null) "${base}${u.removePrefix("/")}" else u
-                        }
-                        if (fullUrl != null) {
-                            val cabecalho = remember { ApiClient.cabecalhoAutorizacao() }
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 4.dp, vertical = 6.dp)
-                            ) {
-                                Surface(
-                                    color = Color(0xFF10121C),
-                                    shape = RoundedCornerShape(18.dp),
-                                    border = BorderStroke(1.5.dp, Ouro.copy(alpha = 0.55f)),
-                                    shadowElevation = 8.dp,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(290.dp)
-                                        .clip(RoundedCornerShape(18.dp))
-                                ) {
-                                    Box(modifier = Modifier.fillMaxSize()) {
-                                        AsyncImage(
-                                            model = ImageRequest.Builder(LocalContext.current)
-                                                .data(fullUrl)
-                                                .apply { if (cabecalho != null) addHeader("Authorization", cabecalho) }
-                                                .crossfade(true)
-                                                .allowHardware(true)
-                                                .build(),
-                                            contentDescription = "Arte da Cena Atual",
-                                            contentScale = ContentScale.Crop,
-                                            alignment = Alignment.Center,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                        Surface(
-                                            color = Color.Black.copy(alpha = 0.60f),
-                                            shape = Cantos.pilula,
-                                            modifier = Modifier
-                                                .align(Alignment.BottomStart)
-                                                .padding(10.dp)
-                                        ) {
-                                            Row(
-                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Text("✨ Ilustração da Cena Gerada por IA", style = MaterialTheme.typography.labelSmall, color = Ouro)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+
 
                 if (vm.ocupado) {
                     vm.acaoPendente?.let { pendente ->
@@ -1893,63 +1845,7 @@ fun JogoTela(vm: AppViewModel) {
                     item { BlocoDigitando() }
                 }
 
-                if (!jogo.cena.imagemUrl.isNullOrBlank()) {
-                    item(key = "arte_cena_atual_historia") {
-                        val base = remember { ApiClient.baseUrlAtual() }
-                        val fullUrl = remember(jogo.cena.imagemUrl, base) {
-                            val u = jogo.cena.imagemUrl
-                            if (base != null && u != null) "${base}${u.removePrefix("/")}" else u
-                        }
-                        if (fullUrl != null) {
-                            val cabecalho = remember { ApiClient.cabecalhoAutorizacao() }
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 6.dp)
-                            ) {
-                                Surface(
-                                    color = Color(0xFF10121C),
-                                    shape = RoundedCornerShape(18.dp),
-                                    border = BorderStroke(1.5.dp, Ouro.copy(alpha = 0.55f)),
-                                    shadowElevation = 8.dp,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(290.dp)
-                                        .clip(RoundedCornerShape(18.dp))
-                                ) {
-                                    Box(modifier = Modifier.fillMaxSize()) {
-                                        AsyncImage(
-                                            model = ImageRequest.Builder(LocalContext.current)
-                                                .data(fullUrl)
-                                                .apply { if (cabecalho != null) addHeader("Authorization", cabecalho) }
-                                                .crossfade(true)
-                                                .allowHardware(true)
-                                                .build(),
-                                            contentDescription = "Cena Ilustrada da História",
-                                            contentScale = ContentScale.Crop,
-                                            alignment = Alignment.TopCenter,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                        Surface(
-                                            color = Color.Black.copy(alpha = 0.70f),
-                                            shape = RoundedCornerShape(8.dp),
-                                            modifier = Modifier
-                                                .align(Alignment.BottomEnd)
-                                                .padding(10.dp)
-                                        ) {
-                                            Row(
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Text("✨ Ilustração da Cena", fontSize = 11.sp, color = Ouro, fontWeight = FontWeight.SemiBold)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+
                 item(key = "fim_chat_espaco") {
                     Spacer(Modifier.height(20.dp))
                 }
@@ -2263,6 +2159,17 @@ fun JogoTela(vm: AppViewModel) {
             vm = vm,
             jogoAtualId = jogo.jogoId,
             onFechar = { mostrarPersonaModal = false }
+        )
+    }
+
+    if (mostrarPerfilHistoria && cenarioCompleto != null) {
+        DetalhesPersonagemModal(
+            cenario = cenarioCompleto,
+            versaoCapa = vm.capaVersao,
+            apelidoUsuario = vm.apelido,
+            vm = vm,
+            onFechar = { mostrarPerfilHistoria = false },
+            onIniciarChat = { mostrarPerfilHistoria = false }
         )
     }
 
@@ -2718,17 +2625,19 @@ private fun JogoModoHistoria(vm: AppViewModel) {
     val cenarioCompleto = remember(jogo.cenario, vm.catalogo) {
         val cid = jogo.cenario?.id
         if (cid != null) {
-            vm.catalogo.firstOrNull { it.id == cid } ?: CenarioDto(
-                id = cid,
-                nome = jogo.cenario?.nome ?: jogo.personagem.nome,
-                subtitulo = jogo.cenario?.subtitulo ?: "",
-                genero = jogo.genero,
-                sinopse = jogo.cenario?.sinopse ?: "",
-                tags = jogo.cenario?.tags ?: emptyList(),
-                emoji = jogo.cenario?.emoji ?: "📖",
-                capa = jogo.cenario?.capa ?: false,
-                autorNome = jogo.cenario?.autorNome ?: "LivennIA"
-            )
+            vm.catalogo.firstOrNull { it.id == cid }
+                ?: RepositorioPersonagensComunidade.criacoes.firstOrNull { it.id == cid }
+                ?: CenarioDto(
+                    id = cid,
+                    nome = jogo.cenario?.nome ?: jogo.personagem.nome,
+                    subtitulo = jogo.cenario?.subtitulo ?: "",
+                    genero = jogo.genero,
+                    sinopse = jogo.cenario?.sinopse ?: "",
+                    tags = jogo.cenario?.tags ?: emptyList(),
+                    emoji = jogo.cenario?.emoji?.ifBlank { "📖" } ?: "📖",
+                    capa = true,
+                    autorNome = jogo.cenario?.autorNome ?: "LivennIA"
+                )
         } else {
             CenarioDto(
                 id = "custom_${jogo.jogoId}",

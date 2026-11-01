@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 50,
-  "versaoNome": "1.9.0",
-  "notas": "Atualização 1.9.0: Modo Amigos & Criadores (aba dedicada para seguir criadores, buscar amigos e ver feed exclusivo de suas histórias), tags de humor dinâmico do personagem no cabeçalho (Emotion Badge estilo Emochi), fundo cinematográfico reativo à cena gerada e navegação rápida de perfis de criadores diretamente dos cards.",
+  "versaoCodigo": 51,
+  "versaoNome": "1.9.1",
+  "notas": "Atualização 1.9.1: Ajuste total do chat no modo RPG — avatar sincronizado com o personagem escolhido (com modal de perfil ao tocar), viewport de chat expandido para a tela cheia eliminando cards pesados do topo, barra HUD elegante de status (HP, Mochila e Vínculo), introdução do cenário movida para o início do histórico e rolagem automática suave que acompanha a escrita em tempo real.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }
