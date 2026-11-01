@@ -1125,6 +1125,7 @@ fun JogoTela(vm: AppViewModel) {
 
     // Fala o texto do narrador em voz alta.
     var tts by remember { mutableStateOf<TextToSpeech?>(null) }
+    var autoPlayAudio by remember { mutableStateOf(false) }
     DisposableEffect(Unit) {
         val engine = TextToSpeech(contexto) { status ->
             if (status == TextToSpeech.SUCCESS) tts?.language = Locale("pt", "BR")
@@ -1153,6 +1154,13 @@ fun JogoTela(vm: AppViewModel) {
         }
     }
     val terminou = visiveis >= narrativaAtual.length
+    LaunchedEffect(terminou, autoPlayAudio) {
+        if (autoPlayAudio && terminou && narrativaAtual.isNotBlank() && !vm.ocupado) {
+            tts?.stop()
+            modularVozTTS(tts, jogo.genero, jogo.cenario?.nome)
+            tts?.speak(narrativaAtual, TextToSpeech.QUEUE_FLUSH, null, "auto_narrativa")
+        }
+    }
 
     // ---- Efeito de dano ----
     val tremor = remember { Animatable(0f) }
@@ -1353,7 +1361,33 @@ fun JogoTela(vm: AppViewModel) {
                         )
                     }
                     Spacer(Modifier.width(6.dp))
+                    Surface(
+                        shape = Cantos.pilula,
+                        color = if (autoPlayAudio) Ouro.copy(alpha = 0.22f) else SuperficieAlta,
+                        border = BorderStroke(1.dp, if (autoPlayAudio) Ouro else TextoSuave.copy(alpha = 0.25f)),
+                        modifier = Modifier.clickable {
+                            autoPlayAudio = !autoPlayAudio
+                            haptico.performHapticFeedback(HapticFeedbackType.LongPress)
+                            if (!autoPlayAudio) {
+                                tts?.stop()
+                            } else if (terminou && narrativaAtual.isNotBlank()) {
+                                tts?.stop()
+                                modularVozTTS(tts, jogo.genero, jogo.cenario?.nome)
+                                tts?.speak(narrativaAtual, TextToSpeech.QUEUE_FLUSH, null, "auto_narrativa")
+                            }
+                        }
+                    ) {
+                        Text(
+                            text = if (autoPlayAudio) "Auto 🔊" else "Auto",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (autoPlayAudio) Ouro else TextoSuave.copy(alpha = 0.7f),
+                            fontWeight = if (autoPlayAudio) FontWeight.Bold else FontWeight.Normal,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                    Spacer(Modifier.width(4.dp))
                     IconButton(onClick = {
+                        haptico.performHapticFeedback(HapticFeedbackType.LongPress)
                         tts?.stop()
                         modularVozTTS(tts, jogo.genero, jogo.cenario?.nome)
                         tts?.speak(narrativaAtual, TextToSpeech.QUEUE_FLUSH, null, "narrativa")
@@ -1667,7 +1701,10 @@ fun JogoTela(vm: AppViewModel) {
                                 eventos = if (ehUltimo && !terminou) emptyList() else msg.eventos,
                                 clicavel = ehUltimo && !terminou,
                                 aoTocar = { visiveis = narrativaAtual.length },
-                                aoCopiar = { areaDeCopia.setText(AnnotatedString(msg.narrativa)) },
+                                aoCopiar = {
+                                    areaDeCopia.setText(AnnotatedString(msg.narrativa))
+                                    Toast.makeText(contexto, "Texto copiado!", Toast.LENGTH_SHORT).show()
+                                },
                                 tamanhoLetra = vm.tamanhoLetraNarrador,
                                 hora = msg.emNarrador,
                                 versoes = msg.versoes,
@@ -1675,7 +1712,28 @@ fun JogoTela(vm: AppViewModel) {
                                 ehUltimo = ehUltimo && !vm.ocupado,
                                 aoTrocarVersao = { nova -> vm.trocarVersaoMensagem(indice, nova) },
                                 aoRegenerar = { vm.regenerarUltimaResposta() },
-                                aoEditar = { indiceEdicao = indice }
+                                aoEditar = { indiceEdicao = indice },
+                                aoOuvir = {
+                                    tts?.stop()
+                                    modularVozTTS(tts, jogo.genero, jogo.cenario?.nome)
+                                    tts?.speak(msg.narrativa, TextToSpeech.QUEUE_FLUSH, null, "fala_$indice")
+                                },
+                                aoIlustrar = if (ehUltimo) {
+                                    {
+                                        if (!vm.ocupado && !vm.ilustrandoCena) {
+                                            val ehPago = (jogo.modelo?.ehPago == true) || (vm.conta?.premium == true)
+                                            if (ehPago) {
+                                                vm.ilustrarCenaAtual(
+                                                    comAnuncio = false,
+                                                    onSucesso = { Toast.makeText(contexto, "Cena ilustrada com sucesso!", Toast.LENGTH_SHORT).show() },
+                                                    onError = { Toast.makeText(contexto, it, Toast.LENGTH_LONG).show() }
+                                                )
+                                            } else {
+                                                mostrarDialogoIlustracaoGratis = true
+                                            }
+                                        }
+                                    }
+                                } else null
                             )
                         }
                     }
@@ -2251,99 +2309,85 @@ private fun BlocoNarrador(
     ehUltimo: Boolean = false,
     aoTrocarVersao: (Int) -> Unit = {},
     aoRegenerar: () -> Unit = {},
-    aoEditar: () -> Unit = {}
+    aoEditar: () -> Unit = {},
+    aoOuvir: (() -> Unit)? = null,
+    aoIlustrar: (() -> Unit)? = null
 ) {
-    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.Top) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(top = 3.dp)
-        ) {
-            Icon(
-                Icons.AutoMirrored.Filled.VolumeUp,
-                contentDescription = null,
-                tint = Ouro,
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(Modifier.height(10.dp))
+    Surface(
+        color = SuperficieAlta,
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Ouro.copy(alpha = 0.22f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .clickable(enabled = clicavel) { aoTocar() }
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
             Text(
-                "⧉",
-                color = TextoSuave,
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.clickable { aoCopiar() }.padding(2.dp)
+                text = parsearNarrativa(texto),
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontSize = tamanhoLetra.sp,
+                    lineHeight = (tamanhoLetra * 1.45f).sp
+                )
             )
-        }
-        Spacer(Modifier.width(10.dp))
-        Surface(
-            color = SuperficieAlta,
-            shape = RoundedCornerShape(16.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Ouro.copy(alpha = 0.22f)),
-            modifier = Modifier.weight(1f).clickable(enabled = clicavel) { aoTocar() }
-        ) {
-            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                Text(
-                    text = parsearNarrativa(texto),
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontSize = tamanhoLetra.sp,
-                        lineHeight = (tamanhoLetra * 1.45f).sp
-                    )
-                )
-                if (eventos.isNotEmpty()) {
-                    Spacer(Modifier.height(6.dp))
-                    for (ev in eventos) {
-                        val cor = when {
-                            ev.tipo == "vida" && ev.texto.contains("perdeu") -> MaterialTheme.colorScheme.error
-                            ev.tipo == "vida" -> Color(0xFF7BC47F)
-                            ev.tipo == "item_ganho" -> Ouro
-                            else -> TextoSuave
-                        }
-                        Text("• ${ev.texto}", color = cor, style = MaterialTheme.typography.labelSmall)
+            if (eventos.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                for (ev in eventos) {
+                    val cor = when {
+                        ev.tipo == "vida" && ev.texto.contains("perdeu") -> MaterialTheme.colorScheme.error
+                        ev.tipo == "vida" -> Color(0xFF7BC47F)
+                        ev.tipo == "item_ganho" -> Ouro
+                        else -> TextoSuave
                     }
+                    Text("• ${ev.texto}", color = cor, style = MaterialTheme.typography.labelSmall)
                 }
-                var revelouPensamento by remember { mutableStateOf(false) }
-                Row(modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)) {
-                    Surface(
-                        color = if (revelouPensamento) Color(0xFF6C5CE7).copy(alpha = 0.20f) else Color.White.copy(alpha = 0.06f),
-                        shape = Cantos.pilula,
-                        border = BorderStroke(1.dp, if (revelouPensamento) Color(0xFF6C5CE7).copy(alpha = 0.5f) else Color.White.copy(alpha = 0.12f)),
-                        modifier = Modifier.clickable { revelouPensamento = !revelouPensamento }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(if (revelouPensamento) "💭 Ocultar Pensamento" else "💭 Revelar Pensamento", color = if (revelouPensamento) Color(0xFFA29BFE) else TextoSuave, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                        }
-                    }
-                }
-                if (revelouPensamento) {
-                    Surface(
-                        color = Color(0xFF16152B),
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, Color(0xFF6C5CE7).copy(alpha = 0.40f)),
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = gerarPensamentoSecreto("Personagem", texto, 5),
-                            color = Color(0xFFD6D0F5),
-                            fontSize = 12.sp,
-                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                            lineHeight = 17.sp,
-                            modifier = Modifier.padding(10.dp)
-                        )
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-                RodapeMensagemLiven(
-                    rotuloEsquerda = hora?.let { horaDaMensagem(it) } ?: "",
-                    versoes = versoes,
-                    versaoAtiva = versaoAtiva,
-                    ehUltimo = ehUltimo,
-                    aoTrocarVersao = aoTrocarVersao,
-                    aoRegenerar = aoRegenerar,
-                    aoEditar = aoEditar,
-                    aoCopiar = aoCopiar
-                )
             }
+            var revelouPensamento by remember { mutableStateOf(false) }
+            Row(modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)) {
+                Surface(
+                    color = if (revelouPensamento) Color(0xFF6C5CE7).copy(alpha = 0.20f) else Color.White.copy(alpha = 0.06f),
+                    shape = Cantos.pilula,
+                    border = BorderStroke(1.dp, if (revelouPensamento) Color(0xFF6C5CE7).copy(alpha = 0.5f) else Color.White.copy(alpha = 0.12f)),
+                    modifier = Modifier.clickable { revelouPensamento = !revelouPensamento }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(if (revelouPensamento) "💭 Ocultar Pensamento" else "💭 Revelar Pensamento", color = if (revelouPensamento) Color(0xFFA29BFE) else TextoSuave, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
+            }
+            if (revelouPensamento) {
+                Surface(
+                    color = Color(0xFF16152B),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Color(0xFF6C5CE7).copy(alpha = 0.40f)),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                ) {
+                    Text(
+                        text = gerarPensamentoSecreto("Personagem", texto, 5),
+                        color = Color(0xFFD6D0F5),
+                        fontSize = 12.sp,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                        lineHeight = 17.sp,
+                        modifier = Modifier.padding(10.dp)
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            RodapeMensagemLiven(
+                rotuloEsquerda = hora?.let { horaDaMensagem(it) } ?: "",
+                versoes = versoes,
+                versaoAtiva = versaoAtiva,
+                ehUltimo = ehUltimo,
+                aoTrocarVersao = aoTrocarVersao,
+                aoRegenerar = aoRegenerar,
+                aoEditar = aoEditar,
+                aoCopiar = aoCopiar,
+                aoOuvir = aoOuvir,
+                aoIlustrar = aoIlustrar
+            )
         }
     }
 }
@@ -2589,6 +2633,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
     }
 
     var tts by remember { mutableStateOf<TextToSpeech?>(null) }
+    var autoPlayAudio by remember { mutableStateOf(false) }
     DisposableEffect(Unit) {
         val engine = TextToSpeech(contexto) { status ->
             if (status == TextToSpeech.SUCCESS) tts?.language = Locale("pt", "BR")
@@ -2614,6 +2659,13 @@ private fun JogoModoHistoria(vm: AppViewModel) {
         }
     }
     val terminou = visiveis >= narrativaAtual.length
+    LaunchedEffect(terminou, autoPlayAudio) {
+        if (autoPlayAudio && terminou && narrativaAtual.isNotBlank() && !vm.ocupado) {
+            tts?.stop()
+            modularVozTTS(tts, jogo.genero, jogo.cenario?.nome)
+            tts?.speak(narrativaAtual, TextToSpeech.QUEUE_FLUSH, null, "auto_narrativa")
+        }
+    }
 
     var acaoLivre by remember(jogo.turno) { mutableStateOf("") }
     var mostrarSugestoes by remember(jogo.turno) { mutableStateOf(false) }
@@ -2821,7 +2873,33 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                         }
                         Spacer(Modifier.width(4.dp))
                     }
+                    Surface(
+                        shape = Cantos.pilula,
+                        color = if (autoPlayAudio) Ouro.copy(alpha = 0.22f) else SuperficieAlta,
+                        border = BorderStroke(1.dp, if (autoPlayAudio) Ouro else TextoSuave.copy(alpha = 0.25f)),
+                        modifier = Modifier.clickable {
+                            autoPlayAudio = !autoPlayAudio
+                            haptico.performHapticFeedback(HapticFeedbackType.LongPress)
+                            if (!autoPlayAudio) {
+                                tts?.stop()
+                            } else if (terminou && narrativaAtual.isNotBlank()) {
+                                tts?.stop()
+                                modularVozTTS(tts, jogo.genero, jogo.cenario?.nome)
+                                tts?.speak(narrativaAtual, TextToSpeech.QUEUE_FLUSH, null, "auto_narrativa")
+                            }
+                        }
+                    ) {
+                        Text(
+                            text = if (autoPlayAudio) "Auto 🔊" else "Auto",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (autoPlayAudio) Ouro else TextoSuave.copy(alpha = 0.7f),
+                            fontWeight = if (autoPlayAudio) FontWeight.Bold else FontWeight.Normal,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                    Spacer(Modifier.width(4.dp))
                     IconButton(onClick = {
+                        haptico.performHapticFeedback(HapticFeedbackType.LongPress)
                         tts?.stop()
                         modularVozTTS(tts, jogo.genero, jogo.cenario?.nome)
                         tts?.speak(narrativaAtual, TextToSpeech.QUEUE_FLUSH, null, "narrativa")
@@ -3065,51 +3143,6 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                                     }
                             ) {
                                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.End,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        IconButton(
-                                            onClick = {
-                                                tts?.stop()
-                                                modularVozTTS(tts, jogo.genero, jogo.cenario?.nome)
-                                                tts?.speak(msg.narrativa, TextToSpeech.QUEUE_FLUSH, null, "fala_$indice")
-                                            },
-                                            modifier = Modifier.size(28.dp)
-                                        ) {
-                                            Icon(
-                                                Icons.AutoMirrored.Filled.VolumeUp,
-                                                contentDescription = "Ouvir",
-                                                tint = Color.White.copy(alpha = 0.75f),
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        }
-                                        IconButton(
-                                            onClick = {
-                                                if (!vm.ocupado && !vm.ilustrandoCena) {
-                                                    val ehPago = (jogo.modelo?.ehPago == true) || (vm.conta?.premium == true)
-                                                    if (ehPago) {
-                                                        vm.ilustrarCenaAtual(
-                                                            comAnuncio = false,
-                                                            onSucesso = { Toast.makeText(contexto, "Cena ilustrada com sucesso!", Toast.LENGTH_SHORT).show() },
-                                                            onError = { Toast.makeText(contexto, it, Toast.LENGTH_LONG).show() }
-                                                        )
-                                                    } else {
-                                                        mostrarDialogoIlustracaoGratis = true
-                                                    }
-                                                }
-                                            },
-                                            modifier = Modifier.size(28.dp)
-                                        ) {
-                                            Icon(
-                                                Icons.Default.Image,
-                                                contentDescription = "Cena",
-                                                tint = Color.White.copy(alpha = 0.75f),
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        }
-                                    }
                                     Text(
                                         text = parsearNarrativaLivro(
                                             texto = textoMostrado,
@@ -3169,7 +3202,31 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                                         aoTrocarVersao = { nova -> vm.trocarVersaoMensagem(indice, nova) },
                                         aoRegenerar = { vm.regenerarUltimaResposta() },
                                         aoEditar = { indiceEdicao = indice },
-                                        aoCopiar = { areaDeCopia.setText(AnnotatedString(msg.narrativa)) }
+                                        aoCopiar = {
+                                            areaDeCopia.setText(AnnotatedString(msg.narrativa))
+                                            Toast.makeText(contexto, "Texto copiado!", Toast.LENGTH_SHORT).show()
+                                        },
+                                        aoOuvir = {
+                                            tts?.stop()
+                                            modularVozTTS(tts, jogo.genero, jogo.cenario?.nome)
+                                            tts?.speak(msg.narrativa, TextToSpeech.QUEUE_FLUSH, null, "fala_$indice")
+                                        },
+                                        aoIlustrar = if (ehUltimo) {
+                                            {
+                                                if (!vm.ocupado && !vm.ilustrandoCena) {
+                                                    val ehPago = (jogo.modelo?.ehPago == true) || (vm.conta?.premium == true)
+                                                    if (ehPago) {
+                                                        vm.ilustrarCenaAtual(
+                                                            comAnuncio = false,
+                                                            onSucesso = { Toast.makeText(contexto, "Cena ilustrada com sucesso!", Toast.LENGTH_SHORT).show() },
+                                                            onError = { Toast.makeText(contexto, it, Toast.LENGTH_LONG).show() }
+                                                        )
+                                                    } else {
+                                                        mostrarDialogoIlustracaoGratis = true
+                                                    }
+                                                }
+                                            }
+                                        } else null
                                     )
                                 }
                             }
@@ -3965,7 +4022,9 @@ private fun RodapeMensagemLiven(
     aoTrocarVersao: (Int) -> Unit,
     aoRegenerar: () -> Unit,
     aoEditar: () -> Unit,
-    aoCopiar: () -> Unit
+    aoCopiar: () -> Unit,
+    aoOuvir: (() -> Unit)? = null,
+    aoIlustrar: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -4023,8 +4082,29 @@ private fun RodapeMensagemLiven(
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.horizontalScroll(rememberScrollState())
         ) {
+            if (aoOuvir != null) {
+                Text(
+                    text = "🔊 Ouvir",
+                    color = TextoSuave.copy(alpha = 0.85f),
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier
+                        .clickable { aoOuvir() }
+                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                )
+            }
+            if (aoIlustrar != null) {
+                Text(
+                    text = "🎨 Cena",
+                    color = Ouro,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier
+                        .clickable { aoIlustrar() }
+                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                )
+            }
             if (ehUltimo) {
                 Text(
                     text = "🔄 Regenerar",

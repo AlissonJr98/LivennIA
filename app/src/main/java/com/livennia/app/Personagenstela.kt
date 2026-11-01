@@ -3268,7 +3268,7 @@ private fun AbaPerfil(vm: AppViewModel) {
 
     var mostrarDialogoCarteira by rememberSaveable { mutableStateOf(false) }
 
-    var mostrarDialogoVip by rememberSaveable { mutableStateOf(false) }
+    // VIP agora navega diretamente para Tela.Assinatura
 
     var mostrarDialogoPersona by rememberSaveable { mutableStateOf(false) }
 
@@ -3815,7 +3815,7 @@ private fun AbaPerfil(vm: AppViewModel) {
 
                     rotulo = "VIP",
 
-                    aoClicar = { mostrarDialogoVip = true }
+                    aoClicar = { vm.navegarPara(Tela.Assinatura("Ultra")) }
 
                 )
 
@@ -4206,60 +4206,15 @@ private fun AbaPerfil(vm: AppViewModel) {
             onFechar = { mostrarDialogoCarteira = false },
             onAbrirAssinatura = {
                 mostrarDialogoCarteira = false
-                mostrarDialogoVip = true
+                vm.navegarPara(Tela.Assinatura("Ultra"))
             }
         )
     }
 
 
 
-    if (mostrarDialogoVip) {
+    
 
-        AlertDialog(
-
-            onDismissRequest = { mostrarDialogoVip = false },
-
-            title = { Text("Planos & Vantagens LivennIA", color = Color.White, fontWeight = FontWeight.Bold) },
-
-            text = {
-
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-
-                    Text("👑 Liven Ultra VIP", fontWeight = FontWeight.Bold, color = Color(0xFFF5C842), fontSize = 14.sp)
-
-                    Text("• Acesso prioritário aos cérebros de IA Gemini 2.5 Pro.", color = Color(0xFF8E8E93), fontSize = 12.sp)
-
-                    Text("• Prosa cinematográfica e diálogos profundos sem limite diário.", color = Color(0xFF8E8E93), fontSize = 12.sp)
-
-                    Text("• 2000 Livens bônus creditados mensalmente.", color = Color(0xFF8E8E93), fontSize = 12.sp)
-
-                    Spacer(Modifier.height(4.dp))
-
-                    Text("✨ Liven Plus", fontWeight = FontWeight.Bold, color = Color(0xFFB0CDE8), fontSize = 14.sp)
-
-                    Text("• Geração de retratos e capas de cenários sem fila.", color = Color(0xFF8E8E93), fontSize = 12.sp)
-
-                    Text("• Bônus diário turbinado.", color = Color(0xFF8E8E93), fontSize = 12.sp)
-
-                }
-
-            },
-
-            confirmButton = {
-
-                TextButton(onClick = { mostrarDialogoVip = false }) {
-
-                    Text("Entendido", color = Color(0xFFF5C842))
-
-                }
-
-            },
-
-            containerColor = Color(0xFF161618)
-
-        )
-
-    }
 
 
 

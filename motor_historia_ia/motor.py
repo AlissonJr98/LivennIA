@@ -400,6 +400,13 @@ def regras_do_narrador(genero, cenario=None, modo="rpg", cerebro=None):
         "- NUNCA recite, repita ou fique citando a idade, altura ou aparência do jogador em suas respostas!\n"
         "- Apenas use essas características como contexto silencioso se a cena realmente demandar.\n"
         "=================================================================\n"
+        "\n=================================================================\n"
+        "DIRETRIZ ANTI-REPETIÇÃO E ANTI-CLICHÊ (OBRIGATÓRIA):\n"
+        "- NUNCA repita bordões batidos como: 'um silêncio tenso/pesado pairou', 'ele deu um meio sorriso sarcástico', 'seus olhos faiscaram', 'não pôde deixar de notar', 'um calafrio percorreu sua espinha'.\n"
+        "- VARIE AS ABERTURAS: NUNCA comece a resposta com a mesma estrutura do turno anterior (se o turno anterior começou descrevendo o ambiente, agora comece com uma reação direta ou fala; se começou com fala, comece com um gesto físico).\n"
+        "- EVITE DIÁLOGOS EM ECO: O personagem não deve ficar parafraseando ou repetindo o que o jogador acabou de dizer antes de responder. Responda sempre com algo novo, surpreendente ou provocativo.\n"
+        "- PROIBIDO REPETIR OPÇÕES: Nas 'opcoes', nunca sugira ações idênticas ou muito parecidas com as do turno anterior. Gere opções com atitudes contrastantes (ex: uma provocadora/audaciosa, uma carinhosa/emocional e uma direta/investigativa).\n"
+        "=================================================================\n"
     )
     return regras
 

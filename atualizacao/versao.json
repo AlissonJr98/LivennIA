@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 48,
-  "versaoNome": "1.8.8",
-  "notas": "Atualização 1.8.8: Ilustração de Cenas com IA integrada ao sistema de acesso (geração direta para modelos pagos/assinantes VIP, e diálogo com opção de assistir a anúncio de recompensa ou assinar nos modelos gratuitos). Correção do erro HTTP 503 com cache instantâneo por turno e fallback resiliente no backend.",
+  "versaoCodigo": 49,
+  "versaoNome": "1.8.9",
+  "notas": "Atualização 1.8.9: Modo Audiolivro Contínuo (Auto-Play TTS modulado na barra superior), layout de leitura despoluído (eliminação de botões repetidos flutuantes nas bolhas de texto), menu de ações ágil no rodapé de cada fala (Ouvir, Ilustrar Cena, Regenerar, Editar, Copiar) e motor de IA anti-repetição e anti-clichê ativado.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }
