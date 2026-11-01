@@ -64,6 +64,9 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.border
 import androidx.compose.ui.graphics.RectangleShape
@@ -1154,6 +1157,8 @@ fun JogoTela(vm: AppViewModel) {
         } else null
     }
     var mostrarPerfilHistoria by remember { mutableStateOf(false) }
+    var mostrarConfiguracoesChat by remember { mutableStateOf(false) }
+    var modalInventarioAberto by remember { mutableStateOf(false) }
 
     // Efeito "máquina de escrever" suave que segue a leitura
     val narrativaAtual = chat.lastOrNull()?.narrativa ?: jogo.cena.narrativa
@@ -1292,83 +1297,89 @@ fun JogoTela(vm: AppViewModel) {
                 .safeDrawingPadding()
                 .graphicsLayer { translationX = tremor.value }
         ) {
-            // ---- Barra de cima: flutua sobre o fundo, sem faixa dura ----
-            Surface(color = Color.Transparent) {
+            // ---- Barra de cima clean (Estilo Emochi - Imagens 3 e 4) ----
+            Surface(
+                color = Color(0xFF0F1018).copy(alpha = 0.85f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 6.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = { vm.voltarParaPersonagens() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Voltar",
+                            tint = Ouro,
                             modifier = Modifier.size(20.dp)
                         )
                     }
-                    Box(
-                        modifier = Modifier
-                            .size(42.dp)
-                            .clip(CircleShape)
-                            .border(1.5.dp, Ouro.copy(alpha = 0.55f), CircleShape)
-                            .clickable {
-                                if (cenarioCompleto != null) {
-                                    mostrarPerfilHistoria = true
-                                } else {
-                                    dialogo = DialogoAberto.Vinculo
-                                }
-                            }
-                    ) {
-                        if (cenarioCompleto != null && cenarioCompleto.id.isNotBlank()) {
-                            CapaCenario(
-                                cenarioId = cenarioCompleto.id,
-                                temCapa = true,
-                                emoji = cenarioCompleto.emojiSeguro.ifBlank { "🎭" },
-                                nome = cenarioCompleto.nome,
-                                versao = vm.capaVersao,
-                                modifier = Modifier.fillMaxSize(),
-                                recorte = CircleShape
-                            )
-                        } else {
-                            RetratoPersonagem(
-                                jogoId = jogo.jogoId,
-                                seed = jogo.avatarSeed,
-                                nome = jogo.personagem.nome,
-                                temRetrato = jogo.retrato,
-                                tamanho = 42,
-                                versao = vm.retratoVersao
-                            )
-                        }
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    Column(
+
+                    // Pílula do Personagem com Foto e Nome (ao clicar abre Perfil)
+                    Surface(
+                        color = Color.White.copy(alpha = 0.08f),
+                        shape = Cantos.pilula,
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
                         modifier = Modifier
                             .weight(1f)
-                            .clickable {
-                                if (cenarioCompleto != null) mostrarPerfilHistoria = true
-                            }
+                            .clickable { mostrarPerfilHistoria = true }
                     ) {
-                        Text(
-                            text = cenarioCompleto?.nome ?: jogo.personagem.nome,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Box(
                                 modifier = Modifier
-                                    .size(7.dp)
-                                    .background(Color(0xFF00E676), CircleShape)
-                            )
-                            Spacer(Modifier.width(5.dp))
-                            Text(
-                                text = "Online • Turno ${jogo.turno}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = TextoSuave,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Spacer(Modifier.width(6.dp))
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                            ) {
+                                if (cenarioCompleto != null && cenarioCompleto.id.isNotBlank()) {
+                                    CapaCenario(
+                                        cenarioId = cenarioCompleto.id,
+                                        temCapa = true,
+                                        emoji = cenarioCompleto.emojiSeguro.ifBlank { "🎭" },
+                                        nome = cenarioCompleto.nome,
+                                        versao = vm.capaVersao,
+                                        modifier = Modifier.fillMaxSize(),
+                                        recorte = CircleShape
+                                    )
+                                } else {
+                                    RetratoPersonagem(
+                                        jogoId = jogo.jogoId,
+                                        seed = jogo.avatarSeed,
+                                        nome = jogo.personagem.nome,
+                                        temRetrato = jogo.retrato,
+                                        tamanho = 32,
+                                        versao = vm.retratoVersao
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = cenarioCompleto?.nome ?: jogo.personagem.nome,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = Color.White,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("+", color = Color(0xFF00E676), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Text(
+                                    text = "Online • Turno ${jogo.turno}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextoSuave,
+                                    fontSize = 10.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                             val (humorTxt, humorCor) = remember(narrativaAtual, jogo.genero) {
                                 obterHumorPersonagem(narrativaAtual, jogo.genero)
                             }
@@ -1388,83 +1399,13 @@ fun JogoTela(vm: AppViewModel) {
                             }
                         }
                     }
-                    if (vm.gerandoRetrato) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = Ouro
-                        )
-                        Spacer(Modifier.width(4.dp))
-                    } else {
-                        IconButton(onClick = { vm.gerarRetrato() }) {
-                            Icon(
-                                Icons.Filled.Refresh,
-                                contentDescription = "Gerar retrato",
-                                tint = TextoSuave,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                    Surface(
-                        color = if (vm.partyAtiva.isNotEmpty()) Ouro.copy(alpha = 0.20f) else SuperficieAlta,
-                        shape = Cantos.pilula,
-                        border = BorderStroke(1.dp, if (vm.partyAtiva.isNotEmpty()) Ouro.copy(alpha = 0.60f) else Color.White.copy(alpha = 0.15f)),
-                        modifier = Modifier
-                            .clickable { dialogo = DialogoAberto.Party }
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
-                        ) {
-                            Text("👥", fontSize = 11.sp)
-                            Spacer(Modifier.width(3.dp))
-                            Text(
-                                if (vm.partyAtiva.isNotEmpty()) "Party (${vm.partyAtiva.size})" else "Party",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (vm.partyAtiva.isNotEmpty()) Ouro else TextoSuave
-                            )
-                        }
-                    }
+
                     Spacer(Modifier.width(4.dp))
-                    Surface(
-                        color = SuperficieAlta,
-                        shape = Cantos.pilula,
-                        modifier = Modifier
-                            .clickable { vm.definirModoLeitura(AppViewModel.ModoLeitura.HISTORIA) }
-                    ) {
-                        Text(
-                            "Livro",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Ouro,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                        )
+
+                    IconButton(onClick = { modalGaleriaAberto = true }) {
+                        Text("🖼️", fontSize = 18.sp)
                     }
-                    Spacer(Modifier.width(6.dp))
-                    Surface(
-                        shape = Cantos.pilula,
-                        color = if (autoPlayAudio) Ouro.copy(alpha = 0.22f) else SuperficieAlta,
-                        border = BorderStroke(1.dp, if (autoPlayAudio) Ouro else TextoSuave.copy(alpha = 0.25f)),
-                        modifier = Modifier.clickable {
-                            autoPlayAudio = !autoPlayAudio
-                            haptico.performHapticFeedback(HapticFeedbackType.LongPress)
-                            if (!autoPlayAudio) {
-                                tts?.stop()
-                            } else if (terminou && narrativaAtual.isNotBlank()) {
-                                tts?.stop()
-                                modularVozTTS(tts, jogo.genero, jogo.cenario?.nome)
-                                tts?.speak(narrativaAtual, TextToSpeech.QUEUE_FLUSH, null, "auto_narrativa")
-                            }
-                        }
-                    ) {
-                        Text(
-                            text = if (autoPlayAudio) "Auto 🔊" else "Auto",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (autoPlayAudio) Ouro else TextoSuave.copy(alpha = 0.7f),
-                            fontWeight = if (autoPlayAudio) FontWeight.Bold else FontWeight.Normal,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                    Spacer(Modifier.width(4.dp))
+
                     IconButton(onClick = {
                         haptico.performHapticFeedback(HapticFeedbackType.LongPress)
                         tts?.stop()
@@ -1478,27 +1419,17 @@ fun JogoTela(vm: AppViewModel) {
                             modifier = Modifier.size(20.dp)
                         )
                     }
-                    IconButton(onClick = { dialogo = DialogoAberto.Feedback }) {
+
+                    IconButton(onClick = { mostrarConfiguracoesChat = true }) {
                         Icon(
-                            Icons.Filled.Star,
-                            contentDescription = "Avaliar / Feedback",
-                            tint = Ouro,
-                            modifier = Modifier.size(20.dp)
+                            Icons.Default.Menu,
+                            contentDescription = "Configurações do Chat",
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
             }
-
-            // ---- Barra de recursos LivennIA: Livens, Memória, Diário, Cartas, Saves, Motor/Temp ----
-            BarraFerramentasLiven(
-                vm = vm,
-                jogo = jogo,
-                onAbrirDialogo = { dialogo = it },
-                onAtivarModoCinema = { modoCinema = true },
-                onExportarPdf = { exportarHistoriaPdf(contexto, jogo, chat) },
-                onAbrirPresentes = { modalPresentesAberto = true },
-                onAbrirGaleria = { modalGaleriaAberto = true }
-            )
 
             // ---- Barra de Status RPG Compacta e Elegante (Vida • Mochila • Vínculo) ----
             var modalInventarioAberto by remember { mutableStateOf(false) }
@@ -1851,96 +1782,15 @@ fun JogoTela(vm: AppViewModel) {
                 }
             }
 
-            // ---- Faixa de status + opções + barra de digitação ----
+            // ---- Barra de Digitação e Sugestões Clean (Estilo Emochi - Imagem 3) ----
             Surface(
-                color = Superficie,
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                shadowElevation = 12.dp
+                color = Color(0xFF13141F).copy(alpha = 0.95f),
+                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 8.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            ChipTag("⚡ ${jogo.jogadasRestantesHoje}", destaque = true)
-                            ChipTag(
-                                "❤ ${jogo.personagem.vida}/${jogo.personagem.vidaMax}",
-                                destaque = jogo.personagem.vida <= 30
-                            )
-                            ChipTag("📖 ${jogo.genero}")
-                            Surface(
-                                color = SuperficieAlta,
-                                shape = Cantos.pilula,
-                                border = BorderStroke(1.dp, Ouro.copy(alpha = 0.40f)),
-                                modifier = Modifier.cliqueFuturista3D {
-                                    if (!vm.ocupado && !vm.gerandoAutoResposta) {
-                                        vm.gerarSugestoesAutoResposta { primeira ->
-                                            if (acaoLivre.isBlank()) acaoLivre = primeira
-                                        }
-                                    }
-                                }
-                            ) {
-                                Text(
-                                    if (vm.gerandoAutoResposta) "⏳ Inspirando..." else "✨ Auto-resposta",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Ouro,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                                )
-                            }
-                            Surface(
-                                color = if (jogo.cena.imagemUrl != null) Ouro.copy(alpha = 0.20f) else SuperficieAlta,
-                                shape = Cantos.pilula,
-                                border = BorderStroke(1.dp, Ouro.copy(alpha = 0.40f)),
-                                modifier = Modifier.cliqueFuturista3D {
-                                    if (!vm.ocupado && !vm.ilustrandoCena) {
-                                        val ehPago = (jogo.modelo?.ehPago == true) || (vm.conta?.premium == true)
-                                        if (ehPago) {
-                                            vm.ilustrarCenaAtual(
-                                                comAnuncio = false,
-                                                onSucesso = { Toast.makeText(contexto, "Cena ilustrada com sucesso!", Toast.LENGTH_SHORT).show() },
-                                                onError = { Toast.makeText(contexto, it, Toast.LENGTH_LONG).show() }
-                                            )
-                                        } else {
-                                            mostrarDialogoIlustracaoGratis = true
-                                        }
-                                    }
-                                }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    if (vm.ilustrandoCena) {
-                                        CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp, color = Ouro)
-                                        Spacer(Modifier.width(4.dp))
-                                        Text("Pintando cena...", style = MaterialTheme.typography.labelSmall, color = Ouro)
-                                    } else {
-                                        Text(
-                                            if (jogo.cena.imagemUrl != null) "🖼️ Arte da Cena •" else "✨ 🖼️ Ilustrar Cena",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = Ouro
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        Text(
-                            "✎",
-                            color = TextoSuave,
-                            style = MaterialTheme.typography.labelLarge,
-                            modifier = Modifier
-                                .clickable { dialogo = DialogoAberto.Feedback }
-                                .padding(6.dp)
-                        )
-                    }
-
-                    // Gaveta de Auto-Respostas LivennIA
+                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    // Sugestões IA / Opções da cena (uma única linha limpa)
                     val sugestoesAtuais = remember(vm.sugestoesAutoResposta, jogo.cena.opcoes) {
                         if (vm.sugestoesAutoResposta.isNotEmpty()) {
                             vm.sugestoesAutoResposta
@@ -1954,16 +1804,59 @@ fun JogoTela(vm: AppViewModel) {
                             )
                         }
                     }
-                    FaixaSugestoesAutoResposta(
-                        sugestoes = sugestoesAtuais,
-                        ocupado = vm.ocupado,
-                        gerandoIA = vm.gerandoAutoResposta,
-                        aoPedirSugestoesIA = { vm.gerarSugestoesAutoResposta() },
-                        aoEscolher = { sugestao ->
-                            acaoLivre = sugestao
-                            haptico.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+
+                    if (sugestoesAtuais.isNotEmpty() && !jogo.fimDeJogo) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(bottom = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                color = Ouro.copy(alpha = 0.18f),
+                                shape = Cantos.pilula,
+                                border = BorderStroke(1.dp, Ouro.copy(alpha = 0.40f)),
+                                modifier = Modifier.clickable(enabled = !vm.ocupado && !vm.gerandoAutoResposta) {
+                                    vm.gerarSugestoesAutoResposta()
+                                }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("✨", fontSize = 11.sp)
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        if (vm.gerandoAutoResposta) "Inspirando..." else "Ideias IA",
+                                        color = Ouro,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
+                            sugestoesAtuais.forEach { opcao ->
+                                Surface(
+                                    color = SuperficieAlta,
+                                    shape = Cantos.pilula,
+                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                                    modifier = Modifier.clickable(enabled = !vm.ocupado) {
+                                        haptico.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        acaoLivre = opcao
+                                    }
+                                ) {
+                                    Text(
+                                        text = opcao,
+                                        color = Color.White.copy(alpha = 0.9f),
+                                        fontSize = 11.sp,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                                    )
+                                }
+                            }
                         }
-                    )
+                    }
 
                     if (jogo.fimDeJogo) {
                         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
@@ -1979,64 +1872,33 @@ fun JogoTela(vm: AppViewModel) {
                             ) { Text("Voltar às aventuras") }
                         }
                     } else {
-                        if (!terminou) {
-                            Text(
-                                "Toque na fala do narrador para pular a animação.",
-                                color = TextoSuave,
-                                style = MaterialTheme.typography.labelSmall,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                            )
-                        } else if (jogo.cena.opcoes.isNotEmpty()) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .horizontalScroll(rememberScrollState())
-                                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                jogo.cena.opcoes.forEachIndexed { indice, opcao ->
-                                    Surface(
-                                        color = SuperficieAlta,
-                                        shape = RoundedCornerShape(50),
-                                        border = BorderStroke(1.dp, Ouro.copy(alpha = 0.55f)),
-                                        modifier = Modifier.clickable(enabled = !vm.ocupado) {
-                                            haptico.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            vm.jogarOpcao(indice + 1)
-                                        }
-                                    ) {
-                                        Text(
-                                            text = opcao,
-                                            style = MaterialTheme.typography.labelMedium,
-                                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
+                        // Linha de envio principal
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.Bottom
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            RetratoPersonagem(
-                                jogoId = jogo.jogoId,
-                                seed = jogo.avatarSeed,
-                                nome = jogo.personagem.nome,
-                                temRetrato = jogo.retrato,
-                                tamanho = 34,
-                                versao = vm.retratoVersao
-                            )
-                            Spacer(Modifier.width(8.dp))
                             OutlinedTextField(
                                 value = acaoLivre,
                                 onValueChange = { acaoLivre = it.take(300) },
-                                placeholder = { Text("Escreva sua ação...") },
+                                placeholder = {
+                                    Text(
+                                        "Escreva sua ação...",
+                                        color = Color.White.copy(alpha = 0.45f),
+                                        fontSize = 14.sp
+                                    )
+                                },
                                 maxLines = 3,
                                 enabled = !vm.ocupado,
                                 shape = RoundedCornerShape(20.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedContainerColor = Color(0xFF1B1D2A),
+                                    unfocusedContainerColor = Color(0xFF1B1D2A),
+                                    focusedBorderColor = Ouro.copy(alpha = 0.45f),
+                                    unfocusedBorderColor = Color.White.copy(alpha = 0.10f)
+                                ),
                                 modifier = Modifier.weight(1f)
                             )
-                            Spacer(Modifier.width(4.dp))
+                            Spacer(Modifier.width(6.dp))
                             IconButton(
                                 onClick = { dialogo = DialogoAberto.Dados },
                                 enabled = !vm.ocupado
@@ -2054,7 +1916,76 @@ fun JogoTela(vm: AppViewModel) {
                                 Icon(
                                     Icons.AutoMirrored.Filled.Send,
                                     contentDescription = "Enviar",
-                                    tint = Ouro
+                                    tint = if (acaoLivre.isNotBlank()) Ouro else TextoSuave.copy(alpha = 0.4f)
+                                )
+                            }
+                        }
+
+                        // Sub-barra inferior: Persona + Modelo + Menu ☰ (estilo Emochi Imagem 3)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 6.dp, start = 4.dp, end = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Surface(
+                                    color = Color(0xFF1E202E),
+                                    shape = Cantos.pilula,
+                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                                    modifier = Modifier.clickable { mostrarPersonaModal = true }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("👤", fontSize = 11.sp)
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(
+                                            text = vm.personaAtiva?.nome ?: vm.apelido.ifBlank { "Jogador" },
+                                            color = Color.White.copy(alpha = 0.85f),
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+
+                                Surface(
+                                    color = Color(0xFF1E202E),
+                                    shape = Cantos.pilula,
+                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                                    modifier = Modifier.clickable { dialogo = DialogoAberto.ModeloIA }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("💬", fontSize = 10.sp)
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(
+                                            text = jogo.modelo?.nome ?: "Liven Flash",
+                                            color = Color.White.copy(alpha = 0.85f),
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+
+                            IconButton(
+                                onClick = { mostrarConfiguracoesChat = true },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Menu,
+                                    contentDescription = "Configurações do Chat",
+                                    tint = Color.White.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                         }
@@ -2062,7 +1993,6 @@ fun JogoTela(vm: AppViewModel) {
                 }
             }
         }
-
         // ---- Efeito de dano: piscada vermelha + selo "-X ❤" ----
         AnimatedVisibility(
             visible = vm.danoRecente > 0,
@@ -2170,6 +2100,37 @@ fun JogoTela(vm: AppViewModel) {
             vm = vm,
             onFechar = { mostrarPerfilHistoria = false },
             onIniciarChat = { mostrarPerfilHistoria = false }
+        )
+    }
+
+    if (mostrarConfiguracoesChat) {
+        ModalConfiguracoesChat(
+            vm = vm,
+            jogo = jogo,
+            ehModoHistoria = false,
+            modoCinema = modoCinema,
+            onAlternarModoCinema = { modoCinema = !modoCinema },
+            onAbrirDialogo = { dialogo = it },
+            onAbrirPersona = { mostrarPersonaModal = true },
+            onAbrirGaleria = { modalGaleriaAberto = true },
+            onAbrirPresentes = { modalPresentesAberto = true },
+            onAbrirInventario = { modalInventarioAberto = true },
+            onExportarPdf = { exportarHistoriaPdf(contexto, jogo, chat) },
+            onReiniciarHistoria = {
+                cenarioCompleto?.let { vm.iniciarHistoriaDireta(it, "rpg") }
+            },
+            onFechar = { mostrarConfiguracoesChat = false }
+        )
+    }
+
+    if (modalInventarioAberto) {
+        ModalInventarioRPG(
+            jogo = jogo,
+            onUsarItem = { item ->
+                acaoLivre = "Usar $item"
+                modalInventarioAberto = false
+            },
+            onFechar = { modalInventarioAberto = false }
         )
     }
 
@@ -2621,6 +2582,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
     val corNormal = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.93f)
     var mostrarPersonaModal by remember { mutableStateOf(false) }
     var mostrarPerfilHistoria by remember { mutableStateOf(false) }
+    var mostrarConfiguracoesChat by remember { mutableStateOf(false) }
 
     val cenarioCompleto = remember(jogo.cenario, vm.catalogo) {
         val cid = jogo.cenario?.id
@@ -2731,11 +2693,16 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                 .safeDrawingPadding()
         ) {
             // ---- Cabeçalho imersivo estilo Livro ----
-            Surface(color = Color.Transparent) {
+            // ---- Barra de cima clean (Estilo Emochi - Imagens 3 e 4) ----
+            Surface(
+                color = Color(0xFF0F1018).copy(alpha = 0.85f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 4.dp, vertical = 6.dp),
+                        .statusBarsPadding()
+                        .padding(horizontal = 6.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = { vm.voltarParaPersonagens() }) {
@@ -2746,52 +2713,58 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             modifier = Modifier.size(20.dp)
                         )
                     }
-                    // Avatar da História no topo (ao clicar vai para o perfil da história)
-                    Box(
+
+                    // Pílula do Personagem com Foto e Nome (ao clicar abre Perfil)
+                    Surface(
+                        color = Color.White.copy(alpha = 0.08f),
+                        shape = Cantos.pilula,
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
                         modifier = Modifier
-                            .size(42.dp)
-                            .clip(CircleShape)
-                            .border(1.5.dp, Ouro.copy(alpha = 0.55f), CircleShape)
-                            .clickable { mostrarPerfilHistoria = true }
-                    ) {
-                        CapaCenario(
-                            cenarioId = cenarioCompleto.id,
-                            temCapa = cenarioCompleto.capa,
-                            emoji = cenarioCompleto.emojiSeguro.ifBlank { "📖" },
-                            nome = cenarioCompleto.nome,
-                            versao = vm.capaVersao,
-                            modifier = Modifier.fillMaxSize(),
-                            recorte = CircleShape
-                        )
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    Column(
-                        Modifier
                             .weight(1f)
                             .clickable { mostrarPerfilHistoria = true }
                     ) {
-                        Text(
-                            text = "${cenarioCompleto.emojiSeguro} ${cenarioCompleto.nome}".trim(),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Box(
                                 modifier = Modifier
-                                    .size(7.dp)
-                                    .background(Color(0xFF00E676), CircleShape)
-                            )
-                            Spacer(Modifier.width(5.dp))
-                            Text(
-                                text = "Online • Cap. ${jogo.turno}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = TextoSuave,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Spacer(Modifier.width(6.dp))
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                            ) {
+                                CapaCenario(
+                                    cenarioId = cenarioCompleto.id,
+                                    temCapa = cenarioCompleto.capa,
+                                    emoji = cenarioCompleto.emojiSeguro.ifBlank { "📖" },
+                                    nome = cenarioCompleto.nome,
+                                    versao = vm.capaVersao,
+                                    modifier = Modifier.fillMaxSize(),
+                                    recorte = CircleShape
+                                )
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "${cenarioCompleto.emojiSeguro} ${cenarioCompleto.nome}".trim(),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = Color.White,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("+", color = Color(0xFF00E676), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Text(
+                                    text = "Online • Cap. ${jogo.turno}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextoSuave,
+                                    fontSize = 10.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                             val (humorTxt, humorCor) = remember(narrativaAtual, jogo.genero) {
                                 obterHumorPersonagem(narrativaAtual, jogo.genero)
                             }
@@ -2811,48 +2784,13 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             }
                         }
                     }
+
                     Spacer(Modifier.width(4.dp))
-                    if (!ehHistoriaPura) {
-                        Surface(
-                            color = SuperficieAlta,
-                            shape = Cantos.pilula,
-                            modifier = Modifier
-                                .clickable { vm.definirModoLeitura(AppViewModel.ModoLeitura.RPG) }
-                        ) {
-                            Text(
-                                "RPG",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Ouro,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                            )
-                        }
-                        Spacer(Modifier.width(4.dp))
+
+                    IconButton(onClick = { modalGaleriaAberto = true }) {
+                        Text("🖼️", fontSize = 18.sp)
                     }
-                    Surface(
-                        shape = Cantos.pilula,
-                        color = if (autoPlayAudio) Ouro.copy(alpha = 0.22f) else SuperficieAlta,
-                        border = BorderStroke(1.dp, if (autoPlayAudio) Ouro else TextoSuave.copy(alpha = 0.25f)),
-                        modifier = Modifier.clickable {
-                            autoPlayAudio = !autoPlayAudio
-                            haptico.performHapticFeedback(HapticFeedbackType.LongPress)
-                            if (!autoPlayAudio) {
-                                tts?.stop()
-                            } else if (terminou && narrativaAtual.isNotBlank()) {
-                                tts?.stop()
-                                modularVozTTS(tts, jogo.genero, jogo.cenario?.nome)
-                                tts?.speak(narrativaAtual, TextToSpeech.QUEUE_FLUSH, null, "auto_narrativa")
-                            }
-                        }
-                    ) {
-                        Text(
-                            text = if (autoPlayAudio) "Auto 🔊" else "Auto",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (autoPlayAudio) Ouro else TextoSuave.copy(alpha = 0.7f),
-                            fontWeight = if (autoPlayAudio) FontWeight.Bold else FontWeight.Normal,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                    Spacer(Modifier.width(4.dp))
+
                     IconButton(onClick = {
                         haptico.performHapticFeedback(HapticFeedbackType.LongPress)
                         tts?.stop()
@@ -2866,81 +2804,13 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             modifier = Modifier.size(20.dp)
                         )
                     }
-                    IconButton(onClick = { dialogo = DialogoAberto.Feedback }) {
+
+                    IconButton(onClick = { mostrarConfiguracoesChat = true }) {
                         Icon(
-                            Icons.Filled.Star,
-                            contentDescription = "Avaliar / Feedback",
-                            tint = Ouro,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            }
-
-            // ---- Barra de recursos LivennIA: Livens, Memória, Diário, Cartas, Saves, Motor/Temp ----
-            BarraFerramentasLiven(
-                vm = vm,
-                jogo = jogo,
-                onAbrirDialogo = { dialogo = it },
-                onAtivarModoCinema = { modoCinema = true },
-                onExportarPdf = { exportarHistoriaPdf(contexto, jogo, chat) },
-                onAbrirPresentes = { modalPresentesAberto = true },
-                onAbrirGaleria = { modalGaleriaAberto = true }
-            )
-
-            // ---- Termômetro de Vínculo & Nível de Afinidade (Estilo Emochi/Visual Novel) ----
-            val progressoVinculo = remember(jogo.turno) {
-                ((jogo.turno * 12) % 100) / 100f
-            }
-            val nivelVinculo = remember(jogo.turno) {
-                when {
-                    jogo.turno <= 3 -> "Desconhecido"
-                    jogo.turno <= 7 -> "Curioso"
-                    jogo.turno <= 14 -> "Amistoso"
-                    jogo.turno <= 22 -> "Companheiro Leal"
-                    else -> "Vínculo Eterno"
-                }
-            }
-            val humorAtual = remember(narrativaAtual, jogo.turno) { extrairHumorPersonagem(narrativaAtual, jogo.turno) }
-            Surface(
-                color = Color(0xFF131522),
-                shape = RoundedCornerShape(14.dp),
-                border = BorderStroke(1.dp, Color(0xFFFF4081).copy(alpha = 0.35f)),
-                shadowElevation = 4.dp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 4.dp)
-                    .clickable { dialogo = DialogoAberto.Vinculo }
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("💖", fontSize = 13.sp)
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        "Vínculo: $nivelVinculo  •  ${humorAtual.first} ${humorAtual.second}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFFFF80AB),
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(Modifier.weight(1f))
-                    Box(
-                        modifier = Modifier
-                            .width(80.dp)
-                            .height(6.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(Color(0xFF232538))
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(progressoVinculo.coerceAtLeast(0.15f))
-                                .background(
-                                    Brush.horizontalGradient(
-                                        listOf(Color(0xFFFF4081), Color(0xFFFF80AB))
-                                    )
-                                )
+                            Icons.Default.Menu,
+                            contentDescription = "Configurações do Chat",
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
@@ -3343,144 +3213,15 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                 }
             }
 
-            // ---- Barra inferior de conversa / coautoria (sem opções obrigatórias na tela) ----
+            // ---- Barra de Digitação e Sugestões Clean (Estilo Emochi - Imagem 3) ----
             Surface(
-                color = Superficie,
-                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                shadowElevation = 10.dp
+                color = Color(0xFF13141F).copy(alpha = 0.95f),
+                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 10.dp, bottom = 8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 12.dp, vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        ChipTag("⚡ ${jogo.jogadasRestantesHoje}", destaque = true)
-
-                        Surface(
-                            color = SuperficieAlta,
-                            shape = Cantos.pilula,
-                            border = BorderStroke(1.dp, Ouro.copy(alpha = 0.35f)),
-                            modifier = Modifier.clickable(enabled = !vm.ocupado) {
-                                acaoLivre = if (acaoLivre.endsWith("*")) "$acaoLivre " else "$acaoLivre*"
-                            }
-                        ) {
-                            Text(
-                                "*ação*",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Ouro,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                            )
-                        }
-
-                        Surface(
-                            color = SuperficieAlta,
-                            shape = Cantos.pilula,
-                            border = BorderStroke(1.dp, Ouro.copy(alpha = 0.40f)),
-                            modifier = Modifier.cliqueFuturista3D {
-                                if (!vm.ocupado && !vm.gerandoAutoResposta) {
-                                    vm.gerarSugestoesAutoResposta { primeira ->
-                                        if (acaoLivre.isBlank()) acaoLivre = primeira
-                                    }
-                                }
-                            }
-                        ) {
-                            Text(
-                                if (vm.gerandoAutoResposta) "⏳ Inspirando..." else "✨ Auto-resposta",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Ouro,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                            )
-                        }
-
-                        Surface(
-                            color = if (jogo.cena.imagemUrl != null) Ouro.copy(alpha = 0.20f) else SuperficieAlta,
-                            shape = Cantos.pilula,
-                            border = BorderStroke(1.dp, Ouro.copy(alpha = 0.40f)),
-                            modifier = Modifier.cliqueFuturista3D {
-                                if (!vm.ocupado && !vm.ilustrandoCena) {
-                                    val ehPago = (jogo.modelo?.ehPago == true) || (vm.conta?.premium == true)
-                                    if (ehPago) {
-                                        vm.ilustrarCenaAtual(
-                                            comAnuncio = false,
-                                            onSucesso = { Toast.makeText(contexto, "Cena ilustrada com sucesso!", Toast.LENGTH_SHORT).show() },
-                                            onError = { Toast.makeText(contexto, it, Toast.LENGTH_LONG).show() }
-                                        )
-                                    } else {
-                                        mostrarDialogoIlustracaoGratis = true
-                                    }
-                                }
-                            }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                if (vm.ilustrandoCena) {
-                                    CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp, color = Ouro)
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("Pintando cena...", style = MaterialTheme.typography.labelSmall, color = Ouro)
-                                } else {
-                                    Text(
-                                        if (jogo.cena.imagemUrl != null) "🖼️ Arte da Cena •" else "✨ 🖼️ Ilustrar Cena",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = Ouro
-                                    )
-                                }
-                            }
-                        }
-
-                        Surface(
-                            color = SuperficieAlta,
-                            shape = Cantos.pilula,
-                            border = BorderStroke(1.dp, Ouro.copy(alpha = 0.35f)),
-                            modifier = Modifier.clickable(enabled = !vm.ocupado && terminou) {
-                                haptico.performHapticFeedback(HapticFeedbackType.LongPress)
-                                vm.continuarHistoria()
-                            }
-                        ) {
-                            Text(
-                                "⏩ Continuar história",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Ouro,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                            )
-                        }
-
-                        if (jogo.cena.opcoes.isNotEmpty()) {
-                            Surface(
-                                color = if (mostrarSugestoes) Ouro.copy(alpha = 0.22f) else SuperficieAlta,
-                                shape = Cantos.pilula,
-                                border = BorderStroke(1.dp, Ouro.copy(alpha = 0.35f)),
-                                modifier = Modifier.clickable { mostrarSugestoes = !mostrarSugestoes }
-                            ) {
-                                Text(
-                                    if (mostrarSugestoes) "💡 Ocultar ideias" else "💡 Ideias",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Ouro,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                                )
-                            }
-                        }
-
-                        Text(
-                            "✎",
-                            color = TextoSuave,
-                            style = MaterialTheme.typography.labelLarge,
-                            modifier = Modifier
-                                .clickable { dialogo = DialogoAberto.Feedback }
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-
-                    // Gaveta de Auto-Respostas LivennIA
+                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    // Gaveta de Sugestões / Opções Clean (uma única linha limpa)
                     val sugestoesAtuais = remember(vm.sugestoesAutoResposta, jogo.cena.opcoes) {
                         if (vm.sugestoesAutoResposta.isNotEmpty()) {
                             vm.sugestoesAutoResposta
@@ -3494,61 +3235,85 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             )
                         }
                     }
-                    FaixaSugestoesAutoResposta(
-                        sugestoes = sugestoesAtuais,
-                        ocupado = vm.ocupado,
-                        gerandoIA = vm.gerandoAutoResposta,
-                        aoPedirSugestoesIA = { vm.gerarSugestoesAutoResposta() },
-                        aoEscolher = { sugestao ->
-                            acaoLivre = sugestao
-                            haptico.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                        }
-                    )
 
-                    AnimatedVisibility(visible = mostrarSugestoes && terminou && jogo.cena.opcoes.isNotEmpty()) {
+                    if (sugestoesAtuais.isNotEmpty() && !jogo.fimDeJogo) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .horizontalScroll(rememberScrollState())
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                .padding(bottom = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            jogo.cena.opcoes.forEach { sugestao ->
+                            Surface(
+                                color = Ouro.copy(alpha = 0.18f),
+                                shape = Cantos.pilula,
+                                border = BorderStroke(1.dp, Ouro.copy(alpha = 0.40f)),
+                                modifier = Modifier.clickable(enabled = !vm.ocupado && !vm.gerandoAutoResposta) {
+                                    vm.gerarSugestoesAutoResposta()
+                                }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("✨", fontSize = 11.sp)
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        if (vm.gerandoAutoResposta) "Inspirando..." else "Ideias IA",
+                                        color = Ouro,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
+                            sugestoesAtuais.forEach { opcao ->
                                 Surface(
                                     color = SuperficieAlta,
-                                    shape = RoundedCornerShape(50),
-                                    border = BorderStroke(1.dp, Ouro.copy(alpha = 0.45f)),
+                                    shape = Cantos.pilula,
+                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
                                     modifier = Modifier.clickable(enabled = !vm.ocupado) {
-                                        acaoLivre = sugestao
-                                        mostrarSugestoes = false
+                                        haptico.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        acaoLivre = opcao
                                     }
                                 ) {
                                     Text(
-                                        text = sugestao,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                                        text = opcao,
+                                        color = Color.White.copy(alpha = 0.9f),
+                                        fontSize = 11.sp,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
                                     )
                                 }
                             }
                         }
                     }
 
+                    // Linha de envio principal
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 10.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.Bottom
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         OutlinedTextField(
                             value = acaoLivre,
                             onValueChange = { acaoLivre = it.take(300) },
-                            modifier = Modifier.weight(1f),
                             placeholder = {
-                                Text("Enviar uma mensagem...", color = Color.White.copy(alpha = 0.45f))
+                                Text(
+                                    "Enviar uma mensagem...",
+                                    color = Color.White.copy(alpha = 0.45f),
+                                    fontSize = 14.sp
+                                )
                             },
-                            maxLines = 4,
+                            maxLines = 3,
                             enabled = !vm.ocupado,
-                            shape = RoundedCornerShape(20.dp)
+                            shape = RoundedCornerShape(20.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color(0xFF1B1D2A),
+                                unfocusedContainerColor = Color(0xFF1B1D2A),
+                                focusedBorderColor = Ouro.copy(alpha = 0.45f),
+                                unfocusedBorderColor = Color.White.copy(alpha = 0.10f)
+                            ),
+                            modifier = Modifier.weight(1f)
                         )
                         Spacer(Modifier.width(6.dp))
                         IconButton(
@@ -3565,106 +3330,77 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             Icon(
                                 Icons.AutoMirrored.Filled.Send,
                                 contentDescription = "Enviar",
-                                tint = Color(0xFF7C4DFF)
+                                tint = if (acaoLivre.isNotBlank()) Ouro else TextoSuave.copy(alpha = 0.4f)
                             )
                         }
                     }
 
-                    // Pílulas Rápidas no Rodapé (Persona Ativa, Modelo IA, Menu) - Imagens 1 e 5
+                    // Sub-barra inferior: Persona + Modelo + Menu ☰ (estilo Emochi Imagem 3)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 10.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            .padding(top = 6.dp, start = 4.dp, end = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Pílula 1: Minha Persona (Ao tocar abre o modal para editar)
-                        Surface(
-                            color = Color.White.copy(alpha = 0.08f),
-                            shape = RoundedCornerShape(50),
-                            border = BorderStroke(1.dp, Color(0xFF7C4DFF).copy(alpha = 0.4f)),
-                            modifier = Modifier.clickable { mostrarPersonaModal = true }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                            Surface(
+                                color = Color(0xFF1E202E),
+                                shape = Cantos.pilula,
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                                modifier = Modifier.clickable { mostrarPersonaModal = true }
                             ) {
-                                val personaAtivaRodape = vm.personaAtiva
-                                if (personaAtivaRodape != null && personaAtivaRodape.temRetrato) {
-                                    RetratoPersona(
-                                        temRetrato = true,
-                                        emojiOuPadrao = personaAtivaRodape.genero.ifBlank { "👤" },
-                                        tamanho = 18,
-                                        versao = personaAtivaRodape.versaoRetrato,
-                                        personaId = personaAtivaRodape.id,
-                                        recorte = CircleShape
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("👤", fontSize = 11.sp)
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        text = vm.personaAtiva?.nome ?: vm.apelido.ifBlank { "Jogador" },
+                                        color = Color.White.copy(alpha = 0.85f),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium
                                     )
-                                } else if (vm.personaTemRetrato) {
-                                    RetratoPersona(
-                                        temRetrato = true,
-                                        emojiOuPadrao = vm.personaAvatar.ifBlank { "👤" },
-                                        tamanho = 18,
-                                        versao = vm.personaRetratoVersao,
-                                        recorte = CircleShape
-                                    )
-                                } else {
-                                    Text(vm.personaAvatar.ifBlank { "👤" }, fontSize = 12.sp)
                                 }
-                                Spacer(Modifier.width(5.dp))
-                                val nomeRodape = personaAtivaRodape?.nome?.ifBlank { null }
-                                    ?: vm.personaNome.ifBlank { null }
-                                    ?: vm.apelido.ifBlank { "Minha Persona" }
-                                Text(
-                                    text = nomeRodape,
-                                    color = Color.White,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1
-                                )
                             }
-                        }
 
-                        // Pílula 2: Motor de IA / Cérebro Ativo
-                        val emojiAtual = jogo.modelo?.emoji?.ifBlank { "🧠" }
-                            ?: vm.cerebros.firstOrNull { it.id == vm.cerebroSelecionado }?.emoji?.ifBlank { "🧠" }
-                            ?: "🧠"
-                        val nomeAtual = jogo.modelo?.nome
-                            ?: vm.cerebros.firstOrNull { it.id == vm.cerebroSelecionado }?.nome
-                            ?: "Livenn Flash"
-                        Surface(
-                            color = Color.White.copy(alpha = 0.08f),
-                            shape = RoundedCornerShape(50),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                            modifier = Modifier.clickable { dialogo = DialogoAberto.ModeloIA }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                            Surface(
+                                color = Color(0xFF1E202E),
+                                shape = Cantos.pilula,
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                                modifier = Modifier.clickable { dialogo = DialogoAberto.ModeloIA }
                             ) {
-                                Text(emojiAtual, fontSize = 12.sp)
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    text = nomeAtual,
-                                    color = Color.White.copy(alpha = 0.85f),
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("💬", fontSize = 10.sp)
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        text = jogo.modelo?.nome ?: "Liven Flash",
+                                        color = Color.White.copy(alpha = 0.85f),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1
+                                    )
+                                }
                             }
                         }
 
-                        // Pílula 3: Menu de Opções (Savepoint, Diário, Ações)
-                        Surface(
-                            color = Color.White.copy(alpha = 0.08f),
-                            shape = CircleShape,
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clickable { dialogo = DialogoAberto.Savepoints }
+                        IconButton(
+                            onClick = { mostrarConfiguracoesChat = true },
+                            modifier = Modifier.size(28.dp)
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text("≡", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                            }
+                            Icon(
+                                Icons.Default.Menu,
+                                contentDescription = "Configurações do Chat",
+                                tint = Color.White.copy(alpha = 0.8f),
+                                modifier = Modifier.size(18.dp)
+                            )
                         }
                     }
                 }
@@ -3738,7 +3474,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
         )
     }
 
-    if (mostrarPerfilHistoria) {
+        if (mostrarPerfilHistoria) {
         DetalhesPersonagemModal(
             cenario = cenarioCompleto,
             versaoCapa = vm.capaVersao,
@@ -3746,6 +3482,26 @@ private fun JogoModoHistoria(vm: AppViewModel) {
             vm = vm,
             onFechar = { mostrarPerfilHistoria = false },
             onIniciarChat = { mostrarPerfilHistoria = false }
+        )
+    }
+
+    if (mostrarConfiguracoesChat) {
+        ModalConfiguracoesChat(
+            vm = vm,
+            jogo = jogo,
+            ehModoHistoria = true,
+            modoCinema = modoCinema,
+            onAlternarModoCinema = { modoCinema = !modoCinema },
+            onAbrirDialogo = { dialogo = it },
+            onAbrirPersona = { mostrarPersonaModal = true },
+            onAbrirGaleria = { modalGaleriaAberto = true },
+            onAbrirPresentes = { modalPresentesAberto = true },
+            onAbrirInventario = null,
+            onExportarPdf = { exportarHistoriaPdf(contexto, jogo, chat) },
+            onReiniciarHistoria = {
+                vm.iniciarHistoriaDireta(cenarioCompleto, "historia")
+            },
+            onFechar = { mostrarConfiguracoesChat = false }
         )
     }
 
@@ -5623,3 +5379,216 @@ fun obterHumorPersonagem(ultimoTexto: String, genero: String?): Pair<String, Col
     }
 }
 
+
+
+// ---- Modal de Configurações do Chat (Estilo Emochi - Imagem 4) ----
+@Composable
+private fun ModalConfiguracoesChat(
+    vm: AppViewModel,
+    jogo: JogoResponse,
+    ehModoHistoria: Boolean,
+    modoCinema: Boolean,
+    onAlternarModoCinema: () -> Unit,
+    onAbrirDialogo: (DialogoAberto) -> Unit,
+    onAbrirPersona: () -> Unit,
+    onAbrirGaleria: () -> Unit,
+    onAbrirPresentes: () -> Unit,
+    onAbrirInventario: (() -> Unit)?,
+    onExportarPdf: () -> Unit,
+    onReiniciarHistoria: () -> Unit,
+    onFechar: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onFechar,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.65f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { onFechar() },
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Surface(
+                color = Color(0xFF141520),
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { /* impede fechar ao clicar no corpo do modal */ }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 18.dp)
+                ) {
+                    // Header: ⓘ Configurações do chat ✕
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                color = Color.White.copy(alpha = 0.10f),
+                                shape = CircleShape,
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text("ⓘ", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
+                                }
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                text = "Configurações do chat",
+                                color = Color.White,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Surface(
+                            color = Color.White.copy(alpha = 0.12f),
+                            shape = CircleShape,
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clickable { onFechar() }
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("✕", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(18.dp))
+
+                    val itens = buildList {
+                        add(ItemConfigChat("Modelo", jogo.modelo?.nome ?: "Liven Flash", "🤖") {
+                            onFechar()
+                            onAbrirDialogo(DialogoAberto.ModeloIA)
+                        })
+                        add(ItemConfigChat("Persona", vm.personaAtiva?.nome ?: "Meu Perfil", "👤") {
+                            onFechar()
+                            onAbrirPersona()
+                        })
+                        add(ItemConfigChat("Memória", "Fatos gravados", "🧠") {
+                            onFechar()
+                            onAbrirDialogo(DialogoAberto.Memoria)
+                        })
+                        add(ItemConfigChat("Tema", if (modoCinema) "Cinemático" else "Padrão", "🎨") {
+                            onAlternarModoCinema()
+                        })
+                        add(ItemConfigChat("Imagens", "Galeria da Cena", "🖼️") {
+                            onFechar()
+                            onAbrirGaleria()
+                        })
+                        add(ItemConfigChat("Histórico", "Saves & Capítulos", "💾") {
+                            onFechar()
+                            onAbrirDialogo(DialogoAberto.Savepoints)
+                        })
+                        add(ItemConfigChat("Diário", "Notas & Cartas", "📔") {
+                            onFechar()
+                            onAbrirDialogo(DialogoAberto.Diarios)
+                        })
+                        if (!ehModoHistoria && onAbrirInventario != null) {
+                            add(ItemConfigChat("Mochila", "${jogo.personagem.inventario.size} itens", "🎒") {
+                                onFechar()
+                                onAbrirInventario()
+                            })
+                            add(ItemConfigChat("Dados", "Rolar d20", "🎲") {
+                                onFechar()
+                                onAbrirDialogo(DialogoAberto.Dados)
+                            })
+                            add(ItemConfigChat("Grupo", "${vm.partyAtiva.size} membros", "👥") {
+                                onFechar()
+                                onAbrirDialogo(DialogoAberto.Party)
+                            })
+                        }
+                        add(ItemConfigChat("Presentes", "Dar mimos", "🎁") {
+                            onFechar()
+                            onAbrirPresentes()
+                        })
+                        add(ItemConfigChat("Reiniciar", "Recomeçar", "🔄") {
+                            onFechar()
+                            onReiniciarHistoria()
+                        })
+                        add(ItemConfigChat("Compartilhar", "Exportar PDF", "📤") {
+                            onFechar()
+                            onExportarPdf()
+                        })
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        itens.chunked(3).forEach { linha ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                linha.forEach { item ->
+                                    Surface(
+                                        color = Color(0xFF1E202D),
+                                        shape = RoundedCornerShape(14.dp),
+                                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable { item.acao() }
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(vertical = 14.dp, horizontal = 8.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.Center
+                                        ) {
+                                            Text(item.icone, fontSize = 24.sp)
+                                            Spacer(Modifier.height(6.dp))
+                                            Text(
+                                                text = item.titulo,
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 12.sp,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Spacer(Modifier.height(2.dp))
+                                            Text(
+                                                text = item.subtitulo,
+                                                color = TextoSuave,
+                                                fontSize = 10.sp,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                }
+                                if (linha.size < 3) {
+                                    repeat(3 - linha.size) {
+                                        Spacer(Modifier.weight(1f))
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+                }
+            }
+        }
+    }
+}
+
+private data class ItemConfigChat(
+    val titulo: String,
+    val subtitulo: String,
+    val icone: String,
+    val acao: () -> Unit
+)

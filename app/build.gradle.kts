@@ -17,8 +17,8 @@ android {
         applicationId = "com.livennia.app"
         minSdk = 26
         targetSdk = 37
-        versionCode = 51
-        versionName = "1.9.1"
+        versionCode = 52
+        versionName = "1.9.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

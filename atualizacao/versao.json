@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 51,
-  "versaoNome": "1.9.1",
-  "notas": "Atualização 1.9.1: Ajuste total do chat no modo RPG — avatar sincronizado com o personagem escolhido (com modal de perfil ao tocar), viewport de chat expandido para a tela cheia eliminando cards pesados do topo, barra HUD elegante de status (HP, Mochila e Vínculo), introdução do cenário movida para o início do histórico e rolagem automática suave que acompanha a escrita em tempo real.",
+  "versaoCodigo": 52,
+  "versaoNome": "1.9.2",
+  "notas": "Atualização 1.9.2: Redesign Clean inspirado no Emochi — Remoção de barras sobrecarregadas e informações duplicadas no chat de RPG e História, novo menu 'Configurações do chat' em grid 3x3 com todas as ferramentas de IA, saves, personas e RPG; e aba Explorar simplificada com busca rápida, pílula de público, sub-abas fluidas e cards visuais minimalistas com métricas de mensagens.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }
