@@ -22,7 +22,7 @@ class Preferencias(context: Context) {
     // IP padrão do PC na rede local (para o app no celular alcançar o servidor).
     companion object {
         const val SERVIDOR_NUVEM = "https://demanding-qualify-evaluating-grocery.trycloudflare.com"
-        const val SERVIDOR_LOCAL = "http://192.168.15.15:8000"
+        const val SERVIDOR_LOCAL = "http://192.168.15.20:8000"
     }
 
     val servidorPadrao = SERVIDOR_LOCAL
@@ -30,7 +30,7 @@ class Preferencias(context: Context) {
     var token: String?
         get() {
             val salvo = pConfig.getString("token_auth", null)
-            if (!salvo.isNullOrBlank() && !salvo.contains("192.168.0.15") && !salvo.contains("10.0.2.2") && !salvo.contains("192.168.15.10") && !salvo.contains("trycloudflare")) return salvo
+            if (!salvo.isNullOrBlank() && !salvo.contains("192.168.0.15") && !salvo.contains("10.0.2.2") && !salvo.contains("192.168.15.10") && !salvo.contains("192.168.15.15") && !salvo.contains("trycloudflare")) return salvo
             return try { p.getString("token", null) } catch (_: Exception) { null }
         }
         set(valor) {
@@ -41,7 +41,7 @@ class Preferencias(context: Context) {
     var apelido: String
         get() {
             val salvo = pConfig.getString("apelido_user", null)
-            if (!salvo.isNullOrBlank() && !salvo.contains("192.168.0.15") && !salvo.contains("10.0.2.2") && !salvo.contains("192.168.15.10") && !salvo.contains("trycloudflare")) return salvo
+            if (!salvo.isNullOrBlank() && !salvo.contains("192.168.0.15") && !salvo.contains("10.0.2.2") && !salvo.contains("192.168.15.10") && !salvo.contains("192.168.15.15") && !salvo.contains("trycloudflare")) return salvo
             return try { p.getString("apelido", "") ?: "" } catch (_: Exception) { "" }
         }
         set(valor) {
@@ -52,9 +52,9 @@ class Preferencias(context: Context) {
     var servidor: String
         get() {
             val salvo = pConfig.getString("servidor_custom", null)
-            if (!salvo.isNullOrBlank() && !salvo.contains("192.168.0.15") && !salvo.contains("10.0.2.2") && !salvo.contains("192.168.15.10") && !salvo.contains("trycloudflare")) return salvo
+            if (!salvo.isNullOrBlank() && !salvo.contains("192.168.0.15") && !salvo.contains("10.0.2.2") && !salvo.contains("192.168.15.10") && !salvo.contains("192.168.15.15") && !salvo.contains("trycloudflare")) return salvo
             val legacy = try { p.getString("servidor", null) } catch (_: Exception) { null }
-            if (!legacy.isNullOrBlank() && !legacy.contains("192.168.15.10") && !legacy.contains("trycloudflare")) return legacy
+            if (!legacy.isNullOrBlank() && !legacy.contains("192.168.15.10") && !legacy.contains("192.168.15.15") && !legacy.contains("trycloudflare")) return legacy
             return servidorPadrao
         }
         set(valor) {
