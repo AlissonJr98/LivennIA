@@ -1287,7 +1287,7 @@ private fun AbaExplorar(
 
 
 
-    var subAba by rememberSaveable { mutableStateOf("Explorar") } // "Explorar", "Amigos" ou "Rankings"
+    var subAba by rememberSaveable { mutableStateOf("Descobrir") } // "Explorar", "Amigos" ou "Rankings"
     var criadorParaVer by remember { mutableStateOf<String?>(null) }
 
     var filtroOrigem by rememberSaveable { mutableStateOf("Todos") } // "Todos", "IA", "Usuarios"
@@ -1349,18 +1349,24 @@ private fun AbaExplorar(
 
     // Filtragem para o feed Explorar
 
-    val catalogoFiltrado = remember(todosOsCenarios, busca, estiloFiltro, filtroOrigem, filtroModoJogo, filtroPublico, filtroTrope) {
+    val catalogoFiltrado = remember(todosOsCenarios, busca, estiloFiltro, filtroOrigem, filtroModoJogo, filtroPublico, filtroTrope, subAba) {
         val termo = busca.trim().lowercase()
-        todosOsCenarios.filter { c ->
-            val bateOrigem = when (filtroOrigem) {
-                "IA" -> !c.criadoPorUsuario
-                "Usuarios" -> c.criadoPorUsuario
-                else -> true
+        val base = todosOsCenarios.filter { c ->
+            val bateOrigem = when (subAba) {
+                "Originais" -> !c.criadoPorUsuario
+                else -> when (filtroOrigem) {
+                    "IA" -> !c.criadoPorUsuario
+                    "Usuarios" -> c.criadoPorUsuario
+                    else -> true
+                }
             }
-            val bateModo = when (filtroModoJogo) {
-                "Historia" -> c.modoSeguro != "rpg"
-                "RPG" -> c.modoSeguro == "rpg"
-                else -> true
+            val bateModo = when (subAba) {
+                "RPGs" -> c.modoSeguro == "rpg"
+                else -> when (filtroModoJogo) {
+                    "Historia" -> c.modoSeguro != "rpg"
+                    "RPG" -> c.modoSeguro == "rpg"
+                    else -> true
+                }
             }
             val batePublico = when (filtroPublico) {
                 "Feminino" -> c.tagsSeguras.any {
@@ -1402,7 +1408,11 @@ private fun AbaExplorar(
                 c.tagsSeguras.any { it.lowercase().contains(termo) }
             bateOrigem && bateModo && batePublico && bateEstilo && bateTrope && bateBusca
         }
-
+        when (subAba) {
+            "Em Alta" -> base.sortedByDescending { it.chats + (it.saves * 25) }
+            "Recentes" -> base.reversed()
+            else -> base
+        }
     }
 
 
@@ -1509,48 +1519,53 @@ private fun AbaExplorar(
             }
         }
 
-        // SUB-ABAS NAVEGAÇÃO CLEAN (Texto puro com destaque sutil estilo Emochi)
-        val abasNavegacao = listOf("Explorar", "⚡ Premium", "Hoje", "Em alta", "RPG", "👥 Amigos", "🏆 Rankings")
+        // SUB-ABAS DE NAVEGAÇÃO CÓSMICA LIVENNIA
+        val abasNavegacao = listOf("🌌 Descobrir", "✦ Originais", "🔥 Em Alta", "✨ Recentes", "⚔️ RPGs", "👥 Criadores", "🏆 Hall da Fama")
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
                 .padding(horizontal = 14.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             abasNavegacao.forEach { abaNome ->
                 val ativa = when (abaNome) {
-                    "Explorar" -> subAba == "Explorar" && filtroModoJogo == "Todos"
-                    "RPG" -> subAba == "Explorar" && filtroModoJogo == "RPG"
-                    "👥 Amigos" -> subAba == "Amigos"
-                    "🏆 Rankings" -> subAba == "Rankings"
+                    "🌌 Descobrir" -> (subAba == "Descobrir" || subAba == "Explorar") && filtroModoJogo == "Todos" && filtroOrigem == "Todos"
+                    "✦ Originais" -> subAba == "Originais" || filtroOrigem == "IA"
+                    "🔥 Em Alta" -> subAba == "Em Alta"
+                    "✨ Recentes" -> subAba == "Recentes"
+                    "⚔️ RPGs" -> subAba == "RPGs" || (subAba in listOf("Descobrir", "Explorar") && filtroModoJogo == "RPG")
+                    "👥 Criadores" -> subAba == "Amigos"
+                    "🏆 Hall da Fama" -> subAba == "Rankings"
                     else -> subAba == abaNome
                 }
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                Surface(
+                    color = if (ativa) Ouro.copy(alpha = 0.16f) else Color(0xFF161824),
+                    shape = RoundedCornerShape(50),
+                    border = BorderStroke(
+                        1.dp,
+                        if (ativa) Ouro.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.08f)
+                    ),
                     modifier = Modifier.clickable {
                         when (abaNome) {
-                            "Explorar" -> { subAba = "Explorar"; filtroModoJogo = "Todos" }
-                            "RPG" -> { subAba = "Explorar"; filtroModoJogo = "RPG" }
-                            "👥 Amigos" -> { subAba = "Amigos"; vm.carregarAmigosECriadores() }
-                            "🏆 Rankings" -> { subAba = "Rankings" }
+                            "🌌 Descobrir" -> { subAba = "Descobrir"; filtroModoJogo = "Todos"; filtroOrigem = "Todos" }
+                            "✦ Originais" -> { subAba = "Originais"; filtroOrigem = "IA"; filtroModoJogo = "Todos" }
+                            "🔥 Em Alta" -> { subAba = "Em Alta"; filtroOrigem = "Todos"; filtroModoJogo = "Todos" }
+                            "✨ Recentes" -> { subAba = "Recentes"; filtroOrigem = "Todos"; filtroModoJogo = "Todos" }
+                            "⚔️ RPGs" -> { subAba = "RPGs"; filtroModoJogo = "RPG"; filtroOrigem = "Todos" }
+                            "👥 Criadores" -> { subAba = "Amigos"; vm.carregarAmigosECriadores() }
+                            "🏆 Hall da Fama" -> { subAba = "Rankings" }
                             else -> { subAba = abaNome }
                         }
                     }
                 ) {
                     Text(
                         text = abaNome,
-                        color = if (ativa) Color.White else TextoSuave,
-                        fontSize = 13.sp,
-                        fontWeight = if (ativa) FontWeight.Bold else FontWeight.Medium
-                    )
-                    Spacer(Modifier.height(3.dp))
-                    Box(
-                        modifier = Modifier
-                            .width(18.dp)
-                            .height(2.dp)
-                            .background(if (ativa) Ouro else Color.Transparent, RoundedCornerShape(50))
+                        color = if (ativa) Ouro else TextoSuave,
+                        fontSize = 12.sp,
+                        fontWeight = if (ativa) FontWeight.Bold else FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
                     )
                 }
             }
@@ -2253,21 +2268,19 @@ private fun AbaExplorar(
                     ) {
 
                         Text(
-
-                            when (filtroOrigem) {
-
-                                "IA" -> "Oficiais da IA (${catalogoFiltrado.size})"
-
-                                "Usuarios" -> "Criações dos Usuários (${catalogoFiltrado.size})"
-
-                                else -> "Personagens & Mundos (${catalogoFiltrado.size})"
-
+                            when (subAba) {
+                                "Originais" -> "✦ Originais LivennIA (${catalogoFiltrado.size})"
+                                "Em Alta" -> "🔥 Em Alta na Comunidade (${catalogoFiltrado.size})"
+                                "Recentes" -> "✨ Publicados Recentemente (${catalogoFiltrado.size})"
+                                "RPGs" -> "⚔️ Campanhas de RPG (${catalogoFiltrado.size})"
+                                else -> when (filtroOrigem) {
+                                    "IA" -> "✦ Originais LivennIA (${catalogoFiltrado.size})"
+                                    "Usuarios" -> "Criações dos Usuários (${catalogoFiltrado.size})"
+                                    else -> "Personagens & Mundos (${catalogoFiltrado.size})"
+                                }
                             },
-
                             style = MaterialTheme.typography.titleSmall,
-
                             fontWeight = FontWeight.SemiBold
-
                         )
 
                         if (estiloFiltro != "Todos" || busca.isNotBlank() || filtroOrigem != "Todos") {
@@ -2428,21 +2441,29 @@ private fun CardCenario(
     onAbrirCriador: (() -> Unit)? = null
 ) {
     Surface(
-        color = Color(0xFF141520),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
-        shadowElevation = 3.dp,
+        color = Color(0xFF13141F),
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(
+            1.dp,
+            Brush.verticalGradient(
+                listOf(
+                    if (!cenario.criadoPorUsuario) Ouro.copy(alpha = 0.35f) else Color(0xFF7C4DFF).copy(alpha = 0.30f),
+                    Color.White.copy(alpha = 0.08f)
+                )
+            )
+        ),
+        shadowElevation = 4.dp,
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = habilitado) { onAbrir() }
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Imagem de Capa com badge de chats sobreposto (Estilo Emochi - Imagem 2)
+            // Imagem de Capa com identidade autêntica LivennIA
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(0.80f)
-                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                    .aspectRatio(0.82f)
+                    .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
                     .background(Color(0xFF0D0E15))
             ) {
                 CapaCenario(
@@ -2452,49 +2473,99 @@ private fun CardCenario(
                     nome = cenario.nome,
                     versao = versao,
                     modifier = Modifier.fillMaxSize(),
-                    recorte = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+                    recorte = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)
                 )
 
-                // Selo inferior de contagem de mensagens/chats estilo Emochi (ex: 💬 4,1M)
+                // Top-Start: Selo de Autoria (Original Livenn vs Criador)
+                if (!cenario.criadoPorUsuario) {
+                    Surface(
+                        color = Color(0xFF0F101A).copy(alpha = 0.85f),
+                        shape = Cantos.pilula,
+                        border = BorderStroke(1.dp, Ouro.copy(alpha = 0.50f)),
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(7.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("✦", color = Ouro, fontSize = 9.sp)
+                            Spacer(Modifier.width(3.dp))
+                            Text(
+                                text = "Original Livenn",
+                                color = Ouro,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                } else {
+                    Surface(
+                        color = Color(0xFF131124).copy(alpha = 0.85f),
+                        shape = Cantos.pilula,
+                        border = BorderStroke(1.dp, Color(0xFFA78BFA).copy(alpha = 0.40f)),
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(7.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("👥", fontSize = 9.sp)
+                            Spacer(Modifier.width(3.dp))
+                            Text(
+                                text = "@${cenario.autorNomeSeguro.ifBlank { "criador" }}",
+                                color = Color(0xFFD6D0F5),
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
+                // Top-End: Badge de Modo
                 Surface(
-                    color = Color.Black.copy(alpha = 0.65f),
+                    color = if (cenario.modoSeguro == "rpg") Color(0xFF7A1414).copy(alpha = 0.85f) else Color(0xFF1C1A38).copy(alpha = 0.85f),
                     shape = Cantos.pilula,
+                    border = BorderStroke(1.dp, if (cenario.modoSeguro == "rpg") Color(0xFFFF5252).copy(alpha = 0.4f) else Color(0xFF9080FC).copy(alpha = 0.35f)),
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(7.dp)
+                ) {
+                    Text(
+                        text = if (cenario.modoSeguro == "rpg") "⚔️ RPG" else "📜 Crônica",
+                        color = Color.White,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                    )
+                }
+
+                // Bottom-Start: Métrica de Jornadas da LivennIA
+                val totalChats = remember(cenario.chats, cenario.saves) {
+                    if (cenario.chats > 0) cenario.chats else maxOf(42, cenario.saves * 15)
+                }
+                Surface(
+                    color = Color(0xFF090A10).copy(alpha = 0.80f),
+                    shape = Cantos.pilula,
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .padding(8.dp)
+                        .padding(7.dp)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("💬", fontSize = 10.sp)
+                        Text("✦", color = Ouro, fontSize = 9.sp)
                         Spacer(Modifier.width(4.dp))
-                        val totalChats = remember(cenario.chats, cenario.saves) {
-                            if (cenario.chats > 0) cenario.chats else maxOf(42, cenario.saves * 15)
-                        }
                         Text(
-                            text = formatarContagem(totalChats),
-                            color = Color.White,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                if (cenario.modoSeguro == "rpg") {
-                    Surface(
-                        color = Color(0xFFE53935).copy(alpha = 0.85f),
-                        shape = Cantos.pilula,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(8.dp)
-                    ) {
-                        Text(
-                            text = "⚔️ RPG",
-                            color = Color.White,
+                            text = "${formatarContagem(totalChats)} jornadas",
+                            color = Color.White.copy(alpha = 0.95f),
                             fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
@@ -2525,7 +2596,6 @@ private fun CardCenario(
 
                 Spacer(Modifier.height(6.dp))
 
-                // Tags clean estilo Emochi (ex: Romance, Drama)
                 val tagsPrincipais = remember(cenario.tagsSeguras, cenario.generoSeguro) {
                     val lista = cenario.tagsSeguras.take(2).toMutableList()
                     if (lista.isEmpty() && cenario.generoSeguro.isNotBlank()) lista.add(cenario.generoSeguro)
@@ -2538,12 +2608,13 @@ private fun CardCenario(
                     ) {
                         tagsPrincipais.forEach { tag ->
                             Surface(
-                                color = Color(0xFF1F212E),
-                                shape = RoundedCornerShape(4.dp)
+                                color = Color(0xFF1A1C29),
+                                shape = RoundedCornerShape(6.dp),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f))
                             ) {
                                 Text(
-                                    text = tag,
-                                    color = TextoSuave,
+                                    text = "#$tag",
+                                    color = Color(0xFFB0B5C9),
                                     fontSize = 10.sp,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                     maxLines = 1

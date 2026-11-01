@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 52,
-  "versaoNome": "1.9.2",
-  "notas": "Atualização 1.9.2: Redesign Clean inspirado no Emochi — Remoção de barras sobrecarregadas e informações duplicadas no chat de RPG e História, novo menu 'Configurações do chat' em grid 3x3 com todas as ferramentas de IA, saves, personas e RPG; e aba Explorar simplificada com busca rápida, pílula de público, sub-abas fluidas e cards visuais minimalistas com métricas de mensagens.",
+  "versaoCodigo": 53,
+  "versaoNome": "1.9.3",
+  "notas": "Atualização 1.9.3: Identidade Autêntica LivennIA — Novo 'Console da Aventura' temático e categorizado no chat com Vínculo, Livens, Inteligência do Motor IA, Personas, Galeria e Arsenal RPG; Aba Explorar com sub-abas narrativas cósmicas (Descobrir, Originais Livenn, Em Alta, Recentes, RPGs, Criadores e Hall da Fama) e cards cósmicos com selo 'Original Livenn' e métricas de jornadas.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }
