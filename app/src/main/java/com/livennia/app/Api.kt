@@ -204,9 +204,18 @@ interface LivennIAApi {
     @POST("catalogo/{id}/comentarios/{comentarioId}/like")
     suspend fun alternarLikeComentario(@Path("id") cenarioId: String, @Path("comentarioId") comentarioId: Long): LikeComentarioResponse
 
-    // Perfil do Criador & Social
+    // Perfil do Criador & Social (Amigos e Criadores)
     @GET("criadores/{nome}")
     suspend fun obterPerfilCriador(@Path("nome") criadorNome: String): PerfilCriadorDto
+
+    @GET("criadores/seguidos")
+    suspend fun obterCriadoresSeguidos(): List<PerfilCriadorDto>
+
+    @GET("cenarios/seguidos")
+    suspend fun obterCenariosSeguidos(): List<CenarioDto>
+
+    @GET("criadores/buscar")
+    suspend fun buscarCriadores(@Query("termo") termo: String): List<PerfilCriadorDto>
 
     @POST("criadores/{nome}/seguir")
     suspend fun alternarSeguirCriador(@Path("nome") criadorNome: String): SeguirResponse

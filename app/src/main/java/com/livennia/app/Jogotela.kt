@@ -1212,9 +1212,13 @@ fun JogoTela(vm: AppViewModel) {
         }
         // Arte de Fundo Imersiva Full-Bleed do Cenário / Personagem (RPG)
         val cenarioId = jogo.cenario?.id
-        val urlFundo = remember(jogo.cenario, jogo.retrato, vm.capaVersao, vm.retratoVersao) {
+        val urlFundo = remember(jogo.cenario, jogo.cena.imagemUrl, jogo.retrato, vm.capaVersao, vm.retratoVersao) {
             val base = ApiClient.baseUrlAtual() ?: ""
             when {
+                !jogo.cena.imagemUrl.isNullOrBlank() -> {
+                    val u = jogo.cena.imagemUrl
+                    if (u.startsWith("http")) u else "${base}${u.removePrefix("/")}"
+                }
                 jogo.cenario?.capa == true && !cenarioId.isNullOrBlank() -> "${base}catalogo/$cenarioId/capa?v=${vm.capaVersao}"
                 jogo.retrato -> "${base}jogos/${jogo.jogoId}/retrato?v=${vm.retratoVersao}"
                 !cenarioId.isNullOrBlank() -> "${base}catalogo/$cenarioId/capa?v=${vm.capaVersao}"
@@ -1299,15 +1303,35 @@ fun JogoTela(vm: AppViewModel) {
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Text(
-                            jogo.cenario?.let { c ->
-                                "${c.emoji} ${c.nome} • turno ${jogo.turno}"
-                            } ?: "${jogo.personagem.local} • turno ${jogo.turno}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = TextoSuave,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                jogo.cenario?.let { c ->
+                                    "${c.emoji} ${c.nome} • turno ${jogo.turno}"
+                                } ?: "${jogo.personagem.local} • turno ${jogo.turno}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = TextoSuave,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            val (humorTxt, humorCor) = remember(narrativaAtual, jogo.genero) {
+                                obterHumorPersonagem(narrativaAtual, jogo.genero)
+                            }
+                            Surface(
+                                color = humorCor.copy(alpha = 0.16f),
+                                shape = Cantos.pilula,
+                                border = BorderStroke(1.dp, humorCor.copy(alpha = 0.40f))
+                            ) {
+                                Text(
+                                    text = humorTxt,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = humorCor,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
                     }
                     if (vm.gerandoRetrato) {
                         CircularProgressIndicator(
@@ -2734,10 +2758,14 @@ private fun JogoModoHistoria(vm: AppViewModel) {
         }
         // Arte de Fundo Imersiva Full-Bleed do Cenário / Personagem (Modo História)
         val cenarioId = jogo.cenario?.id
-        val urlFundo = remember(jogo.cenario, jogo.retrato, vm.capaVersao, vm.retratoVersao, vm.personaAtiva) {
+        val urlFundo = remember(jogo.cenario, jogo.cena.imagemUrl, jogo.retrato, vm.capaVersao, vm.retratoVersao, vm.personaAtiva) {
             val base = ApiClient.baseUrlAtual() ?: ""
             val persona = vm.personaAtiva
             when {
+                !jogo.cena.imagemUrl.isNullOrBlank() -> {
+                    val u = jogo.cena.imagemUrl
+                    if (u.startsWith("http")) u else "${base}${u.removePrefix("/")}"
+                }
                 jogo.cenario?.capa == true && !cenarioId.isNullOrBlank() -> "${base}catalogo/$cenarioId/capa?v=${vm.capaVersao}"
                 jogo.retrato -> "${base}jogos/${jogo.jogoId}/retrato?v=${vm.retratoVersao}"
                 persona != null && persona.temRetrato -> "${base}personas/${persona.id}/retrato?v=${persona.versaoRetrato}"
@@ -2848,12 +2876,30 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             )
                             Spacer(Modifier.width(5.dp))
                             Text(
-                                text = "Online • ${cenarioCompleto.autorNomeSeguro} • Cap. ${jogo.turno}",
+                                text = "Online • Cap. ${jogo.turno}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = TextoSuave,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
+                            Spacer(Modifier.width(6.dp))
+                            val (humorTxt, humorCor) = remember(narrativaAtual, jogo.genero) {
+                                obterHumorPersonagem(narrativaAtual, jogo.genero)
+                            }
+                            Surface(
+                                color = humorCor.copy(alpha = 0.16f),
+                                shape = Cantos.pilula,
+                                border = BorderStroke(1.dp, humorCor.copy(alpha = 0.40f))
+                            ) {
+                                Text(
+                                    text = humorTxt,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = humorCor,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
                         }
                     }
                     Spacer(Modifier.width(4.dp))
@@ -5652,5 +5698,19 @@ fun ModalInventarioRPG(
             TextButton(onClick = onFechar) { Text("Fechar") }
         }
     )
+}
+
+fun obterHumorPersonagem(ultimoTexto: String, genero: String?): Pair<String, Color> {
+    val t = ultimoTexto.lowercase()
+    return when {
+        t.contains("sorri") || t.contains("alegre") || t.contains("brilha") || t.contains("carinho") -> "✨ Radiante" to Color(0xFFF5C842)
+        t.contains("corou") || t.contains("envergonh") || t.contains("desvia o olhar") || t.contains("tímida") -> "😳 Envergonhada" to Color(0xFFFF80AB)
+        t.contains("frio") || t.contains("distante") || t.contains("sério") || t.contains("ignora") -> "🖤 Reservada" to Color(0xFFB0BEC5)
+        t.contains("espada") || t.contains("ataque") || t.contains("combate") || t.contains("fúria") -> "⚔️ Em Guarda" to Color(0xFFFF5252)
+        t.contains("olha nos seus olhos") || t.contains("sussurra") || t.contains("aproxima") -> "💖 Cativada" to Color(0xFFFF4081)
+        genero?.contains("terror", ignoreCase = true) == true -> "😨 Alerta" to Color(0xFFB388FF)
+        genero?.contains("romance", ignoreCase = true) == true -> "💭 Pensativa" to Color(0xFFEA80FC)
+        else -> "💭 Atenta" to Color(0xFF80D8FF)
+    }
 }
 

@@ -3169,6 +3169,21 @@ def ver_perfil_criador(criador_nome: str, jogador=Depends(jogador_atual)):
     )
 
 
+@app.get("/criadores/seguidos", response_model=list[PerfilCriadorOut])
+def listar_criadores_seguidos_endpoint(jogador=Depends(jogador_atual)):
+    return banco.listar_criadores_seguidos(jogador["id"])
+
+
+@app.get("/cenarios/seguidos", response_model=list[CenarioOut])
+def listar_cenarios_seguidos_endpoint(jogador=Depends(jogador_atual)):
+    return banco.listar_cenarios_seguidos(jogador["id"])
+
+
+@app.get("/criadores/buscar", response_model=list[PerfilCriadorOut])
+def buscar_criadores_endpoint(termo: str = "", jogador=Depends(jogador_atual)):
+    return banco.buscar_criadores(termo, jogador["id"])
+
+
 @app.post("/criadores/{criador_nome}/seguir", response_model=SeguirOut)
 def seguir_criador(criador_nome: str, jogador=Depends(jogador_atual)):
     return banco.alternar_seguir_criador(jogador["id"], criador_nome)

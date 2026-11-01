@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 49,
-  "versaoNome": "1.8.9",
-  "notas": "Atualização 1.8.9: Modo Audiolivro Contínuo (Auto-Play TTS modulado na barra superior), layout de leitura despoluído (eliminação de botões repetidos flutuantes nas bolhas de texto), menu de ações ágil no rodapé de cada fala (Ouvir, Ilustrar Cena, Regenerar, Editar, Copiar) e motor de IA anti-repetição e anti-clichê ativado.",
+  "versaoCodigo": 50,
+  "versaoNome": "1.9.0",
+  "notas": "Atualização 1.9.0: Modo Amigos & Criadores (aba dedicada para seguir criadores, buscar amigos e ver feed exclusivo de suas histórias), tags de humor dinâmico do personagem no cabeçalho (Emotion Badge estilo Emochi), fundo cinematográfico reativo à cena gerada e navegação rápida de perfis de criadores diretamente dos cards.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

@@ -1002,6 +1002,57 @@ def obter_status_criador(criador_nome, seguidor_id=None):
     }
 
 
+def listar_criadores_seguidos(seguidor_id):
+    with conexao() as c:
+        linhas = c.execute(
+            "SELECT criador_nome, criado_em FROM seguidores WHERE seguidor_id = ? ORDER BY criado_em DESC",
+            (seguidor_id,)
+        ).fetchall()
+    return [obter_status_criador(l["criador_nome"], seguidor_id) for l in linhas]
+
+
+def listar_cenarios_seguidos(seguidor_id):
+    import json
+    with conexao() as c:
+        linhas = c.execute(
+            """
+            SELECT c.* FROM cenarios_usuario c
+            INNER JOIN seguidores s ON s.criador_nome = c.autor_nome
+            WHERE s.seguidor_id = ?
+            ORDER BY c.criado_em DESC
+            """,
+            (seguidor_id,)
+        ).fetchall()
+        historias = []
+        for l in linhas:
+            d = dict(l)
+            try:
+                d["tags"] = json.loads(d.get("tags") or "[]")
+            except Exception:
+                d["tags"] = []
+            d["criadoPorUsuario"] = True
+            d["autorNome"] = d.get("autor_nome")
+            d["autorAvatar"] = d.get("emoji") or "🎭"
+            d["modoJogo"] = d.get("modo_jogo") or "historia"
+            historias.append(d)
+        return historias
+
+
+def buscar_criadores(termo, seguidor_id=None):
+    t = f"%{(termo or '').strip()}%"
+    with conexao() as c:
+        linhas = c.execute(
+            """
+            SELECT DISTINCT autor_nome as nome FROM cenarios_usuario WHERE autor_nome LIKE ? AND autor_nome != ''
+            UNION
+            SELECT DISTINCT nome FROM jogadores WHERE nome LIKE ? AND nome != ''
+            LIMIT 30
+            """,
+            (t, t)
+        ).fetchall()
+    return [obter_status_criador(l["nome"], seguidor_id) for l in linhas if (l.get("nome") or '').strip()]
+
+
 def bloquear_criador(jogador_id, criador_nome):
     nome_alvo = (criador_nome or "").strip()
     with transacao() as c:

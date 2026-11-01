@@ -1,4 +1,7 @@
 package com.livennia.app
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 
 import android.net.Uri
 import android.util.Base64
@@ -1283,7 +1286,8 @@ private fun AbaExplorar(
 
 
 
-    var subAba by rememberSaveable { mutableStateOf("Explorar") } // "Explorar" ou "Rankings"
+    var subAba by rememberSaveable { mutableStateOf("Explorar") } // "Explorar", "Amigos" ou "Rankings"
+    var criadorParaVer by remember { mutableStateOf<String?>(null) }
 
     var filtroOrigem by rememberSaveable { mutableStateOf("Todos") } // "Todos", "IA", "Usuarios"
 
@@ -1481,6 +1485,30 @@ private fun AbaExplorar(
                     }
 
 
+
+                    Surface(
+                        color = if (subAba == "Amigos") Color(0xFF6C5CE7).copy(alpha = 0.22f) else Color.Transparent,
+                        shape = RoundedCornerShape(50),
+                        border = if (subAba == "Amigos") BorderStroke(1.dp, Color(0xFF6C5CE7).copy(alpha = 0.5f)) else null,
+                        modifier = Modifier.clickable {
+                            subAba = "Amigos"
+                            vm.carregarAmigosECriadores()
+                        }
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text("👥", fontSize = 12.sp)
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = "Amigos",
+                                color = if (subAba == "Amigos") Color(0xFFA29BFE) else TextoSuave,
+                                fontWeight = if (subAba == "Amigos") FontWeight.Bold else FontWeight.Medium,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
 
                     Surface(
 
@@ -2012,6 +2040,229 @@ private fun AbaExplorar(
 
             }
 
+        } else if (subAba == "Amigos") {
+            // ---- SEÇÃO AMIGOS & CRIADORES SEGUIDOS ----
+            LaunchedEffect(Unit) {
+                vm.carregarAmigosECriadores()
+            }
+
+            var buscaAmigo by rememberSaveable { mutableStateOf("") }
+            val criadoresSeguidos = vm.criadoresSeguidos
+            val cenariosSeguidos = vm.cenariosSeguidos
+            val resultadosBusca = vm.buscaCriadoresResultados
+
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // Banner Hero Amigos
+                item(key = "banner_amigos") {
+                    Surface(
+                        color = Color(0xFF16152B),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, Color(0xFF6C5CE7).copy(alpha = 0.35f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("👥", fontSize = 20.sp)
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    "Rede de Amigos & Criadores",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "Descubra e acompanhe seus criadores favoritos. Novas histórias deles aparecem direto no seu feed!",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFFD6D0F5)
+                            )
+                        }
+                    }
+                }
+
+                // Campo de Busca de Criadores/Amigos
+                item(key = "busca_amigo") {
+                    OutlinedTextField(
+                        value = buscaAmigo,
+                        onValueChange = {
+                            buscaAmigo = it
+                            vm.buscarAmigosCriadores(it)
+                        },
+                        placeholder = { Text("Buscar criador ou amigo pelo nome...", color = TextoSuave.copy(alpha = 0.6f), fontSize = 13.sp) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color(0xFFA29BFE), modifier = Modifier.size(18.dp)) },
+                        trailingIcon = {
+                            if (buscaAmigo.isNotBlank()) {
+                                IconButton(onClick = {
+                                    buscaAmigo = ""
+                                    vm.buscarAmigosCriadores("")
+                                }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Limpar", tint = TextoSuave, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF6C5CE7),
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.12f),
+                            focusedContainerColor = Color(0xFF10121C),
+                            unfocusedContainerColor = Color(0xFF10121C),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                // Resultados da Busca (se houver termo)
+                if (buscaAmigo.isNotBlank()) {
+                    item(key = "titulo_resultados_busca") {
+                        Text(
+                            text = "Resultados para \"$buscaAmigo\" (${resultadosBusca.size})",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Color(0xFFA29BFE),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    if (resultadosBusca.isEmpty()) {
+                        item(key = "busca_vazia") {
+                            Text(
+                                "Nenhum criador encontrado com esse nome.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextoSuave,
+                                modifier = Modifier.padding(vertical = 10.dp)
+                            )
+                        }
+                    } else {
+                        items(resultadosBusca, key = { "busca_${it.nome}" }) { c ->
+                            ItemCriadorRede(
+                                criador = c,
+                                onVerPerfil = { criadorParaVer = c.nome },
+                                onSeguir = {
+                                    vm.alternarSeguirCriador(c.nome)
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Carrossel de Criadores Seguidos
+                if (criadoresSeguidos.isNotEmpty()) {
+                    item(key = "titulo_seguidos") {
+                        Text(
+                            text = "Seguindo (${criadoresSeguidos.size})",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    item(key = "carrossel_seguidos") {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                        ) {
+                            for (criador in criadoresSeguidos) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier
+                                        .clickable { criadorParaVer = criador.nome }
+                                        .padding(vertical = 4.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(56.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF1E2030))
+                                            .border(2.dp, Color(0xFF6C5CE7), CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(criador.avatar.ifBlank { "🎭" }, fontSize = 24.sp)
+                                    }
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        text = criador.nome,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.widthIn(max = 68.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Feed de Histórias dos Seguidos
+                item(key = "titulo_feed_historias") {
+                    Text(
+                        text = "Histórias dos Amigos & Criadores",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+
+                if (cenariosSeguidos.isEmpty()) {
+                    item(key = "feed_vazio") {
+                        Surface(
+                            color = Color(0xFF12131C),
+                            shape = RoundedCornerShape(14.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("📖", fontSize = 32.sp)
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    text = if (criadoresSeguidos.isEmpty()) "Você ainda não segue criadores" else "Nenhuma história nova publicada",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = if (criadoresSeguidos.isEmpty())
+                                        "Busque criadores pelo nome acima ou explore a comunidade para começar a seguir e acompanhar histórias!"
+                                    else
+                                        "Assim que seus amigos ou criadores publicarem novas histórias, elas aparecerão aqui no seu feed.",
+                                    color = TextoSuave,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    items(cenariosSeguidos, key = { "historia_amigo_${it.id}" }) { cenario ->
+                        CardHistoriaAmigo(
+                            cenario = cenario,
+                            versao = vm.capaVersao,
+                            onAbrir = { onAbrirDetalhes(cenario) },
+                            onVerCriador = { criadorParaVer = cenario.autorNomeSeguro }
+                        )
+                    }
+                }
+
+                item(key = "espacador_fim") {
+                    Spacer(Modifier.height(80.dp))
+                }
+            }
         } else {
 
             // ---- SEÇÃO EXPLORAR (VITRINE COM SEPARAÇÃO IA VS USUÁRIO) ----
@@ -2504,7 +2755,9 @@ private fun AbaExplorar(
 
                         onAbrirInfo = { onAbrirInfo(cenario) },
 
-                        onGerarCapa = { vm.gerarCapaDoCenario(cenario.id) }
+                        onGerarCapa = { vm.gerarCapaDoCenario(cenario.id) },
+
+                        onAbrirCriador = { criadorParaVer = cenario.autorNomeSeguro }
 
                     )
 
@@ -2512,6 +2765,18 @@ private fun AbaExplorar(
 
             }
 
+        }
+
+        criadorParaVer?.let { nome ->
+            PerfilCriadorModal(
+                criadorNome = nome,
+                vm = vm,
+                onFechar = { criadorParaVer = null },
+                onIniciarHistoria = { cenario ->
+                    criadorParaVer = null
+                    onAbrirDetalhes(cenario)
+                }
+            )
         }
 
     }
@@ -2557,7 +2822,8 @@ private fun CardCenario(
     habilitado: Boolean,
     onAbrir: () -> Unit,
     onAbrirInfo: () -> Unit = {},
-    onGerarCapa: () -> Unit
+    onGerarCapa: () -> Unit,
+    onAbrirCriador: (() -> Unit)? = null
 ) {
     val pressInteraction = remember { MutableInteractionSource() }
     val isPressed by pressInteraction.collectIsPressedAsState()
@@ -2642,6 +2908,9 @@ private fun CardCenario(
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .padding(6.dp)
+                        .clickable(enabled = cenario.criadoPorUsuario && onAbrirCriador != null) {
+                            onAbrirCriador?.invoke()
+                        }
                 ) {
                     Text(
                         text = if (cenario.criadoPorUsuario) "👥 ${cenario.autorNomeSeguro}" else "🤖 ${cenario.generoSeguro}",
@@ -5180,6 +5449,180 @@ fun ModalTrocarFotoPerfil(
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ItemCriadorRede(
+    criador: PerfilCriadorDto,
+    onVerPerfil: () -> Unit,
+    onSeguir: () -> Unit
+) {
+    val haptico = LocalHapticFeedback.current
+    Surface(
+        color = Color(0xFF141624),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onVerPerfil() }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF222538))
+                        .border(1.5.dp, Color(0xFF6C5CE7), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(criador.avatar.ifBlank { "🎭" }, fontSize = 20.sp)
+                }
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = criador.nome,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "${criador.seguidores} seguidores • ${criador.historias.size} histórias",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextoSuave
+                    )
+                }
+            }
+            Spacer(Modifier.width(8.dp))
+            Surface(
+                color = if (criador.estaSeguindo) Color.White.copy(alpha = 0.12f) else Color(0xFF6C5CE7),
+                shape = Cantos.pilula,
+                border = BorderStroke(1.dp, if (criador.estaSeguindo) Color.White.copy(alpha = 0.25f) else Color(0xFF7C4DFF)),
+                modifier = Modifier.clickable {
+                    haptico.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onSeguir()
+                }
+            ) {
+                Text(
+                    text = if (criador.estaSeguindo) "✓ Seguindo" else "+ Seguir",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CardHistoriaAmigo(
+    cenario: CenarioDto,
+    versao: Int,
+    onAbrir: () -> Unit,
+    onVerCriador: () -> Unit
+) {
+    Surface(
+        color = Color(0xFF131422),
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, Color(0xFF6C5CE7).copy(alpha = 0.35f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onAbrir() }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(80.dp, 105.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF0D0E15))
+            ) {
+                CapaCenario(
+                    cenarioId = cenario.id,
+                    temCapa = cenario.capa,
+                    emoji = cenario.emojiSeguro,
+                    nome = cenario.nome,
+                    versao = versao,
+                    modifier = Modifier.fillMaxSize(),
+                    recorte = RoundedCornerShape(12.dp)
+                )
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable { onVerCriador() }
+                ) {
+                    Text(
+                        text = "Por @${cenario.autorNomeSeguro}",
+                        color = Color(0xFFA29BFE),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = cenario.nome,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (cenario.sinopseSegura.isNotBlank()) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = cenario.sinopseSegura,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextoSuave,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Surface(
+                        color = Color(0xFF7C4DFF).copy(alpha = 0.20f),
+                        shape = Cantos.pilula
+                    ) {
+                        Text(
+                            text = if (cenario.modoSeguro == "rpg") "🎲 RPG" else "📖 História",
+                            color = Color(0xFFD6D0F5),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                    Text(
+                        text = "💬 ${cenario.chats} chats",
+                        color = TextoSuave.copy(alpha = 0.7f),
+                        fontSize = 11.sp
+                    )
                 }
             }
         }

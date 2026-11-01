@@ -183,6 +183,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     var carregandoComentarios by mutableStateOf(false)
     var perfilCriador by mutableStateOf<PerfilCriadorDto?>(null)
     var carregandoPerfilCriador by mutableStateOf(false)
+    var criadoresSeguidos by mutableStateOf<List<PerfilCriadorDto>>(emptyList())
+    var cenariosSeguidos by mutableStateOf<List<CenarioDto>>(emptyList())
+    var buscaCriadoresResultados by mutableStateOf<List<PerfilCriadorDto>>(emptyList())
+    var carregandoAmigosCriadores by mutableStateOf(false)
+    var termoBuscaCriador by mutableStateOf("")
 
     // Muda quando alguma capa é gerada, para as imagens serem recarregadas.
     var capaVersao by mutableStateOf(0)
@@ -715,14 +720,55 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun alternarSeguirCriador(criadorNome: String) {
+    fun carregarAmigosECriadores() {
+        val api = obterApi() ?: return
+        viewModelScope.launch {
+            carregandoAmigosCriadores = true
+            try {
+                criadoresSeguidos = api.obterCriadoresSeguidos()
+                cenariosSeguidos = api.obterCenariosSeguidos()
+            } catch (_: Exception) {
+            } finally {
+                carregandoAmigosCriadores = false
+            }
+        }
+    }
+
+    fun buscarAmigosCriadores(termo: String) {
+        termoBuscaCriador = termo
+        val api = obterApi() ?: return
+        if (termo.isBlank()) {
+            buscaCriadoresResultados = emptyList()
+            return
+        }
+        viewModelScope.launch {
+            try {
+                buscaCriadoresResultados = api.buscarCriadores(termo.trim())
+            } catch (_: Exception) {
+                buscaCriadoresResultados = emptyList()
+            }
+        }
+    }
+
+    fun alternarSeguirCriador(criadorNome: String, onConcluido: ((Boolean) -> Unit)? = null) {
         val api = obterApi() ?: return
         viewModelScope.launch {
             try {
                 val resp = api.alternarSeguirCriador(criadorNome)
                 perfilCriador?.let { atual ->
-                    perfilCriador = atual.copy(estaSeguindo = resp.estaSeguindo, seguidores = resp.totalSeguidores)
+                    if (atual.nome.equals(criadorNome, ignoreCase = true)) {
+                        perfilCriador = atual.copy(estaSeguindo = resp.estaSeguindo, seguidores = resp.totalSeguidores)
+                    }
                 }
+                if (resp.estaSeguindo) {
+                    val perfilAtual = perfilCriador ?: api.obterPerfilCriador(criadorNome)
+                    criadoresSeguidos = (criadoresSeguidos.filter { !it.nome.equals(criadorNome, ignoreCase = true) } + perfilAtual)
+                    cenariosSeguidos = api.obterCenariosSeguidos()
+                } else {
+                    criadoresSeguidos = criadoresSeguidos.filter { !it.nome.equals(criadorNome, ignoreCase = true) }
+                    cenariosSeguidos = cenariosSeguidos.filter { !it.autorNome.equals(criadorNome, ignoreCase = true) }
+                }
+                onConcluido?.invoke(resp.estaSeguindo)
             } catch (_: Exception) {}
         }
     }
