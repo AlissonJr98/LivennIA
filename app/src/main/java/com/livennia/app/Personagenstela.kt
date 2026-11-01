@@ -1283,6 +1283,7 @@ private fun AbaExplorar(
 
 ) {
 
+    val contexto = LocalContext.current
     LaunchedEffect(Unit) { vm.carregarCatalogo() }
 
 
@@ -1352,6 +1353,12 @@ private fun AbaExplorar(
     val catalogoFiltrado = remember(todosOsCenarios, busca, estiloFiltro, filtroOrigem, filtroModoJogo, filtroPublico, filtroTrope, subAba) {
         val termo = busca.trim().lowercase()
         val base = todosOsCenarios.filter { c ->
+            val bateColecao = if (subAba == "Colecoes") {
+                GerenciadorColecoes.estaNaColecao(contexto, c.id, "⭐ Favoritos") ||
+                GerenciadorColecoes.estaNaColecao(contexto, c.id, "⚔️ Meus RPGs") ||
+                GerenciadorColecoes.estaNaColecao(contexto, c.id, "⏳ Para Jogar Depois") ||
+                GerenciadorColecoes.estaNaColecao(contexto, c.id, "💖 Histórias de Romance")
+            } else true
             val bateOrigem = when (subAba) {
                 "Originais" -> !c.criadoPorUsuario
                 else -> when (filtroOrigem) {
@@ -1406,7 +1413,7 @@ private fun AbaExplorar(
                 c.sinopseSegura.lowercase().contains(termo) ||
                 c.generoSeguro.lowercase().contains(termo) ||
                 c.tagsSeguras.any { it.lowercase().contains(termo) }
-            bateOrigem && bateModo && batePublico && bateEstilo && bateTrope && bateBusca
+            bateOrigem && bateModo && batePublico && bateEstilo && bateTrope && bateBusca && bateColecao
         }
         when (subAba) {
             "Em Alta" -> base.sortedByDescending { it.chats + (it.saves * 25) }
@@ -1520,7 +1527,7 @@ private fun AbaExplorar(
         }
 
         // SUB-ABAS DE NAVEGAÇÃO CÓSMICA LIVENNIA
-        val abasNavegacao = listOf("🌌 Descobrir", "✦ Originais", "🔥 Em Alta", "✨ Recentes", "⚔️ RPGs", "👥 Criadores", "🏆 Hall da Fama")
+        val abasNavegacao = listOf("🌌 Descobrir", "✦ Originais", "🔥 Em Alta", "✨ Recentes", "⚔️ RPGs", "📁 Coleções", "👥 Criadores", "🏆 Hall da Fama")
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1536,6 +1543,7 @@ private fun AbaExplorar(
                     "🔥 Em Alta" -> subAba == "Em Alta"
                     "✨ Recentes" -> subAba == "Recentes"
                     "⚔️ RPGs" -> subAba == "RPGs" || (subAba in listOf("Descobrir", "Explorar") && filtroModoJogo == "RPG")
+                    "📁 Coleções" -> subAba == "Colecoes"
                     "👥 Criadores" -> subAba == "Amigos"
                     "🏆 Hall da Fama" -> subAba == "Rankings"
                     else -> subAba == abaNome
@@ -1554,6 +1562,7 @@ private fun AbaExplorar(
                             "🔥 Em Alta" -> { subAba = "Em Alta"; filtroOrigem = "Todos"; filtroModoJogo = "Todos" }
                             "✨ Recentes" -> { subAba = "Recentes"; filtroOrigem = "Todos"; filtroModoJogo = "Todos" }
                             "⚔️ RPGs" -> { subAba = "RPGs"; filtroModoJogo = "RPG"; filtroOrigem = "Todos" }
+                            "📁 Coleções" -> { subAba = "Colecoes"; filtroOrigem = "Todos"; filtroModoJogo = "Todos" }
                             "👥 Criadores" -> { subAba = "Amigos"; vm.carregarAmigosECriadores() }
                             "🏆 Hall da Fama" -> { subAba = "Rankings" }
                             else -> { subAba = abaNome }
@@ -3065,6 +3074,41 @@ private fun DialogoPreviaCenario(
 
                             }
 
+                        }
+
+                        var modalColecoesAberto by remember { mutableStateOf(false) }
+
+                        Surface(
+                            color = Color(0xFF1B1D2C),
+                            shape = RoundedCornerShape(50),
+                            border = BorderStroke(1.dp, Color(0xFF7C4DFF).copy(alpha = 0.45f)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(42.dp)
+                                .clickable { modalColecoesAberto = true }
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("📁", fontSize = 14.sp)
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    "Salvar em Coleção / Pastas",
+                                    color = Color(0xFFD6D0F5),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+
+                        if (modalColecoesAberto) {
+                            DialogoGerenciarColecoes(
+                                cenarioId = cenario.id,
+                                cenarioNome = cenario.nome,
+                                onFechar = { modalColecoesAberto = false }
+                            )
                         }
 
                     }

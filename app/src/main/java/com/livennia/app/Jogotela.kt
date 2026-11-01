@@ -1,5 +1,10 @@
 package com.livennia.app
 
+import android.app.Activity
+import android.speech.RecognizerIntent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+
 import android.content.Intent
 import android.graphics.pdf.PdfDocument
 import android.graphics.Paint
@@ -1200,6 +1205,17 @@ fun JogoTela(vm: AppViewModel) {
     }
 
     var acaoLivre by remember(jogo.turno) { mutableStateOf("") }
+    val launcherVozRPG = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { resultado ->
+        if (resultado.resultCode == Activity.RESULT_OK) {
+            val falas = resultado.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            val textoFalado = falas?.firstOrNull()
+            if (!textoFalado.isNullOrBlank()) {
+                acaoLivre = if (acaoLivre.isBlank()) textoFalado else "$acaoLivre $textoFalado"
+            }
+        }
+    }
     var dialogo by remember { mutableStateOf<DialogoAberto?>(null) }
     var indiceEdicao by remember { mutableStateOf<Int?>(null) }
     var modoCinema by remember { mutableStateOf(false) }
@@ -1523,6 +1539,18 @@ fun JogoTela(vm: AppViewModel) {
                     onFechar = { modalInventarioAberto = false }
                 )
             }
+
+            // Card de Confronto Tático RPG
+            CardConfrontoTatico(
+                jogo = jogo,
+                narrativaAtual = narrativaAtual,
+                emCombateDetectado = jogo.cena.narrativa.contains("combate", ignoreCase = true) || jogo.cena.narrativa.contains("inimig", ignoreCase = true),
+                aoExecutarAcao = { acao ->
+                    GerenciadorMissoes.registrarProgresso(contexto, "diaria_dados", 1)
+                    GerenciadorMissoes.registrarProgresso(contexto, "total_dados_rolados", 1)
+                    vm.jogarAcao(acao)
+                }
+            )
 
             // ---- Conversa (Ajustada à tela com proporção e espaçamento fluidos) ----
             LazyColumn(
@@ -1907,8 +1935,27 @@ fun JogoTela(vm: AppViewModel) {
                             }
                             IconButton(
                                 onClick = {
+                                    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale("pt", "BR"))
+                                        putExtra(RecognizerIntent.EXTRA_PROMPT, "Fale sua ação para a história...")
+                                    }
+                                    try {
+                                        launcherVozRPG.launch(intent)
+                                    } catch (_: Exception) {
+                                        Toast.makeText(contexto, "Voz indisponível", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                enabled = !vm.ocupado
+                            ) {
+                                Text("🎙️", fontSize = 18.sp)
+                            }
+                            IconButton(
+                                onClick = {
                                     val texto = acaoLivre
                                     acaoLivre = ""
+                                    GerenciadorMissoes.registrarProgresso(contexto, "diaria_mensagens", 1)
+                                    GerenciadorMissoes.registrarProgresso(contexto, "total_turnos", 1)
                                     vm.jogarAcao(texto)
                                 },
                                 enabled = !vm.ocupado && acaoLivre.isNotBlank()
@@ -2107,6 +2154,7 @@ fun JogoTela(vm: AppViewModel) {
         ModalConfiguracoesChat(
             vm = vm,
             jogo = jogo,
+            chat = chat,
             ehModoHistoria = false,
             modoCinema = modoCinema,
             onAlternarModoCinema = { modoCinema = !modoCinema },
@@ -2560,6 +2608,17 @@ private fun JogoModoHistoria(vm: AppViewModel) {
     }
 
     var acaoLivre by remember(jogo.turno) { mutableStateOf("") }
+    val launcherVozHistoria = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { resultado ->
+        if (resultado.resultCode == Activity.RESULT_OK) {
+            val falas = resultado.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            val textoFalado = falas?.firstOrNull()
+            if (!textoFalado.isNullOrBlank()) {
+                acaoLivre = if (acaoLivre.isBlank()) textoFalado else "$acaoLivre $textoFalado"
+            }
+        }
+    }
     var mostrarSugestoes by remember(jogo.turno) { mutableStateOf(false) }
     var dialogo by remember { mutableStateOf<DialogoAberto?>(null) }
     var indiceEdicao by remember { mutableStateOf<Int?>(null) }
@@ -3315,13 +3374,32 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                             ),
                             modifier = Modifier.weight(1f)
                         )
-                        Spacer(Modifier.width(6.dp))
+                        Spacer(Modifier.width(4.dp))
+                        IconButton(
+                            onClick = {
+                                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale("pt", "BR"))
+                                    putExtra(RecognizerIntent.EXTRA_PROMPT, "Fale sua mensagem...")
+                                }
+                                try {
+                                    launcherVozHistoria.launch(intent)
+                                } catch (_: Exception) {
+                                    Toast.makeText(contexto, "Voz indisponível", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            enabled = !vm.ocupado
+                        ) {
+                            Text("🎙️", fontSize = 18.sp)
+                        }
                         IconButton(
                             onClick = {
                                 val t = acaoLivre.trim()
                                 if (t.isNotEmpty() && !vm.ocupado) {
                                     acaoLivre = ""
                                     mostrarSugestoes = false
+                                    GerenciadorMissoes.registrarProgresso(contexto, "diaria_mensagens", 1)
+                                    GerenciadorMissoes.registrarProgresso(contexto, "total_turnos", 1)
                                     vm.jogarAcao(t)
                                 }
                             },
@@ -3489,6 +3567,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
         ModalConfiguracoesChat(
             vm = vm,
             jogo = jogo,
+            chat = chat,
             ehModoHistoria = true,
             modoCinema = modoCinema,
             onAlternarModoCinema = { modoCinema = !modoCinema },
@@ -5386,6 +5465,7 @@ fun obterHumorPersonagem(ultimoTexto: String, genero: String?): Pair<String, Col
 private fun ModalConfiguracoesChat(
     vm: AppViewModel,
     jogo: JogoResponse,
+    chat: List<MensagemDto>,
     ehModoHistoria: Boolean,
     modoCinema: Boolean,
     onAlternarModoCinema: () -> Unit,
@@ -5399,6 +5479,9 @@ private fun ModalConfiguracoesChat(
     onFechar: () -> Unit
 ) {
     var confirmandoReiniciar by remember { mutableStateOf(false) }
+    var mostrarArvoreDestino by remember { mutableStateOf(false) }
+    var mostrarCardCompartilhar by remember { mutableStateOf(false) }
+    var mostrarMissoesModal by remember { mutableStateOf(false) }
     val vinculo = remember(jogo.turno) { calcularVinculo(jogo.turno) }
     val totalLivens = jogo.livens ?: vm.conta?.livens ?: 0
 
@@ -5511,23 +5594,43 @@ private fun ModalConfiguracoesChat(
                                     }
                                 }
 
-                                Surface(
-                                    color = Ouro.copy(alpha = 0.15f),
-                                    shape = Cantos.pilula,
-                                    border = BorderStroke(1.dp, Ouro.copy(alpha = 0.45f))
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                    Surface(
+                                        color = Color(0xFF7C4DFF).copy(alpha = 0.20f),
+                                        shape = Cantos.pilula,
+                                        border = BorderStroke(1.dp, Color(0xFF7C4DFF).copy(alpha = 0.45f)),
+                                        modifier = Modifier.clickable { mostrarMissoesModal = true }
                                     ) {
-                                        Text("✨", fontSize = 12.sp)
-                                        Spacer(Modifier.width(4.dp))
                                         Text(
-                                            text = "$totalLivens Livens",
-                                            color = Ouro,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold
+                                            text = "🏆 Missões",
+                                            color = Color(0xFFD6D0F5),
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                         )
+                                    }
+
+                                    Surface(
+                                        color = Ouro.copy(alpha = 0.15f),
+                                        shape = Cantos.pilula,
+                                        border = BorderStroke(1.dp, Ouro.copy(alpha = 0.45f))
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text("✨", fontSize = 11.sp)
+                                            Spacer(Modifier.width(3.dp))
+                                            Text(
+                                                text = "$totalLivens",
+                                                color = Ouro,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -5815,6 +5918,49 @@ private fun ModalConfiguracoesChat(
                                     )
                                 }
                             }
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                                    .height(1.dp)
+                                    .background(Color.White.copy(alpha = 0.06f))
+                            )
+
+                            // Árvore do Destino
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable {
+                                        mostrarArvoreDestino = true
+                                    }
+                                    .padding(vertical = 8.dp, horizontal = 6.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("🌿", fontSize = 18.sp)
+                                    Spacer(Modifier.width(10.dp))
+                                    Column {
+                                        Text("Árvore do Destino", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                        Text("Mapa visual de escolhas e bifurcações", color = TextoSuave, fontSize = 11.sp)
+                                    }
+                                }
+                                Surface(
+                                    color = Ouro.copy(alpha = 0.18f),
+                                    shape = Cantos.pilula,
+                                    border = BorderStroke(1.dp, Ouro.copy(alpha = 0.40f))
+                                ) {
+                                    Text(
+                                        text = "Árvore",
+                                        color = Ouro,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
                         }
                     }
 
@@ -6008,6 +6154,78 @@ private fun ModalConfiguracoesChat(
                                         )
                                     }
                                 }
+
+                                // Card Story 9:16
+                                Surface(
+                                    color = Color.White.copy(alpha = 0.06f),
+                                    shape = RoundedCornerShape(10.dp),
+                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable {
+                                            mostrarCardCompartilhar = true
+                                        }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Text("📸", fontSize = 14.sp)
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(
+                                            text = "Story",
+                                            color = Color.White,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Controle de Som Ambiente Procedural
+                            val ambienteAtual = GerenciadorAmbienteSonoro.ambienteAtivo
+                            Surface(
+                                color = if (ambienteAtual != GerenciadorAmbienteSonoro.TipoAmbiente.DESLIGADO) Color(0xFF1B2230) else Color.White.copy(alpha = 0.06f),
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, if (ambienteAtual != GerenciadorAmbienteSonoro.TipoAmbiente.DESLIGADO) Color(0xFF00E5FF).copy(alpha = 0.45f) else Color.White.copy(alpha = 0.08f)),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        val proximos = GerenciadorAmbienteSonoro.TipoAmbiente.values()
+                                        val idx = (proximos.indexOf(ambienteAtual) + 1) % proximos.size
+                                        GerenciadorAmbienteSonoro.alternarAmbiente(proximos[idx])
+                                    }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(vertical = 9.dp, horizontal = 12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(ambienteAtual.icone, fontSize = 14.sp)
+                                        Spacer(Modifier.width(8.dp))
+                                        Column {
+                                            Text(
+                                                text = "Som Ambiente: ${ambienteAtual.nomeLegivel}",
+                                                color = Color.White,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Text(
+                                                text = ambienteAtual.descricao,
+                                                color = TextoSuave,
+                                                fontSize = 10.sp
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text = if (ambienteAtual != GerenciadorAmbienteSonoro.TipoAmbiente.DESLIGADO) "Trocar" else "Ativar",
+                                        color = if (ambienteAtual != GerenciadorAmbienteSonoro.TipoAmbiente.DESLIGADO) Color(0xFF00E5FF) else TextoSuave,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
 
                             // Reiniciar História com Confirmação Segura
@@ -6092,6 +6310,32 @@ private fun ModalConfiguracoesChat(
                     Spacer(Modifier.height(8.dp))
                 }
             }
+        }
+
+        if (mostrarMissoesModal) {
+            DialogoMissoesEConquistas(
+                vm = vm,
+                onFechar = { mostrarMissoesModal = false }
+            )
+        }
+
+        if (mostrarArvoreDestino) {
+            DialogoArvoreDestino(
+                jogo = jogo,
+                chat = chat,
+                onFechar = { mostrarArvoreDestino = false }
+            )
+        }
+
+        if (mostrarCardCompartilhar) {
+            DialogoCardCompartilhar(
+                cenarioNome = jogo.cenario?.nome ?: "Aventura LivennIA",
+                personagemNome = jogo.personagem.nome,
+                citacao = jogo.cena.narrativa,
+                nivelVinculo = vinculo.nivel,
+                tituloVinculo = vinculo.titulo,
+                onFechar = { mostrarCardCompartilhar = false }
+            )
         }
     }
 }

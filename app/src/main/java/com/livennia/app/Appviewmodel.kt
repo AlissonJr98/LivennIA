@@ -1698,6 +1698,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         sugestoesAutoResposta = emptyList()
     }
 
+    fun creditarLivens(quantidade: Int) {
+        conta = conta?.copy(livens = (conta?.livens ?: 0) + quantidade)
+    }
+
     fun resgatarLivensDiarios() {
         executar("Resgatando bônus diário de Livens...") { api ->
             val res = api.resgatarLivensDiarios()
