@@ -143,7 +143,7 @@ LIMITE_JOGADAS_POR_MINUTO = 6        # por jogador
 LIMITE_REGISTROS_POR_IP_HORA = 10    # tentativas de registro por IP
 LIMITE_REQUISICOES_IP_MINUTO = 120   # qualquer rota, por IP
 LIMITE_FEEDBACKS_HORA = 10           # feedbacks + denúncias por jogador
-MAX_BODY_BYTES = 10_000              # tamanho máximo do corpo de uma requisição
+MAX_BODY_BYTES = _inteiro("LIVENNIA_MAX_BODY_BYTES", 15_000_000)  # tamanho máximo do corpo de uma requisição (15 MB para fotos/retratos)
 
 # ---------------------------------------------------------------
 # Datas e custos

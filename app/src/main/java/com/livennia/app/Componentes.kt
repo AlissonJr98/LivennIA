@@ -899,3 +899,39 @@ fun Modifier.interativo3D(
             onClick = onClick
         )
 }
+
+// -------------------------------------------------------------
+// COMPRESSÃO E REDIMENSIONAMENTO INTELIGENTE DE IMAGENS DE PERFIL
+// -------------------------------------------------------------
+fun comprimirImagemParaUpload(context: android.content.Context, uri: android.net.Uri, maxDimensao: Int = 1024, qualidade: Int = 85): String? {
+    return try {
+        val inputStream = context.contentResolver.openInputStream(uri) ?: return null
+        val originalBitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+        inputStream.close()
+        if (originalBitmap == null) return null
+
+        val largura = originalBitmap.width
+        val altura = originalBitmap.height
+        val escala = if (largura > maxDimensao || altura > maxDimensao) {
+            val maior = maxOf(largura, altura)
+            maxDimensao.toFloat() / maior
+        } else {
+            1f
+        }
+
+        val bitmapFinal = if (escala < 1f) {
+            val novaLargura = (largura * escala).toInt()
+            val novaAltura = (altura * escala).toInt()
+            android.graphics.Bitmap.createScaledBitmap(originalBitmap, novaLargura, novaAltura, true)
+        } else {
+            originalBitmap
+        }
+
+        val outputStream = java.io.ByteArrayOutputStream()
+        bitmapFinal.compress(android.graphics.Bitmap.CompressFormat.JPEG, qualidade, outputStream)
+        val bytes = outputStream.toByteArray()
+        android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+    } catch (_: Exception) {
+        null
+    }
+}

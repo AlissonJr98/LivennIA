@@ -4576,9 +4576,8 @@ fun ModalTrocarFotoPerfil(
     ) { uri: Uri? ->
         if (uri != null) {
             try {
-                val bytes = contexto.contentResolver.openInputStream(uri)?.readBytes()
-                if (bytes != null && bytes.isNotEmpty()) {
-                    val b64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                val b64 = comprimirImagemParaUpload(contexto, uri)
+                if (!b64.isNullOrBlank()) {
                     vm.uploadFotoPerfil(
                         imagemBase64 = b64,
                         onSucesso = {

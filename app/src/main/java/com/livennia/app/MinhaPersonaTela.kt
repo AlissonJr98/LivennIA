@@ -1467,9 +1467,8 @@ private fun TelaCriarEditarPersona(
     ) { uri: Uri? ->
         uri?.let {
             try {
-                val bytes = contexto.contentResolver.openInputStream(it)?.readBytes()
-                if (bytes != null) {
-                    val b64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                val b64 = comprimirImagemParaUpload(contexto, it)
+                if (!b64.isNullOrBlank()) {
                     if (personaExistente != null && personaExistente.id > 0) {
                         vm.uploadRetratoPersona(personaExistente.id, b64, onSucesso = {
                             Toast.makeText(contexto, "Foto da persona enviada com sucesso!", Toast.LENGTH_SHORT).show()
