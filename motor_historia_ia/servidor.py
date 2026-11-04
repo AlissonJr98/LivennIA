@@ -2033,27 +2033,27 @@ def ilustrar_cena_atual(
 
     cenario = estado.get("cenario") or {}
     nome = cenario.get("nome") or "Cena"
+    genero = estado.get("genero") or "Aventura"
+    personagem = estado.get("personagem") or {}
+    p_info = f"{personagem.get('nome', 'Personagem')}, {personagem.get('aparencia', '')}"
 
-    # Limpar prompt para difusão
-    narrativa_limpa = re.sub(r'[\*\#\[\]\"\'\n\r]', ' ', narrativa[:220]).strip()
-    prompt = (
-        f"Cinematic illustration of {nome}: {narrativa_limpa}. "
-        f"Dramatic lighting, vertical poster composition, digital concept art, masterpiece, 8k resolution, no text, no watermark"
-    )
+    # Gera prompt visual cinematografico em ingles capturando exatamente a cena narrativa atual
+    prompt_ingles = motor.gerar_prompt_visual_cena(nome, genero, p_info, narrativa)
+    logging.info("Prompt visual gerado para cena: %s", prompt_ingles)
 
     imagem = None
     try:
         imagem = motor._retrato_pollinations(
-            prompt,
+            prompt_ingles,
             traduzir=False,
             largura=config.POLLINATIONS_LARGURA or 1024,
             altura=config.POLLINATIONS_ALTURA or 1344
         )
     except Exception as e:
-        logging.warning("Erro ao gerar ilustração primária da cena: %s", e)
-        # Fallback resiliente com dimensões e prompt menores
+        logging.warning("Erro ao gerar ilustracao primaria da cena: %s", e)
+        # Fallback resiliente com dimensoes e prompt menores
         try:
-            prompt_reserva = f"Atmospheric cinematic scene of {nome}, digital concept art, highly detailed"
+            prompt_reserva = f"Atmospheric cinematic scene of {nome}, {genero}, digital concept art, masterpiece, highly detailed"
             imagem = motor._retrato_pollinations(
                 prompt_reserva,
                 traduzir=False,
@@ -2061,8 +2061,8 @@ def ilustrar_cena_atual(
                 altura=1024
             )
         except Exception as e2:
-            logging.warning("Fallback de ilustração também falhou: %s", e2)
-            raise HTTPException(503, "Os servidores de renderização de imagem estão com alta demanda temporária. Tente novamente em alguns segundos.")
+            logging.warning("Fallback de ilustracao tambem falhou: %s", e2)
+            raise HTTPException(503, "Os servidores de renderizacao de imagem estao com alta demanda temporaria. Tente novamente em alguns segundos.")
 
     with open(caminho_final, "wb") as f:
         f.write(imagem)

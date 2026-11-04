@@ -5482,6 +5482,10 @@ private fun ModalConfiguracoesChat(
     var mostrarArvoreDestino by remember { mutableStateOf(false) }
     var mostrarCardCompartilhar by remember { mutableStateOf(false) }
     var mostrarMissoesModal by remember { mutableStateOf(false) }
+    var mostrarMemoriasModal by remember { mutableStateOf(false) }
+    var mostrarOrbeModal by remember { mutableStateOf(false) }
+    val contexto = LocalContext.current
+    var temaAtual by remember { mutableStateOf(TemaChat.obterTema(contexto)) }
     val vinculo = remember(jogo.turno) { calcularVinculo(jogo.turno) }
     val totalLivens = jogo.livens ?: vm.conta?.livens ?: 0
 
@@ -5649,6 +5653,123 @@ private fun ModalConfiguracoesChat(
                         }
                     }
 
+                    // Bloco Orbe dos Destinos, Memórias & Skin (V1.9.5)
+                    Surface(
+                        color = Color(0xFF181B2C),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, Color(0xFFF5C842).copy(alpha = 0.35f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = "✨ Destinos & Customização",
+                                color = Ouro,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                // Orbe dos Destinos (Roleta)
+                                Surface(
+                                    color = Color(0xFF221E36),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, Color(0xFFF5C842).copy(alpha = 0.45f)),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { mostrarOrbeModal = true }
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text("🔮", fontSize = 20.sp)
+                                        Spacer(Modifier.height(4.dp))
+                                        Text("Orbe Diário", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        Text("Girar e Ganhar", color = Ouro, fontSize = 9.sp)
+                                    }
+                                }
+
+                                // Memórias Secretas
+                                Surface(
+                                    color = Color(0xFF1E2336),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, Color(0xFF7C4DFF).copy(alpha = 0.45f)),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { mostrarMemoriasModal = true }
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text("🗝️", fontSize = 20.sp)
+                                        Spacer(Modifier.height(4.dp))
+                                        Text("Memórias", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        Text("Contos Secretos", color = Color(0xFFA78BFA), fontSize = 9.sp)
+                                    }
+                                }
+
+                                // Backup Local
+                                Surface(
+                                    color = Color(0xFF1A2624),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, Color(0xFF00E676).copy(alpha = 0.45f)),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable {
+                                            val arquivo = GerenciadorBackupLocal.exportarBackup(contexto, vm)
+                                            if (arquivo != null) {
+                                                Toast.makeText(contexto, "Backup salvo: ${arquivo.name}", Toast.LENGTH_LONG).show()
+                                            } else {
+                                                Toast.makeText(contexto, "Falha ao exportar backup", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text("💾", fontSize = 20.sp)
+                                        Spacer(Modifier.height(4.dp))
+                                        Text("Backup .json", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        Text("1-Clique Salvar", color = Color(0xFF69F0AE), fontSize = 9.sp)
+                                    }
+                                }
+                            }
+
+                            // Seletor de Tema do Chat
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable {
+                                        val temas = TemaChat.values()
+                                        val proximo = temas[(temas.indexOf(temaAtual) + 1) % temas.size]
+                                        TemaChat.salvarTema(contexto, proximo)
+                                        temaAtual = proximo
+                                        Toast.makeText(contexto, "Tema alterado: ${proximo.nome}", Toast.LENGTH_SHORT).show()
+                                    }
+                                    .background(Color.White.copy(alpha = 0.05f))
+                                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(temaAtual.icone, fontSize = 16.sp)
+                                    Spacer(Modifier.width(8.dp))
+                                    Column {
+                                        Text("Estilo Visual do Chat", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                        Text(temaAtual.nome, color = Ouro, fontSize = 10.sp)
+                                    }
+                                }
+                                Text("Alternar Skin", color = Color(0xFF7C4DFF), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
                     // Bloco 1: Inteligência & Memória
                     Surface(
                         color = Color(0xFF161824),

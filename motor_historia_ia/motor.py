@@ -1726,6 +1726,41 @@ def _traduzir_prompt_retrato(prompt):
     return prompt
 
 
+def gerar_prompt_visual_cena(cenario_nome: str, genero: str, personagem_info: str, narrativa: str) -> str:
+    """Sintetiza um prompt de arte cinematográfica em inglês para ilustrar a cena atual da história."""
+    pedido = (
+        "You are an expert concept artist and visual director for fantasy, romance, anime and RPG novels.\n"
+        "Create a vivid, descriptive English image generation prompt (40 to 70 words) representing the exact visual scene.\n"
+        "Rules:\n"
+        "- Focus strictly on physical visuals: scenery, environment, visible characters and actions, mood, lighting, perspective.\n"
+        "- Do NOT output quotes, dialogues, narrative exposition or character names.\n"
+        "- Finish with: 'masterpiece, digital concept art, 8k resolution, cinematic lighting, sharp focus'.\n"
+        "- Output ONLY the English prompt, nothing else.\n\n"
+        f"World/Genre: {cenario_nome} ({genero})\n"
+        f"Character Context: {personagem_info}\n"
+        f"Current Scene: {narrativa[:600]}"
+    )
+    for modelo in config.MODELOS:
+        try:
+            cliente = _obter_cliente()
+            with _vaga_ia():
+                resposta = cliente.models.generate_content(
+                    model=modelo,
+                    contents=pedido,
+                    config=types.GenerateContentConfig(
+                        temperature=0.3, max_output_tokens=256
+                    ),
+                )
+            texto = (getattr(resposta, "text", None) or "").strip().strip('"')
+            if len(texto) > 25:
+                return texto
+        except Exception as e:
+            logging.warning("Erro ao gerar prompt visual com %s: %s", modelo, e)
+            continue
+    narrativa_limpa = re.sub(r'[\*\#\[\]\"\'\n\r]', ' ', narrativa[:140]).strip()
+    return f"Cinematic atmospheric scene of {cenario_nome}, {genero}. {narrativa_limpa}, masterpiece, digital art, 8k resolution, dramatic lighting"
+
+
 def _retrato_pollinations(prompt, traduzir=True, largura=None, altura=None):
     """Imagem por difusão (Flux/Turbo) via Pollinations em alta resolução."""
     # Se o prompt já está estruturado em inglês com tags de difusão, não traduz novamente

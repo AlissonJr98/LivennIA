@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 54,
-  "versaoNome": "1.9.4",
-  "notas": "Atualização 1.9.4: Recursos Narrativos Avançados — Árvore do Destino com mapa visual de escolhas e bifurcações, Card de Confronto Tático com combate interativo em tempo real no RPG, Entrada por Voz (Speech-to-Text) com botão de microfone no chat, Soundscapes Procedurais com sons de ambiente imersivos (Taverna, Masmorra, Bosque, Cyberpunk), Quadro de Missões Diárias e Conquistas com recompensas em Livens, Card de Compartilhamento Vertical 9:16 para Instagram/WhatsApp e Minha Biblioteca com Coleções e Pastas personalizadas.",
+  "versaoCodigo": 55,
+  "versaoNome": "1.9.5",
+  "notas": "Atualização 1.9.5: Correção da Ilustração de Cena com IA (prompts visuais cinematográficos sincronizados ao contexto narrativo e proteção contra travamentos), Ajuste visual completo do Chat RPG e História (eliminação de espaços redundantes no topo, fotos de perfil corrigidas e auto-scroll fluido durante a escrita), Orbe dos Destinos com roleta diária de prêmios, Memórias Secretas desbloqueadas por nível de vínculo, Atributos Ativos na Ficha de RPG (bônus de Força, Destreza, Mente e Carisma nos dados d20), Temas e Skins Visuais do Chat (Cósmico, Pergaminho Antigo, Cyberpunk Neon e Minimalista Clean) e Backup Local em 1 clique.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }
