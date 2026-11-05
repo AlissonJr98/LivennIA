@@ -86,6 +86,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.Socket
 import java.net.URL
 
 // Identidade Visual Exclusiva LivennIA (Obsidian Luxury Dark)
@@ -142,23 +144,49 @@ fun SubTelaDiagnosticoRede(
             var okNet = false
             var okServ = false
             withContext(Dispatchers.IO) {
+                // 1. Testa conectividade geral com a internet
                 runCatching {
-                    val address = InetAddress.getByName("8.8.8.8")
-                    okNet = address.isReachable(3000)
-                }.onFailure { okNet = true }
+                    val socket = Socket()
+                    socket.connect(InetSocketAddress("8.8.8.8", 53), 2500)
+                    socket.close()
+                    okNet = true
+                }.onFailure {
+                    runCatching {
+                        val url = URL("https://clients3.google.com/generate_204")
+                        val conn = url.openConnection() as HttpURLConnection
+                        conn.connectTimeout = 2500
+                        conn.readTimeout = 2500
+                        conn.requestMethod = "GET"
+                        okNet = (conn.responseCode == 204 || conn.responseCode in 200..299)
+                        conn.disconnect()
+                    }.onFailure { okNet = false }
+                }
 
+                // 2. Testa conexão real com o servidor LivennIA
                 runCatching {
                     val base = vm.servidor.trimEnd('/')
                     val url = URL("$base/saude")
                     val conn = url.openConnection() as HttpURLConnection
-                    conn.connectTimeout = 4000
-                    conn.readTimeout = 4000
+                    conn.connectTimeout = 3500
+                    conn.readTimeout = 3500
                     conn.requestMethod = "GET"
                     val code = conn.responseCode
                     okServ = (code in 200..299)
                     conn.disconnect()
                 }.onFailure {
-                    okServ = false
+                    // Fallback caso /saude responda outro código ou tente a raiz
+                    runCatching {
+                        val base = vm.servidor.trimEnd('/')
+                        val url = URL("$base/")
+                        val conn = url.openConnection() as HttpURLConnection
+                        conn.connectTimeout = 3000
+                        conn.readTimeout = 3000
+                        conn.requestMethod = "GET"
+                        okServ = (conn.responseCode in 200..499)
+                        conn.disconnect()
+                    }.onFailure {
+                        okServ = false
+                    }
                 }
             }
             latenciaMs = System.currentTimeMillis() - inicio
@@ -167,9 +195,9 @@ fun SubTelaDiagnosticoRede(
             testando = false
             testado = true
             statusConexao = when {
-                okServ -> "Excelente! Sua conexão com o motor de IA do LivennIA está rápida e estável."
-                okNet -> "Internet ativa. O servidor local está respondendo normalmente."
-                else -> "Instabilidade na rede detectada. Verifique seu sinal Wi-Fi ou dados móveis."
+                okServ -> "Excelente! Sua conexão com o motor de IA do LivennIA está rápida e estável (${latenciaMs} ms)."
+                !okNet -> "Sem conexão com a internet detectada. Verifique seu sinal Wi-Fi ou dados móveis."
+                else -> "Sem conexão com o servidor LivennIA (${vm.servidor}). O servidor está desligado ou o IP/porta está inacessível."
             }
         }
     }
@@ -224,10 +252,18 @@ fun SubTelaDiagnosticoRede(
                     Box(
                         modifier = Modifier
                             .size(126.dp)
-                            .background(CardObsidian, shape = CircleShape)
+                            .background(
+                                color = if (testado && !servidorOk) VermelhoSuave.copy(alpha = 0.12f) else CardObsidian,
+                                shape = CircleShape
+                            )
                             .border(
                                 2.dp,
-                                if (testado && servidorOk) VerdeEstavel else if (testando) DouradoLivenn else CardObsidianBorda,
+                                when {
+                                    testando -> DouradoLivenn
+                                    testado && servidorOk -> VerdeEstavel
+                                    testado && !servidorOk -> VermelhoSuave
+                                    else -> CardObsidianBorda
+                                },
                                 shape = CircleShape
                             ),
                         contentAlignment = Alignment.Center
@@ -240,9 +276,17 @@ fun SubTelaDiagnosticoRede(
                             )
                         } else {
                             Icon(
-                                imageVector = if (testado) Icons.Default.Speed else Icons.Default.SignalCellularAlt,
+                                imageVector = when {
+                                    testado && servidorOk -> Icons.Default.Check
+                                    testado && !servidorOk -> Icons.Default.Close
+                                    else -> Icons.Default.SignalCellularAlt
+                                },
                                 contentDescription = null,
-                                tint = if (testado) (if (servidorOk) VerdeEstavel else DouradoLivenn) else TextoSecundario,
+                                tint = when {
+                                    testado && servidorOk -> VerdeEstavel
+                                    testado && !servidorOk -> VermelhoSuave
+                                    else -> TextoSecundario
+                                },
                                 modifier = Modifier.size(54.dp)
                             )
                         }
@@ -253,8 +297,13 @@ fun SubTelaDiagnosticoRede(
                     Text(
                         text = statusConexao,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (testado && !servidorOk && !internetOk) VermelhoSuave else TextoSecundario,
+                        color = when {
+                            testado && servidorOk -> VerdeEstavel
+                            testado && !servidorOk -> VermelhoSuave
+                            else -> TextoSecundario
+                        },
                         textAlign = TextAlign.Center,
+                        fontWeight = if (testado) FontWeight.SemiBold else FontWeight.Normal,
                         modifier = Modifier.padding(horizontal = 14.dp)
                     )
 
@@ -264,7 +313,11 @@ fun SubTelaDiagnosticoRede(
                                 .fillMaxWidth()
                                 .padding(top = 22.dp)
                                 .background(CardObsidian, shape = RoundedCornerShape(16.dp))
-                                .border(1.dp, CardObsidianBorda, shape = RoundedCornerShape(16.dp))
+                                .border(
+                                    1.dp,
+                                    if (servidorOk) CardObsidianBorda else VermelhoSuave.copy(alpha = 0.40f),
+                                    shape = RoundedCornerShape(16.dp)
+                                )
                                 .padding(18.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
@@ -274,7 +327,7 @@ fun SubTelaDiagnosticoRede(
                             ) {
                                 Text("Acesso à Internet", color = TextoSecundario, fontSize = 13.sp)
                                 Text(
-                                    if (internetOk) "● Estável" else "● Instável",
+                                    if (internetOk) "● Conectado" else "● Sem Internet",
                                     color = if (internetOk) VerdeEstavel else VermelhoSuave,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp
@@ -285,10 +338,10 @@ fun SubTelaDiagnosticoRede(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text("Servidor Ativo", color = TextoSecundario, fontSize = 13.sp)
+                                Text("Servidor LivennIA", color = TextoSecundario, fontSize = 13.sp)
                                 Text(
-                                    if (servidorOk) "Operacional (200 OK)" else "Não Modificado",
-                                    color = if (servidorOk) VerdeEstavel else DouradoLivenn,
+                                    if (servidorOk) "● Online (200 OK)" else "● Desconectado / Inacessível",
+                                    color = if (servidorOk) VerdeEstavel else VermelhoSuave,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp
                                 )
@@ -300,8 +353,8 @@ fun SubTelaDiagnosticoRede(
                             ) {
                                 Text("Latência da Rota (Ping)", color = TextoSecundario, fontSize = 13.sp)
                                 Text(
-                                    if (latenciaMs > 0) "${latenciaMs} ms" else "--",
-                                    color = DouradoLivenn,
+                                    if (servidorOk && latenciaMs > 0) "${latenciaMs} ms" else "Inalcançável (Falha)",
+                                    color = if (servidorOk) DouradoLivenn else VermelhoSuave,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp
                                 )
@@ -321,6 +374,37 @@ fun SubTelaDiagnosticoRede(
                                 )
                                 TextButton(onClick = { dialogoEditarServidor = true }) {
                                     Text("Alterar", color = DouradoLivenn, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+
+                    if (testado && !servidorOk) {
+                        Surface(
+                            color = VermelhoSuave.copy(alpha = 0.10f),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, VermelhoSuave.copy(alpha = 0.35f)),
+                            modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("⚠️", fontSize = 14.sp)
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Servidor Inacessível", color = VermelhoSuave, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                }
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = "Não foi possível conectar ao servidor em ${vm.servidor}. Verifique se o servidor está rodando e se o IP e a porta estão corretos.",
+                                    color = Color.White.copy(alpha = 0.85f),
+                                    fontSize = 11.sp,
+                                    lineHeight = 15.sp
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                TextButton(
+                                    onClick = { dialogoEditarServidor = true },
+                                    modifier = Modifier.align(Alignment.End)
+                                ) {
+                                    Text("Configurar IP / Servidor", color = DouradoLivenn, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
