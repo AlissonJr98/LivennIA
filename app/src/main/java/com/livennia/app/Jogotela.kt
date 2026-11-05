@@ -478,6 +478,8 @@ data class MomentoCG(
 
 @Composable
 fun ModalGaleriaMomentos(
+    vm: AppViewModel,
+    jogo: JogoResponse,
     nomePersonagem: String,
     cenarioId: String?,
     nivelVinculoAtual: Int,
@@ -511,6 +513,102 @@ fun ModalGaleriaMomentos(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Card de Ação: Gerar Ilustração com IA desta Cena
+                Surface(
+                    color = Color(0xFF1E2032),
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.2.dp, Ouro.copy(alpha = 0.55f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = !vm.ocupado && !vm.ilustrandoCena) {
+                            val ehPago = (jogo.modelo?.ehPago == true) || (vm.conta?.premium == true)
+                            vm.ilustrarCenaAtual(
+                                comAnuncio = !ehPago,
+                                onSucesso = {
+                                    Toast.makeText(contexto, "Nova arte adicionada à galeria!", Toast.LENGTH_SHORT).show()
+                                },
+                                onError = {
+                                    Toast.makeText(contexto, it, Toast.LENGTH_LONG).show()
+                                }
+                            )
+                        }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(Ouro.copy(alpha = 0.20f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (vm.ilustrandoCena) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Ouro, strokeWidth = 2.dp)
+                            } else {
+                                Text("🎨", fontSize = 20.sp)
+                            }
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (vm.ilustrandoCena) "Pintando a cena com IA..." else "Ilustrar Cena Deste Momento",
+                                color = Ouro,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                            Text(
+                                text = if (vm.ilustrandoCena) "Renderizando arte conceitual exclusiva..." else "Gere uma ilustração oficial da situação atual",
+                                color = TextoSuave,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                }
+
+                // Destaque da Arte Ilustrada Atual se existir
+                if (!jogo.cena.imagemUrl.isNullOrBlank()) {
+                    val base = ApiClient.baseUrlAtual()
+                    val fullUrl = if (base != null) "${base.trimEnd('/')}/${jogo.cena.imagemUrl.orEmpty().trimStart('/')}" else jogo.cena.imagemUrl
+                    Surface(
+                        color = Color(0xFF10121C),
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, Color(0xFF00E5FF).copy(alpha = 0.5f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(170.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(contexto)
+                                    .data(fullUrl)
+                                    .allowHardware(false)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Cena Ilustrada da Galeria",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                            Surface(
+                                color = Color.Black.copy(alpha = 0.70f),
+                                shape = RoundedCornerShape(topStart = 8.dp),
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(8.dp)
+                            ) {
+                                Text(
+                                    "✨ Ilustração Salva • Turno ${jogo.turno}",
+                                    color = Ouro,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
                 Text(
                     "Momentos visuais memoráveis inspirados na sua jornada. Conforme você conversa e fortalece o Vínculo com $nomePersonagem, novas memórias são reveladas!",
                     style = MaterialTheme.typography.bodySmall,
@@ -1070,14 +1168,16 @@ fun ModoCinemaVisualNovel(
                 }
             }
 
+            var acaoCinema by remember { mutableStateOf("") }
+
             Surface(
-                color = Color(0xFF0C0D16).copy(alpha = 0.94f),
+                color = Color(0xFF0C0D16).copy(alpha = 0.95f),
                 shape = RoundedCornerShape(20.dp),
                 border = BorderStroke(1.2.dp, Brush.horizontalGradient(listOf(Ouro.copy(alpha = 0.6f), Color(0xFF7C4DFF).copy(alpha = 0.4f)))),
                 shadowElevation = 14.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(18.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = narrativaAtual.take(visivelCinema),
                         color = Color.White,
@@ -1085,7 +1185,7 @@ fun ModoCinemaVisualNovel(
                         lineHeight = 23.sp
                     )
 
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(10.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1093,10 +1193,10 @@ fun ModoCinemaVisualNovel(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (terminouTexto) "▼ Toque para avançar" else "•••",
-                            color = Ouro.copy(alpha = 0.75f),
+                            text = if (terminouTexto) "★ Sua vez de agir" else "•••",
+                            color = Ouro.copy(alpha = 0.85f),
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.SemiBold
                         )
 
                         Text(
@@ -1105,6 +1205,93 @@ fun ModoCinemaVisualNovel(
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold
                         )
+                    }
+
+                    // Opções de Escolha Rápida Interativas no Modo Cinema
+                    if (jogo.cena.opcoes.isNotEmpty() && !vm.ocupado) {
+                        Spacer(Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            jogo.cena.opcoes.forEach { opcao ->
+                                Surface(
+                                    color = Ouro.copy(alpha = 0.18f),
+                                    shape = Cantos.pilula,
+                                    border = BorderStroke(1.dp, Ouro.copy(alpha = 0.45f)),
+                                    modifier = Modifier.clickable {
+                                        vm.jogarAcao(opcao)
+                                    }
+                                ) {
+                                    Text(
+                                        text = opcao,
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Barra de Envio Interativa no Modo Cinema
+                    if (!jogo.fimDeJogo) {
+                        Spacer(Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = acaoCinema,
+                                onValueChange = { acaoCinema = it.take(300) },
+                                placeholder = {
+                                    Text("Escreva sua ação no Modo Cinema...", color = Color.White.copy(alpha = 0.45f), fontSize = 13.sp)
+                                },
+                                singleLine = true,
+                                enabled = !vm.ocupado,
+                                shape = RoundedCornerShape(20.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedContainerColor = Color(0xFF161824).copy(alpha = 0.90f),
+                                    unfocusedContainerColor = Color(0xFF161824).copy(alpha = 0.90f),
+                                    focusedBorderColor = Ouro.copy(alpha = 0.6f),
+                                    unfocusedBorderColor = Color.White.copy(alpha = 0.15f)
+                                ),
+                                modifier = Modifier.weight(1f)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Surface(
+                                color = if (acaoCinema.isNotBlank() && !vm.ocupado) Ouro else Color.White.copy(alpha = 0.10f),
+                                shape = CircleShape,
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clickable(enabled = acaoCinema.isNotBlank() && !vm.ocupado) {
+                                        val acao = acaoCinema.trim()
+                                        acaoCinema = ""
+                                        vm.jogarAcao(acao)
+                                    }
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.Send,
+                                        contentDescription = "Enviar",
+                                        tint = if (acaoCinema.isNotBlank() && !vm.ocupado) Color.Black else Color.White.copy(alpha = 0.4f),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    if (vm.ocupado) {
+                        Spacer(Modifier.height(6.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 2.dp, color = Ouro)
+                            Spacer(Modifier.width(8.dp))
+                            Text("A história está se desenrolando...", color = Ouro, fontSize = 11.sp)
+                        }
                     }
                 }
             }
@@ -1760,7 +1947,7 @@ fun JogoTela(vm: AppViewModel) {
                                                 .data(fullUrl)
                                                 .apply { if (cabecalho != null) addHeader("Authorization", cabecalho) }
                                                 .crossfade(true)
-                                                .allowHardware(true)
+                                                .allowHardware(false)
                                                 .build(),
                                             contentDescription = "Cena Ilustrada da História",
                                             contentScale = ContentScale.Crop,
@@ -2094,6 +2281,8 @@ fun JogoTela(vm: AppViewModel) {
         val nomeP = jogo.cenario?.nome ?: "Personagem"
         val vinculoAtual = calcularVinculo(jogo.turno).nivel
         ModalGaleriaMomentos(
+            vm = vm,
+            jogo = jogo,
             nomePersonagem = nomeP,
             cenarioId = jogo.cenario?.id,
             nivelVinculoAtual = vinculoAtual,
@@ -3148,7 +3337,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                                                 .data(fullUrl)
                                                 .apply { if (cabecalho != null) addHeader("Authorization", cabecalho) }
                                                 .crossfade(true)
-                                                .allowHardware(true)
+                                                .allowHardware(false)
                                                 .build(),
                                             contentDescription = "Arte da Cena Atual",
                                             contentScale = ContentScale.Crop,
@@ -3240,7 +3429,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                                                 .data(fullUrl)
                                                 .apply { if (cabecalho != null) addHeader("Authorization", cabecalho) }
                                                 .crossfade(true)
-                                                .allowHardware(true)
+                                                .allowHardware(false)
                                                 .build(),
                                             contentDescription = "Cena Ilustrada da História",
                                             contentScale = ContentScale.Crop,
@@ -3515,6 +3704,8 @@ private fun JogoModoHistoria(vm: AppViewModel) {
         val nomeP = jogo.cenario?.nome ?: cenarioCompleto.nome
         val vinculoAtual = calcularVinculo(jogo.turno).nivel
         ModalGaleriaMomentos(
+            vm = vm,
+            jogo = jogo,
             nomePersonagem = nomeP,
             cenarioId = jogo.cenario?.id,
             nivelVinculoAtual = vinculoAtual,
@@ -4331,17 +4522,117 @@ private fun GerenciadorDialogosJogo(
             var tituloSave by remember { mutableStateOf("") }
             AlertDialog(
                 onDismissRequest = onFecharDialogo,
-                title = { Text("💾 Pontos de Salvamento") },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("💾", fontSize = 22.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text("Capítulos & Saves", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text("Salvamento Automático Ativo", style = MaterialTheme.typography.labelSmall, color = Color(0xFF00E676))
+                        }
+                    }
+                },
                 text = {
                     Column(
                         modifier = Modifier.verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Text(
-                            "Salve o momento atual para explorar outros rumos e voltar quando quiser.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextoSuave
-                        )
+                        Surface(
+                            color = Color(0xFF0F241A),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, Color(0xFF00E676).copy(alpha = 0.40f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("🟢", fontSize = 14.sp)
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    "Auto-Save Ativo: cada capítulo e decisão da história é gravado sozinho. Você pode voltar no tempo quando quiser!",
+                                    color = Color.White.copy(alpha = 0.9f),
+                                    fontSize = 11.sp,
+                                    lineHeight = 15.sp
+                                )
+                            }
+                        }
+
+                        if (jogo.savepoints.isEmpty()) {
+                            Text(
+                                "O primeiro capítulo será gravado automaticamente ao avançar a história.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextoSuave
+                            )
+                        } else {
+                            jogo.savepoints.asReversed().forEach { sp ->
+                                val dataSave = sp.criadoEm?.let { horaDaMensagem(it) } ?: sp.local
+                                Surface(
+                                    color = Color(0xFF161824),
+                                    shape = RoundedCornerShape(14.dp),
+                                    border = BorderStroke(1.dp, Ouro.copy(alpha = 0.35f)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = sp.nome.ifBlank { "Capítulo ${sp.turno}" },
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Ouro
+                                            )
+                                            Surface(
+                                                color = Color.Black.copy(alpha = 0.45f),
+                                                shape = Cantos.pilula
+                                            ) {
+                                                Text("Turno ${sp.turno}", color = Color.White.copy(alpha = 0.8f), fontSize = 10.sp, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                            }
+                                        }
+                                        Text(
+                                            text = dataSave,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = TextoSuave
+                                        )
+                                        if (sp.resumo.isNotBlank()) {
+                                            Spacer(Modifier.height(4.dp))
+                                            Text(
+                                                text = sp.resumo,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = Color.White.copy(alpha = 0.85f),
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                        Spacer(Modifier.height(8.dp))
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            Button(
+                                                onClick = {
+                                                    vm.carregarSavepoint(sp.id)
+                                                    onFecharDialogo()
+                                                },
+                                                colors = ButtonDefaults.buttonColors(containerColor = Ouro),
+                                                shape = RoundedCornerShape(8.dp),
+                                                modifier = Modifier.height(34.dp)
+                                            ) {
+                                                Text("⏪ Voltar a este Capítulo", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                            }
+                                            TextButton(
+                                                onClick = { vm.apagarSavepoint(sp.id) },
+                                                modifier = Modifier.height(34.dp)
+                                            ) {
+                                                Text("Apagar", color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(Modifier.height(6.dp))
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -4349,7 +4640,7 @@ private fun GerenciadorDialogosJogo(
                             OutlinedTextField(
                                 value = tituloSave,
                                 onValueChange = { tituloSave = it.take(60) },
-                                placeholder = { Text("Nome do save (opcional)") },
+                                placeholder = { Text("Nome personalizado (opcional)", fontSize = 12.sp) },
                                 singleLine = true,
                                 modifier = Modifier.weight(1f)
                             )
@@ -4360,102 +4651,6 @@ private fun GerenciadorDialogosJogo(
                                 }
                             ) {
                                 Text("Salvar")
-                            }
-                        }
-                        if (jogo.savepoints.isEmpty()) {
-                            Text(
-                                "Nenhum savepoint criado nesta aventura.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = TextoSuave
-                            )
-                        } else {
-                            jogo.savepoints.asReversed().forEach { sp ->
-                                val dataSave = sp.criadoEm?.let { horaDaMensagem(it) } ?: sp.local
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.Top
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        modifier = Modifier.width(28.dp).padding(top = 4.dp)
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(12.dp)
-                                                .background(Ouro, CircleShape)
-                                                .border(2.dp, Color(0xFF161824), CircleShape)
-                                        )
-                                        Box(
-                                            modifier = Modifier
-                                                .width(2.dp)
-                                                .height(55.dp)
-                                                .background(Ouro.copy(alpha = 0.35f))
-                                        )
-                                    }
-                                    Spacer(Modifier.width(6.dp))
-                                    Surface(
-                                        color = Color(0xFF161824),
-                                        shape = RoundedCornerShape(14.dp),
-                                        border = BorderStroke(1.dp, Ouro.copy(alpha = 0.35f)),
-                                        modifier = Modifier.weight(1f).padding(bottom = 10.dp)
-                                    ) {
-                                        Column(modifier = Modifier.padding(12.dp)) {
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Text(
-                                                    text = sp.nome.ifBlank { "Momento da História" },
-                                                    style = MaterialTheme.typography.titleSmall,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = Ouro
-                                                )
-                                                Surface(
-                                                    color = Color.Black.copy(alpha = 0.45f),
-                                                    shape = Cantos.pilula
-                                                ) {
-                                                    Text("Turno ${sp.turno}", color = Color.White.copy(alpha = 0.8f), fontSize = 10.sp, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
-                                                }
-                                            }
-                                            Text(
-                                                text = dataSave,
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = TextoSuave
-                                            )
-                                            if (sp.resumo.isNotBlank()) {
-                                                Spacer(Modifier.height(4.dp))
-                                                Text(
-                                                    text = sp.resumo,
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = Color.White.copy(alpha = 0.85f),
-                                                    maxLines = 2,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
-                                            }
-                                            Spacer(Modifier.height(8.dp))
-                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                Button(
-                                                    onClick = {
-                                                        vm.carregarSavepoint(sp.id)
-                                                        onFecharDialogo()
-                                                    },
-                                                    colors = ButtonDefaults.buttonColors(containerColor = Ouro),
-                                                    shape = RoundedCornerShape(8.dp),
-                                                    modifier = Modifier.height(34.dp)
-                                                ) {
-                                                    Text("🌿 Voltar a este Rumo", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                                                }
-                                                TextButton(
-                                                    onClick = { vm.apagarSavepoint(sp.id) },
-                                                    modifier = Modifier.height(34.dp)
-                                                ) {
-                                                    Text("Apagar", color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
                             }
                         }
                     }
@@ -5264,11 +5459,43 @@ private fun DialogoRolagemDados(
 // -------------------------------------------------------------
 // SINTETIZADOR DE ÁUDIO AMBIENTE SUTIL EM TEMPO REAL (OFFLINE)
 // -------------------------------------------------------------
+enum class ClimaSonoroNarrativa(val icone: String, val titulo: String) {
+    TAVERNA("🍻", "Taverna & Lareira Acolhedora"),
+    COMBATE("⚔️", "Combate & Tensão"),
+    CHUVA("🌧️", "Chuva & Tempestade"),
+    FLORESTA("🍃", "Bosque & Vento Natural"),
+    MASMORRA("🕯️", "Masmorra & Ecos Profundos"),
+    MISTICO("✨", "Atmosfera Mística & Harmônica")
+}
+
 object SintetizadorAmbienteLivennIA {
     private var job: Job? = null
     private var track: AudioTrack? = null
-    var ativo = false
+    var ativo by mutableStateOf(false)
         private set
+    var climaAtual by mutableStateOf(ClimaSonoroNarrativa.MISTICO)
+        private set
+
+    fun detectarAmbiente(narrativa: String, genero: String): ClimaSonoroNarrativa {
+        val n = narrativa.lowercase()
+        val g = genero.lowercase()
+        return when {
+            "taverna" in n || "taberna" in n || "cerveja" in n || "lareira" in n || "caneca" in n || "estalagem" in n || "garçom" in n || "balcão" in n || "bebida" in n -> ClimaSonoroNarrativa.TAVERNA
+            "combate" in n || "espada" in n || "ataque" in n || "golpe" in n || "sangue" in n || "inimig" in n || "monstro" in n || "luta" in n || "batalha" in n || "esquiv" in n || "defesa" in n -> ClimaSonoroNarrativa.COMBATE
+            "chuva" in n || "tempestade" in n || "trovão" in n || "relâmpago" in n || "molhad" in n || "garoa" in n -> ClimaSonoroNarrativa.CHUVA
+            "masmorra" in n || "cripta" in n || "caverna" in n || "túmulo" in n || "escuridão" in n || "gotej" in n || "catacumba" in n || "soturno" in n || "dark" in g || "horror" in g -> ClimaSonoroNarrativa.MASMORRA
+            "floresta" in n || "bosque" in n || "árvore" in n || "folhas" in n || "vento" in n || "natureza" in n || "estrada" in n || "montanha" in n -> ClimaSonoroNarrativa.FLORESTA
+            else -> ClimaSonoroNarrativa.MISTICO
+        }
+    }
+
+    fun sincronizarComNarrativa(narrativa: String, genero: String) {
+        if (!ativo) return
+        val novoClima = detectarAmbiente(narrativa, genero)
+        if (novoClima != climaAtual) {
+            climaAtual = novoClima
+        }
+    }
 
     fun alternar(genero: String = "Fantasia", onStatusMudou: (Boolean) -> Unit) {
         if (ativo) {
@@ -5328,28 +5555,62 @@ object SintetizadorAmbienteLivennIA {
             return
         }
 
-        val gLower = genero.lowercase()
-        val freqs = when {
-            "cyber" in gLower || "fic" in gLower -> doubleArrayOf(55.0, 110.0, 164.81)
-            "horror" in gLower || "gotic" in gLower || "dark" in gLower -> doubleArrayOf(43.65, 87.31, 130.81)
-            else -> doubleArrayOf(65.41, 130.81, 196.00)
-        }
-
         job = CoroutineScope(Dispatchers.Default).launch {
             val chunk = ShortArray(bufferSize / 2)
             var t = 0L
+            var filtroRosa = 0.0
 
             while (isActive && ativo) {
+                val clima = climaAtual
                 for (i in chunk.indices) {
-                    val tempoSec = t / sampleRate.toDouble()
-                    val lfo = 0.65 + 0.35 * sin(tempoSec * 0.4 * Math.PI)
-                    var valor = 0.0
-                    for (f in freqs) {
-                        valor += sin(2.0 * Math.PI * f * tempoSec)
+                    val sec = t / sampleRate.toDouble()
+                    val amostraDouble: Double = when (clima) {
+                        ClimaSonoroNarrativa.TAVERNA -> {
+                            // Crepitar suave de lareira sem zumbido agudo
+                            val ruido = (Math.random() * 2.0 - 1.0)
+                            filtroRosa = 0.94 * filtroRosa + 0.06 * ruido
+                            val estalo = if (Math.random() < 0.0015) (Math.random() * 0.45) else 0.0
+                            val zumbidoBaixo = sin(2.0 * Math.PI * 55.0 * sec) * 0.08
+                            (filtroRosa * 0.22 + estalo + zumbidoBaixo)
+                        }
+                        ClimaSonoroNarrativa.COMBATE -> {
+                            // Pulso rítmico de adrenalina e tambor de batalha
+                            val batimento = sin(2.0 * Math.PI * 1.35 * sec) // 81 bpm
+                            val pulso = if (batimento > 0.7) sin(2.0 * Math.PI * 65.0 * sec) * (batimento - 0.7) * 0.9 else 0.0
+                            val tensaoHarmonica = sin(2.0 * Math.PI * 110.0 * sec) * 0.12
+                            (pulso + tensaoHarmonica)
+                        }
+                        ClimaSonoroNarrativa.CHUVA -> {
+                            // Chuva suave e relaxante
+                            val ruido = (Math.random() * 2.0 - 1.0)
+                            filtroRosa = 0.90 * filtroRosa + 0.10 * ruido
+                            val trovaoDistante = sin(2.0 * Math.PI * 38.0 * sec) * (0.05 + 0.04 * sin(sec * 0.2))
+                            (filtroRosa * 0.20 + trovaoDistante)
+                        }
+                        ClimaSonoroNarrativa.FLORESTA -> {
+                            // Brisa orgânica nos galhos e harmonia de natureza
+                            val brisa = sin(sec * 0.5) * 0.5 + 0.5
+                            val harmonia = sin(2.0 * Math.PI * 220.0 * sec) * 0.08 + sin(2.0 * Math.PI * 277.18 * sec) * 0.06
+                            val ventoRuido = (Math.random() * 2.0 - 1.0) * 0.04 * brisa
+                            (harmonia + ventoRuido)
+                        }
+                        ClimaSonoroNarrativa.MASMORRA -> {
+                            // Ecos graves soturnos de pedra
+                            val drone = sin(2.0 * Math.PI * 45.0 * sec) * 0.22 + sin(2.0 * Math.PI * 90.0 * sec) * 0.10
+                            val gota = if (t % (sampleRate * 3) < 400) sin(2.0 * Math.PI * 880.0 * (t % (sampleRate * 3)) / sampleRate) * 0.25 else 0.0
+                            (drone + gota)
+                        }
+                        ClimaSonoroNarrativa.MISTICO -> {
+                            // Harmônicos brilhantes celestiais (acorde suave)
+                            val f1 = sin(2.0 * Math.PI * 261.63 * sec) * 0.10 // Dó
+                            val f2 = sin(2.0 * Math.PI * 329.63 * sec) * 0.08 // Mi
+                            val f3 = sin(2.0 * Math.PI * 392.00 * sec) * 0.08 // Sol
+                            val f4 = sin(2.0 * Math.PI * 523.25 * sec) * 0.05 // Dó alto
+                            (f1 + f2 + f3 + f4)
+                        }
                     }
-                    val ruido = (Math.random() - 0.5) * 0.06
-                    val amostra = ((valor / freqs.size * 0.22 + ruido) * lfo).coerceIn(-1.0, 1.0)
-                    chunk[i] = (amostra * 32767).toInt().toShort()
+                    val finalSample = amostraDouble.coerceIn(-1.0, 1.0)
+                    chunk[i] = (finalSample * 26000).toInt().toShort()
                     t++
                 }
                 track?.write(chunk, 0, chunk.size)
@@ -5653,123 +5914,191 @@ private fun ModalConfiguracoesChat(
                         }
                     }
 
-                    // Bloco Orbe dos Destinos, Memórias & Skin (V1.9.5)
-                    Surface(
-                        color = Color(0xFF181B2C),
-                        shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, Color(0xFFF5C842).copy(alpha = 0.35f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(
-                                text = "✨ Destinos & Customização",
-                                color = Ouro,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                // Orbe dos Destinos (Roleta)
-                                Surface(
-                                    color = Color(0xFF221E36),
-                                    shape = RoundedCornerShape(12.dp),
-                                    border = BorderStroke(1.dp, Color(0xFFF5C842).copy(alpha = 0.45f)),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { mostrarOrbeModal = true }
-                                ) {
-                                    Column(
-                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Text("🔮", fontSize = 20.sp)
-                                        Spacer(Modifier.height(4.dp))
-                                        Text("Orbe Diário", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                        Text("Girar e Ganhar", color = Ouro, fontSize = 9.sp)
-                                    }
-                                }
-
-                                // Memórias Secretas
-                                Surface(
-                                    color = Color(0xFF1E2336),
-                                    shape = RoundedCornerShape(12.dp),
-                                    border = BorderStroke(1.dp, Color(0xFF7C4DFF).copy(alpha = 0.45f)),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { mostrarMemoriasModal = true }
-                                ) {
-                                    Column(
-                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Text("🗝️", fontSize = 20.sp)
-                                        Spacer(Modifier.height(4.dp))
-                                        Text("Memórias", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                        Text("Contos Secretos", color = Color(0xFFA78BFA), fontSize = 9.sp)
-                                    }
-                                }
-
-                                // Backup Local
-                                Surface(
-                                    color = Color(0xFF1A2624),
-                                    shape = RoundedCornerShape(12.dp),
-                                    border = BorderStroke(1.dp, Color(0xFF00E676).copy(alpha = 0.45f)),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable {
-                                            val arquivo = GerenciadorBackupLocal.exportarBackup(contexto, vm)
-                                            if (arquivo != null) {
-                                                Toast.makeText(contexto, "Backup salvo: ${arquivo.name}", Toast.LENGTH_LONG).show()
-                                            } else {
-                                                Toast.makeText(contexto, "Falha ao exportar backup", Toast.LENGTH_SHORT).show()
-                                            }
-                                        }
-                                ) {
-                                    Column(
-                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Text("💾", fontSize = 20.sp)
-                                        Spacer(Modifier.height(4.dp))
-                                        Text("Backup .json", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                        Text("1-Clique Salvar", color = Color(0xFF69F0AE), fontSize = 9.sp)
-                                    }
-                                }
-                            }
-
-                            // Seletor de Tema do Chat
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .clickable {
-                                        val temas = TemaChat.values()
-                                        val proximo = temas[(temas.indexOf(temaAtual) + 1) % temas.size]
-                                        TemaChat.salvarTema(contexto, proximo)
-                                        temaAtual = proximo
-                                        Toast.makeText(contexto, "Tema alterado: ${proximo.nome}", Toast.LENGTH_SHORT).show()
-                                    }
-                                    .background(Color.White.copy(alpha = 0.05f))
-                                    .padding(horizontal = 10.dp, vertical = 7.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(temaAtual.icone, fontSize = 16.sp)
-                                    Spacer(Modifier.width(8.dp))
-                                    Column {
-                                        Text("Estilo Visual do Chat", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                                        Text(temaAtual.nome, color = Ouro, fontSize = 10.sp)
-                                    }
-                                }
-                                Text("Alternar Skin", color = Color(0xFF7C4DFF), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-
+                    // Bloco Orbe dos Destinos, Memórias & Skin (V1.9.5)
+
+                    Surface(
+
+                        color = Color(0xFF181B2C),
+
+                        shape = RoundedCornerShape(16.dp),
+
+                        border = BorderStroke(1.dp, Color(0xFFF5C842).copy(alpha = 0.35f)),
+
+                        modifier = Modifier.fillMaxWidth()
+
+                    ) {
+
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+
+                            Text(
+
+                                text = "✨ Destinos & Customização",
+
+                                color = Ouro,
+
+                                fontSize = 11.sp,
+
+                                fontWeight = FontWeight.Bold
+
+                            )
+
+
+
+                            Row(
+
+                                modifier = Modifier.fillMaxWidth(),
+
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+
+                            ) {
+
+                                // Orbe dos Destinos (Roleta)
+
+                                Surface(
+
+                                    color = Color(0xFF221E36),
+
+                                    shape = RoundedCornerShape(12.dp),
+
+                                    border = BorderStroke(1.dp, Color(0xFFF5C842).copy(alpha = 0.45f)),
+
+                                    modifier = Modifier
+
+                                        .weight(1f)
+
+                                        .clickable { mostrarOrbeModal = true }
+
+                                ) {
+
+                                    Column(
+
+                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
+
+                                        horizontalAlignment = Alignment.CenterHorizontally
+
+                                    ) {
+
+                                        Text("🔮", fontSize = 20.sp)
+
+                                        Spacer(Modifier.height(4.dp))
+
+                                        Text("Orbe Diário", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+
+                                        Text("Girar e Ganhar", color = Ouro, fontSize = 9.sp)
+
+                                    }
+
+                                }
+
+
+
+                                // Memórias Secretas
+
+                                Surface(
+
+                                    color = Color(0xFF1E2336),
+
+                                    shape = RoundedCornerShape(12.dp),
+
+                                    border = BorderStroke(1.dp, Color(0xFF7C4DFF).copy(alpha = 0.45f)),
+
+                                    modifier = Modifier
+
+                                        .weight(1f)
+
+                                        .clickable { mostrarMemoriasModal = true }
+
+                                ) {
+
+                                    Column(
+
+                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
+
+                                        horizontalAlignment = Alignment.CenterHorizontally
+
+                                    ) {
+
+                                        Text("🗝️", fontSize = 20.sp)
+
+                                        Spacer(Modifier.height(4.dp))
+
+                                        Text("Memórias", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+
+                                        Text("Contos Secretos", color = Color(0xFFA78BFA), fontSize = 9.sp)
+
+                                    }
+
+                                }
+
+
+
+
+
+                            }
+
+
+
+                            // Seletor de Tema do Chat
+
+                            Row(
+
+                                modifier = Modifier
+
+                                    .fillMaxWidth()
+
+                                    .clip(RoundedCornerShape(10.dp))
+
+                                    .clickable {
+
+                                        val temas = TemaChat.values()
+
+                                        val proximo = temas[(temas.indexOf(temaAtual) + 1) % temas.size]
+
+                                        TemaChat.salvarTema(contexto, proximo)
+
+                                        temaAtual = proximo
+                                        vm.definirTemaChatAtivo(proximo)
+
+                                        Toast.makeText(contexto, "Tema alterado: ${proximo.nome}", Toast.LENGTH_SHORT).show()
+
+                                    }
+
+                                    .background(Color.White.copy(alpha = 0.05f))
+
+                                    .padding(horizontal = 10.dp, vertical = 7.dp),
+
+                                horizontalArrangement = Arrangement.SpaceBetween,
+
+                                verticalAlignment = Alignment.CenterVertically
+
+                            ) {
+
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+
+                                    Text(temaAtual.icone, fontSize = 16.sp)
+
+                                    Spacer(Modifier.width(8.dp))
+
+                                    Column {
+
+                                        Text("Estilo Visual do Chat", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+
+                                        Text(temaAtual.nome, color = Ouro, fontSize = 10.sp)
+
+                                    }
+
+                                }
+
+                                Text("Alternar Skin", color = Color(0xFF7C4DFF), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+
+                            }
+
+                        }
+
+                    }
+
+
+
                     // Bloco 1: Inteligência & Memória
                     Surface(
                         color = Color(0xFF161824),
@@ -6431,6 +6760,21 @@ private fun ModalConfiguracoesChat(
                     Spacer(Modifier.height(8.dp))
                 }
             }
+        }
+
+        if (mostrarOrbeModal) {
+            ModalOrbeDosDestinos(
+                vm = vm,
+                onFechar = { mostrarOrbeModal = false }
+            )
+        }
+
+        if (mostrarMemoriasModal) {
+            ModalMemoriasSecretas(
+                nomePersonagem = jogo.cenario?.nome ?: jogo.personagem.nome,
+                nivelVinculoAtual = vinculo.nivel,
+                onFechar = { mostrarMemoriasModal = false }
+            )
         }
 
         if (mostrarMissoesModal) {

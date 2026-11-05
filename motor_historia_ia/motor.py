@@ -1728,13 +1728,35 @@ def _traduzir_prompt_retrato(prompt):
 
 def gerar_prompt_visual_cena(cenario_nome: str, genero: str, personagem_info: str, narrativa: str) -> str:
     """Sintetiza um prompt de arte cinematográfica em inglês para ilustrar a cena atual da história."""
+    angulos = [
+        "cinematic wide-angle establishing shot, dynamic visual depth",
+        "immersive cinematic medium shot, eye-level framing, high focus",
+        "dramatic dynamic low-angle shot, majestic scale, depth of field",
+        "atmospheric perspective, cinematic golden ratio composition, rich foreground"
+    ]
+    iluminacoes = [
+        "dramatic volumetric rim lighting, deep textured shadows, cinematic glow",
+        "moody atmospheric illumination, soft ambient backlight, raytracing",
+        "rich chiaroscuro lighting, vivid color contrast, photorealistic textures",
+        "warm golden hour sunlight rays, atmospheric haze, dust motes in light"
+    ]
+    estilos = [
+        "hyper-detailed digital concept art",
+        "award-winning cinematic visual novel illustration",
+        "masterpiece high-end anime key visual with detailed digital painting"
+    ]
+    angulo = random.choice(angulos)
+    iluminacao = random.choice(iluminacoes)
+    estilo = random.choice(estilos)
+
     pedido = (
         "You are an expert concept artist and visual director for fantasy, romance, anime and RPG novels.\n"
         "Create a vivid, descriptive English image generation prompt (40 to 70 words) representing the exact visual scene.\n"
         "Rules:\n"
         "- Focus strictly on physical visuals: scenery, environment, visible characters and actions, mood, lighting, perspective.\n"
+        "- Capture specific actions occurring in this scene (e.g. drinking, sword fighting, exploring, raining, spell casting).\n"
         "- Do NOT output quotes, dialogues, narrative exposition or character names.\n"
-        "- Finish with: 'masterpiece, digital concept art, 8k resolution, cinematic lighting, sharp focus'.\n"
+        f"- Finish with: '{estilo}, {angulo}, {iluminacao}, masterpiece, 8k resolution, sharp focus'.\n"
         "- Output ONLY the English prompt, nothing else.\n\n"
         f"World/Genre: {cenario_nome} ({genero})\n"
         f"Character Context: {personagem_info}\n"
@@ -1781,8 +1803,10 @@ def _retrato_pollinations(prompt, traduzir=True, largura=None, altura=None):
         params = {
             "seed": random.randint(1, 2_000_000_000),
             "nologo": "true",
+            "nofeed": "true",
             "width": largura_req,
             "height": altura_req,
+            "t": int(time.time()),
         }
         if mod:
             params["model"] = mod
@@ -2195,7 +2219,7 @@ def criar_savepoint(estado, nome=None, instante_ms=None):
         "snapshot": snapshot,
     }
     saves.append(novo)
-    estado["savepoints"] = saves[-10:]
+    estado["savepoints"] = saves[-30:]
     return novo
 
 

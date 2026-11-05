@@ -1445,6 +1445,15 @@ def criar_jogo(dados: NovoJogoIn, jogador=Depends(jogador_atual)):
             morreu = motor.registrar_turno(
                 estado, acao_inicial, resultado, _agora_ms(), _agora_ms()
             )
+        try:
+            local_ini = estado.get("personagem", {}).get("local") or "Início"
+            motor.criar_savepoint(
+                estado,
+                nome=f"Prólogo • {local_ini}",
+                instante_ms=_agora_ms()
+            )
+        except Exception as err_prologo:
+            logging.warning("Falha ao registrar auto-save de prologo: %s", err_prologo)
         jogo_id = uuid.uuid4().hex
         banco.criar_jogo(jogo_id, jogador["id"], motor.estado_para_texto(estado), morreu)
     return montar_saida(jogo_id, estado, morreu, restantes - 1, mochis=saldo_livens)
@@ -1892,6 +1901,15 @@ def jogar_turno(dados: TurnoIn, jogo_id: IdDoJogo, jogador=Depends(jogador_atual
         resultado = chamar_ia(jogador["id"], estado, acao, escolha=dados.opcao is not None)
         saldo_livens = _cobrar_livens_do_modelo(jogador, modelo_atual)
         morreu = motor.registrar_turno(estado, acao, resultado, enviado_em, _agora_ms())
+        try:
+            local_atual = estado.get("personagem", {}).get("local") or "Aventura"
+            motor.criar_savepoint(
+                estado,
+                nome=f"Capítulo {estado['turno']} • {local_atual}",
+                instante_ms=_agora_ms()
+            )
+        except Exception as err_save:
+            logging.warning("Falha ao registrar auto-save de capitulo: %s", err_save)
         estado["ultimo_pedido"] = dados.pedido_id
         banco.atualizar_jogo(jogo_id, jogador["id"], motor.estado_para_texto(estado), morreu)
     return montar_saida(jogo_id, estado, morreu, restantes - 1, mochis=saldo_livens)
@@ -2007,15 +2025,10 @@ def ilustrar_cena_atual(
 
     pasta_cenas = os.path.join(config.PASTA, "dados", "cenas")
     os.makedirs(pasta_cenas, exist_ok=True)
-    arquivo_nome = f"{jogo_id}_{estado['turno']}.png"
+    ts = int(time.time())
+    arquivo_nome = f"{jogo_id}_{estado['turno']}_{ts}.png"
     caminho_final = os.path.join(pasta_cenas, arquivo_nome)
     url_relativa = f"/jogos/{jogo_id}/cenas/{arquivo_nome}"
-
-    # 1. Se a cena deste turno já foi ilustrada e o arquivo existe, retorna imediatamente
-    if os.path.exists(caminho_final) and os.path.getsize(caminho_final) > 1000:
-        cena["imagem_url"] = url_relativa
-        banco.atualizar_jogo(jogo_id, jogador["id"], motor.estado_para_texto(estado), bool(jogo["encerrado"]))
-        return IlustracaoCenaOut(imagem_url=url_relativa)
 
     # 2. Verificação de Acesso: Modelo Pago vs Gratuito com Anúncio
     eh_jogador_premium = bool(jogador.get("premium"))

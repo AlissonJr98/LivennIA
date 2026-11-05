@@ -60,6 +60,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         prefs.estiloTema = estilo.name
     }
 
+    var temaChatAtivo by mutableStateOf<TemaChat?>(null)
+
+    fun definirTemaChatAtivo(tema: TemaChat) {
+        temaChatAtivo = tema
+    }
+
     // Cor de destaque do estilo Neon (fundo preto + uma cor só).
     var corNeon by mutableStateOf(
         runCatching { CorNeon.valueOf(prefs.corNeon) }.getOrDefault(CorNeon.AMARELO)

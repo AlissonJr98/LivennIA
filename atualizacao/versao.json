@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 55,
-  "versaoNome": "1.9.5",
-  "notas": "Atualização 1.9.5: Correção da Ilustração de Cena com IA (prompts visuais cinematográficos sincronizados ao contexto narrativo e proteção contra travamentos), Ajuste visual completo do Chat RPG e História (eliminação de espaços redundantes no topo, fotos de perfil corrigidas e auto-scroll fluido durante a escrita), Orbe dos Destinos com roleta diária de prêmios, Memórias Secretas desbloqueadas por nível de vínculo, Atributos Ativos na Ficha de RPG (bônus de Força, Destreza, Mente e Carisma nos dados d20), Temas e Skins Visuais do Chat (Cósmico, Pergaminho Antigo, Cyberpunk Neon e Minimalista Clean) e Backup Local em 1 clique.",
+  "versaoCodigo": 56,
+  "versaoNome": "1.9.6",
+  "notas": "Atualização 1.9.6: Salvamento Automático Inteligente de Capítulos (cada turno e escolha é salvo sozinho para você voltar no tempo com 1 clique), Galeria de Momentos viva com geração direta de arte da cena por IA, Modo Cinema Interativo (faça escolhas ou escreva sua ação diretamente na tela de visual novel), Som Ambiente Orgânico e Contextual (detecta tavernas, combates, florestas, masmorras e chuva conforme a história), Gerador de Imagens com variação cinematográfica dinâmica sem repetição, Destinos & Customização 100% operacionais com Orbe diário e Memórias Secretas ativas, e remoção do backup manual.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }
