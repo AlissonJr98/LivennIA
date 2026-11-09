@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 56,
-  "versaoNome": "1.9.6",
-  "notas": "Atualização 1.9.6: Salvamento Automático Inteligente de Capítulos (cada turno e escolha é salvo sozinho para você voltar no tempo com 1 clique), Galeria de Momentos viva com geração direta de arte da cena por IA, Modo Cinema Interativo (faça escolhas ou escreva sua ação diretamente na tela de visual novel), Som Ambiente Orgânico e Contextual (detecta tavernas, combates, florestas, masmorras e chuva conforme a história), Gerador de Imagens com variação cinematográfica dinâmica sem repetição, Destinos & Customização 100% operacionais com Orbe diário e Memórias Secretas ativas, e remoção do backup manual.",
+  "versaoCodigo": 57,
+  "versaoNome": "1.9.7",
+  "notas": "Atualização 1.9.7: Sons ambientes de Taverna e Masmorra audíveis e aprimorados para alto-falante de celular (lareira com alaúde e caverna com gotas nítidas), Galeria de Cenas com zoom em alta resolução e botão de salvar foto na galeria, Skins do Chat (Cósmico, Pergaminho, Cyberpunk, Minimalista) ativas em toda a conversa, foto de perfil persistente nos balões de fala, e separação completa entre o Console de Mesa & RPG (PV, dados d20, atributos D&D, inventário) e o Diário da Narrativa (vínculo afetivo, presentes, memórias secretas, modo cinema e livro PDF).",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }
