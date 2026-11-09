@@ -473,7 +473,8 @@ data class MomentoCG(
     val titulo: String,
     val subtitulo: String,
     val nivelNecessario: Int,
-    val descricaoLore: String
+    val descricaoLore: String,
+    val imagemUrl: String? = null
 )
 
 @Composable
@@ -578,6 +579,16 @@ fun ModalGaleriaMomentos(
                             .fillMaxWidth()
                             .height(170.dp)
                             .clip(RoundedCornerShape(14.dp))
+                            .clickable {
+                                momentoEmZoom = MomentoCG(
+                                    id = "cena_atual",
+                                    titulo = "Cena Ilustrada da Sessão",
+                                    subtitulo = "Turno ${jogo.turno}",
+                                    nivelNecessario = 0,
+                                    descricaoLore = jogo.cena.narrativa,
+                                    imagemUrl = fullUrl
+                                )
+                            }
                     ) {
                         Box(modifier = Modifier.fillMaxSize()) {
                             AsyncImage(
@@ -682,6 +693,10 @@ fun ModalGaleriaMomentos(
     )
 
     momentoEmZoom?.let { mz ->
+        val base = ApiClient.baseUrlAtual()
+        val urlCenaAtual = if (!jogo.cena.imagemUrl.isNullOrBlank() && base != null) "${base.trimEnd('/')}/${jogo.cena.imagemUrl.orEmpty().trimStart('/')}" else jogo.cena.imagemUrl
+        val urlFinalImagem = mz.imagemUrl ?: urlCenaAtual
+
         Dialog(
             onDismissRequest = { momentoEmZoom = null },
             properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -691,7 +706,18 @@ fun ModalGaleriaMomentos(
                     .fillMaxSize()
                     .background(Color.Black)
             ) {
-                if (!cenarioId.isNullOrBlank()) {
+                if (!urlFinalImagem.isNullOrBlank()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(contexto)
+                            .data(urlFinalImagem)
+                            .allowHardware(false)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = mz.titulo,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else if (!cenarioId.isNullOrBlank()) {
                     CapaCenario(
                         cenarioId = cenarioId,
                         temCapa = true,
@@ -708,9 +734,9 @@ fun ModalGaleriaMomentos(
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
-                                    Color.Black.copy(alpha = 0.6f),
+                                    Color.Black.copy(alpha = 0.70f),
                                     Color.Transparent,
-                                    Color.Black.copy(alpha = 0.9f)
+                                    Color.Black.copy(alpha = 0.95f)
                                 )
                             )
                         )
@@ -724,14 +750,14 @@ fun ModalGaleriaMomentos(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("📸 Momento: ${mz.titulo}", color = Ouro, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text("📸 ${mz.titulo}", color = Ouro, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     IconButton(onClick = { momentoEmZoom = null }) {
                         Icon(Icons.Default.Close, contentDescription = "Fechar", tint = Color.White)
                     }
                 }
 
                 Surface(
-                    color = Color(0xFF0F101A).copy(alpha = 0.92f),
+                    color = Color(0xFF0F101A).copy(alpha = 0.94f),
                     shape = RoundedCornerShape(20.dp),
                     border = BorderStroke(1.dp, Ouro.copy(alpha = 0.4f)),
                     modifier = Modifier
@@ -744,8 +770,57 @@ fun ModalGaleriaMomentos(
                         Text(mz.titulo, color = Ouro, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         Spacer(Modifier.height(4.dp))
                         Text(mz.descricaoLore, color = Color.White, fontSize = 13.sp, lineHeight = 19.sp)
-                        Spacer(Modifier.height(8.dp))
-                        Text("★ Registro Oficial LivennIA • Memória Guardada", color = TextoSuave, fontSize = 11.sp)
+                        Spacer(Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("★ Registro Oficial LivennIA", color = TextoSuave, fontSize = 11.sp)
+
+                            if (!urlFinalImagem.isNullOrBlank()) {
+                                Surface(
+                                    color = Ouro,
+                                    shape = Cantos.pilula,
+                                    modifier = Modifier.clickable {
+                                        Toast.makeText(contexto, "Salvando na galeria do celular...", Toast.LENGTH_SHORT).show()
+                                        CoroutineScope(Dispatchers.IO).launch {
+                                            try {
+                                                val loader = coil.ImageLoader(contexto)
+                                                val req = ImageRequest.Builder(contexto).data(urlFinalImagem).allowHardware(false).build()
+                                                val res = (loader.execute(req) as? coil.request.SuccessResult)?.drawable
+                                                val bitmap = (res as? android.graphics.drawable.BitmapDrawable)?.bitmap
+                                                if (bitmap != null) {
+                                                    val cv = android.content.ContentValues().apply {
+                                                        put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, "LivennIA_${System.currentTimeMillis()}.png")
+                                                        put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                                                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                                                            put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_PICTURES + "/LivennIA")
+                                                        }
+                                                    }
+                                                    val uri = contexto.contentResolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, cv)
+                                                    if (uri != null) {
+                                                        contexto.contentResolver.openOutputStream(uri)?.use { out ->
+                                                            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+                                                        }
+                                                        kotlinx.coroutines.withContext(Dispatchers.Main) {
+                                                            Toast.makeText(contexto, "💾 Imagem salva na galeria!", Toast.LENGTH_SHORT).show()
+                                                        }
+                                                    }
+                                                }
+                                            } catch (e: Exception) {
+                                                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                                                    Toast.makeText(contexto, "Falha ao salvar: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        }
+                                    }
+                                ) {
+                                    Text("💾 Salvar Foto", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1330,6 +1405,7 @@ fun JogoTela(vm: AppViewModel) {
     }
 
     val listaChat = rememberLazyListState()
+    val temaAtivo = vm.temaChatAtivo ?: remember(contexto) { TemaChat.obterTema(contexto) }
     val cenarioCompleto = remember(jogo.cenario, vm.catalogo) {
         val cid = jogo.cenario?.id
         if (cid != null) {
@@ -1541,10 +1617,10 @@ fun JogoTela(vm: AppViewModel) {
                             ) {
                                 if (cenarioCompleto != null && cenarioCompleto.id.isNotBlank()) {
                                     CapaCenario(
-                                        cenarioId = cenarioCompleto.id,
+                                        cenarioId = cenarioCompleto.id.orEmpty(),
                                         temCapa = true,
                                         emoji = cenarioCompleto.emojiSeguro.ifBlank { "🎭" },
-                                        nome = cenarioCompleto.nome,
+                                        nome = cenarioCompleto.nome ?: "Personagem",
                                         versao = vm.capaVersao,
                                         modifier = Modifier.fillMaxSize(),
                                         recorte = CircleShape
@@ -2387,24 +2463,24 @@ private fun BalaoJogador(
     texto: String,
     tamanhoLetra: Float,
     hora: Long?,
-    pendente: Boolean = false
+    pendente: Boolean = false,
+    temaChat: TemaChat? = null
 ) {
+    val corBg = temaChat?.corBalaoUsuario ?: MaterialTheme.colorScheme.primary
+    val corTxt = temaChat?.corTexto ?: MaterialTheme.colorScheme.onPrimary
+
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
         horizontalAlignment = Alignment.End
     ) {
         Surface(
-            color = if (pendente) {
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)
-            } else {
-                MaterialTheme.colorScheme.primary
-            },
+            color = if (pendente) corBg.copy(alpha = 0.55f) else corBg,
             shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 6.dp),
             modifier = Modifier.fillMaxWidth(0.86f)
         ) {
             Text(
                 text = texto,
-                color = MaterialTheme.colorScheme.onPrimary,
+                color = corTxt,
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontSize = (tamanhoLetra - 1f).sp,
                     lineHeight = ((tamanhoLetra - 1f) * 1.4f).sp
@@ -2440,12 +2516,17 @@ private fun BlocoNarrador(
     aoRegenerar: () -> Unit = {},
     aoEditar: () -> Unit = {},
     aoOuvir: (() -> Unit)? = null,
-    aoIlustrar: (() -> Unit)? = null
+    aoIlustrar: (() -> Unit)? = null,
+    temaChat: TemaChat? = null
 ) {
+    val corBg = temaChat?.corBalaoIA ?: SuperficieAlta
+    val corDestaque = temaChat?.corDestaque ?: Ouro
+    val corTxt = temaChat?.corTexto ?: Color.White
+
     Surface(
-        color = SuperficieAlta,
+        color = corBg,
         shape = RoundedCornerShape(16.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Ouro.copy(alpha = 0.22f)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, corDestaque.copy(alpha = 0.28f)),
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp)
@@ -2454,6 +2535,7 @@ private fun BlocoNarrador(
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
             Text(
                 text = parsearNarrativa(texto),
+                color = corTxt,
                 style = MaterialTheme.typography.bodyLarge.copy(
                     fontSize = tamanhoLetra.sp,
                     lineHeight = (tamanhoLetra * 1.45f).sp
@@ -2535,6 +2617,9 @@ private fun CardFalaGrupo(
     aoTocar: () -> Unit = {},
     aoCopiar: () -> Unit = {},
     aoOuvir: (() -> Unit)? = null,
+    cenarioCompleto: CenarioDto? = null,
+    jogo: JogoResponse? = null,
+    temaChat: TemaChat? = null,
     rodape: (@Composable () -> Unit)? = null
 ) {
     val membro = remember(bloco.personagem, party) {
@@ -2555,10 +2640,13 @@ private fun CardFalaGrupo(
         if (ehModoHistoria) "Narrador" else "Mestre"
     } else "Narrador"
 
+    val corFundoCard = temaChat?.corBalaoIA ?: Color(0xFF13141F).copy(alpha = 0.92f)
+    val corBordaCard = temaChat?.corDestaque?.copy(alpha = 0.45f) ?: corDestaque.copy(alpha = 0.45f)
+
     Surface(
-        color = Color(0xFF13141F).copy(alpha = 0.92f),
+        color = corFundoCard,
         shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.2.dp, corDestaque.copy(alpha = 0.45f)),
+        border = BorderStroke(1.2.dp, corBordaCard),
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = clicavel) { aoTocar() }
@@ -2569,10 +2657,14 @@ private fun CardFalaGrupo(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val ehPersonagemCenario = cenarioCompleto != null && (bloco.personagem?.equals(cenarioCompleto.nome, ignoreCase = true) == true || bloco.personagem?.equals(cenarioCompleto.id, ignoreCase = true) == true)
+                val ehProtagonista = jogo != null && bloco.personagem?.equals(jogo.personagem.nome, ignoreCase = true) == true
+
                 if (!avatarUrl.isNullOrBlank()) {
                     SubcomposeAsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(avatarUrl)
+                            .allowHardware(false)
                             .crossfade(true)
                             .build(),
                         contentDescription = nomeExibicao,
@@ -2581,6 +2673,25 @@ private fun CardFalaGrupo(
                             .size(34.dp)
                             .clip(CircleShape)
                             .border(1.5.dp, corDestaque, CircleShape)
+                    )
+                } else if (ehPersonagemCenario && cenarioCompleto != null) {
+                    CapaCenario(
+                        cenarioId = cenarioCompleto.id.orEmpty(),
+                        temCapa = cenarioCompleto.capa,
+                        emoji = cenarioCompleto.emoji ?: "🎭",
+                        nome = cenarioCompleto.nome ?: "Personagem",
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .border(1.5.dp, corDestaque, CircleShape)
+                    )
+                } else if (ehProtagonista && jogo != null) {
+                    RetratoPersonagem(
+                        jogoId = jogo.jogoId,
+                        seed = jogo.avatarSeed,
+                        nome = jogo.personagem.nome,
+                        temRetrato = jogo.retrato,
+                        tamanho = 34
                     )
                 } else {
                     Box(
@@ -2832,6 +2943,7 @@ private fun JogoModoHistoria(vm: AppViewModel) {
     var mostrarPerfilHistoria by remember { mutableStateOf(false) }
     var mostrarConfiguracoesChat by remember { mutableStateOf(false) }
 
+    val temaAtivo = vm.temaChatAtivo ?: remember(contexto) { TemaChat.obterTema(contexto) }
     val cenarioCompleto = remember(jogo.cenario, vm.catalogo) {
         val cid = jogo.cenario?.id
         if (cid != null) {
@@ -2981,10 +3093,10 @@ private fun JogoModoHistoria(vm: AppViewModel) {
                                     .clip(CircleShape)
                             ) {
                                 CapaCenario(
-                                    cenarioId = cenarioCompleto.id,
+                                    cenarioId = cenarioCompleto.id.orEmpty(),
                                     temCapa = cenarioCompleto.capa,
                                     emoji = cenarioCompleto.emojiSeguro.ifBlank { "📖" },
-                                    nome = cenarioCompleto.nome,
+                                    nome = cenarioCompleto.nome ?: "Personagem",
                                     versao = vm.capaVersao,
                                     modifier = Modifier.fillMaxSize(),
                                     recorte = CircleShape
@@ -5469,10 +5581,7 @@ enum class ClimaSonoroNarrativa(val icone: String, val titulo: String) {
 }
 
 object SintetizadorAmbienteLivennIA {
-    private var job: Job? = null
-    private var track: AudioTrack? = null
-    var ativo by mutableStateOf(false)
-        private set
+    val ativo: Boolean get() = GerenciadorAmbienteSonoro.ambienteAtivo != GerenciadorAmbienteSonoro.TipoAmbiente.DESLIGADO
     var climaAtual by mutableStateOf(ClimaSonoroNarrativa.MISTICO)
         private set
 
@@ -5489,11 +5598,23 @@ object SintetizadorAmbienteLivennIA {
         }
     }
 
+    private fun climaParaTipo(clima: ClimaSonoroNarrativa): GerenciadorAmbienteSonoro.TipoAmbiente {
+        return when (clima) {
+            ClimaSonoroNarrativa.TAVERNA -> GerenciadorAmbienteSonoro.TipoAmbiente.TAVERNA
+            ClimaSonoroNarrativa.MASMORRA -> GerenciadorAmbienteSonoro.TipoAmbiente.MASMORRA
+            ClimaSonoroNarrativa.COMBATE -> GerenciadorAmbienteSonoro.TipoAmbiente.MASMORRA
+            ClimaSonoroNarrativa.CHUVA -> GerenciadorAmbienteSonoro.TipoAmbiente.CYBERPUNK
+            ClimaSonoroNarrativa.FLORESTA -> GerenciadorAmbienteSonoro.TipoAmbiente.FLORESTA
+            ClimaSonoroNarrativa.MISTICO -> GerenciadorAmbienteSonoro.TipoAmbiente.TAVERNA
+        }
+    }
+
     fun sincronizarComNarrativa(narrativa: String, genero: String) {
         if (!ativo) return
         val novoClima = detectarAmbiente(narrativa, genero)
         if (novoClima != climaAtual) {
             climaAtual = novoClima
+            GerenciadorAmbienteSonoro.alternarAmbiente(climaParaTipo(novoClima))
         }
     }
 
@@ -5508,114 +5629,12 @@ object SintetizadorAmbienteLivennIA {
     }
 
     fun parar() {
-        ativo = false
-        job?.cancel()
-        job = null
-        try {
-            track?.pause()
-            track?.flush()
-            track?.release()
-        } catch (_: Exception) {}
-        track = null
+        GerenciadorAmbienteSonoro.parar()
     }
 
     fun iniciar(genero: String = "Fantasia") {
-        parar()
-        ativo = true
-
-        val sampleRate = 22050
-        val bufferSize = AudioTrack.getMinBufferSize(
-            sampleRate,
-            AudioFormat.CHANNEL_OUT_MONO,
-            AudioFormat.ENCODING_PCM_16BIT
-        ).coerceAtLeast(4096)
-
-        try {
-            track = AudioTrack.Builder()
-                .setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_GAME)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                        .build()
-                )
-                .setAudioFormat(
-                    AudioFormat.Builder()
-                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                        .setSampleRate(sampleRate)
-                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                        .build()
-                )
-                .setBufferSizeInBytes(bufferSize)
-                .setTransferMode(AudioTrack.MODE_STREAM)
-                .build()
-
-            track?.play()
-        } catch (_: Exception) {
-            ativo = false
-            return
-        }
-
-        job = CoroutineScope(Dispatchers.Default).launch {
-            val chunk = ShortArray(bufferSize / 2)
-            var t = 0L
-            var filtroRosa = 0.0
-
-            while (isActive && ativo) {
-                val clima = climaAtual
-                for (i in chunk.indices) {
-                    val sec = t / sampleRate.toDouble()
-                    val amostraDouble: Double = when (clima) {
-                        ClimaSonoroNarrativa.TAVERNA -> {
-                            // Crepitar suave de lareira sem zumbido agudo
-                            val ruido = (Math.random() * 2.0 - 1.0)
-                            filtroRosa = 0.94 * filtroRosa + 0.06 * ruido
-                            val estalo = if (Math.random() < 0.0015) (Math.random() * 0.45) else 0.0
-                            val zumbidoBaixo = sin(2.0 * Math.PI * 55.0 * sec) * 0.08
-                            (filtroRosa * 0.22 + estalo + zumbidoBaixo)
-                        }
-                        ClimaSonoroNarrativa.COMBATE -> {
-                            // Pulso rítmico de adrenalina e tambor de batalha
-                            val batimento = sin(2.0 * Math.PI * 1.35 * sec) // 81 bpm
-                            val pulso = if (batimento > 0.7) sin(2.0 * Math.PI * 65.0 * sec) * (batimento - 0.7) * 0.9 else 0.0
-                            val tensaoHarmonica = sin(2.0 * Math.PI * 110.0 * sec) * 0.12
-                            (pulso + tensaoHarmonica)
-                        }
-                        ClimaSonoroNarrativa.CHUVA -> {
-                            // Chuva suave e relaxante
-                            val ruido = (Math.random() * 2.0 - 1.0)
-                            filtroRosa = 0.90 * filtroRosa + 0.10 * ruido
-                            val trovaoDistante = sin(2.0 * Math.PI * 38.0 * sec) * (0.05 + 0.04 * sin(sec * 0.2))
-                            (filtroRosa * 0.20 + trovaoDistante)
-                        }
-                        ClimaSonoroNarrativa.FLORESTA -> {
-                            // Brisa orgânica nos galhos e harmonia de natureza
-                            val brisa = sin(sec * 0.5) * 0.5 + 0.5
-                            val harmonia = sin(2.0 * Math.PI * 220.0 * sec) * 0.08 + sin(2.0 * Math.PI * 277.18 * sec) * 0.06
-                            val ventoRuido = (Math.random() * 2.0 - 1.0) * 0.04 * brisa
-                            (harmonia + ventoRuido)
-                        }
-                        ClimaSonoroNarrativa.MASMORRA -> {
-                            // Ecos graves soturnos de pedra
-                            val drone = sin(2.0 * Math.PI * 45.0 * sec) * 0.22 + sin(2.0 * Math.PI * 90.0 * sec) * 0.10
-                            val gota = if (t % (sampleRate * 3) < 400) sin(2.0 * Math.PI * 880.0 * (t % (sampleRate * 3)) / sampleRate) * 0.25 else 0.0
-                            (drone + gota)
-                        }
-                        ClimaSonoroNarrativa.MISTICO -> {
-                            // Harmônicos brilhantes celestiais (acorde suave)
-                            val f1 = sin(2.0 * Math.PI * 261.63 * sec) * 0.10 // Dó
-                            val f2 = sin(2.0 * Math.PI * 329.63 * sec) * 0.08 // Mi
-                            val f3 = sin(2.0 * Math.PI * 392.00 * sec) * 0.08 // Sol
-                            val f4 = sin(2.0 * Math.PI * 523.25 * sec) * 0.05 // Dó alto
-                            (f1 + f2 + f3 + f4)
-                        }
-                    }
-                    val finalSample = amostraDouble.coerceIn(-1.0, 1.0)
-                    chunk[i] = (finalSample * 26000).toInt().toShort()
-                    t++
-                }
-                track?.write(chunk, 0, chunk.size)
-            }
-        }
+        val tipo = climaParaTipo(climaAtual)
+        GerenciadorAmbienteSonoro.alternarAmbiente(tipo)
     }
 }
 
@@ -5790,673 +5809,137 @@ private fun ModalConfiguracoesChat(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    // Barra superior com marca LivennIA e fechar
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("✦", color = Ouro, fontSize = 18.sp)
-                            Spacer(Modifier.width(8.dp))
-                            Column {
-                                Text(
-                                    text = "Console da Aventura",
-                                    color = Color.White,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = "${jogo.personagem.nome} • Turno ${jogo.turno}",
-                                    color = TextoSuave,
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
-
-                        Surface(
-                            color = Color.White.copy(alpha = 0.10f),
-                            shape = CircleShape,
-                            modifier = Modifier
-                                .size(30.dp)
-                                .clickable { onFechar() }
+                    if (!ehModoHistoria) {
+                        // =========================================================================
+                        // CONSOLE DE MESA & RPG (Focado em Combate, Atributos, Dados e Inventário)
+                        // =========================================================================
+                        // Top Bar RPG
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text("✕", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("⚔️", fontSize = 20.sp)
+                                Spacer(Modifier.width(8.dp))
+                                Column {
+                                    Text(
+                                        text = "Console de Mesa & RPG",
+                                        color = Color.White,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "${jogo.personagem.nome} • Turno ${jogo.turno} • Sistema D20 & Combate",
+                                        color = TextoSuave,
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            }
+
+                            Surface(
+                                color = Color.White.copy(alpha = 0.10f),
+                                shape = CircleShape,
+                                modifier = Modifier
+                                    .size(30.dp)
+                                    .clickable { onFechar() }
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text("✕", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
-                    }
 
-                    // Card Hero: Vínculo & Livens
-                    Surface(
-                        color = Color(0xFF181A28),
-                        shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, Color(0xFF7C4DFF).copy(alpha = 0.30f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(14.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(vinculo.icone, fontSize = 18.sp)
-                                    Spacer(Modifier.width(8.dp))
-                                    Column {
+                        // 1. Ficha Rápida do Aventureiro (HP e Modificadores D&D)
+                        Surface(
+                            color = Color(0xFF1E1418),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.35f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("❤️", fontSize = 16.sp)
+                                        Spacer(Modifier.width(6.dp))
                                         Text(
-                                            text = "Vínculo Nível ${vinculo.nivel}",
+                                            text = "Pontos de Vida (PV)",
                                             color = Color.White,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 13.sp
                                         )
-                                        Text(
-                                            text = vinculo.titulo,
-                                            color = Ouro,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Medium
-                                        )
                                     }
+                                    val vidaAtual = jogo.personagem.vida
+                                    val vidaMax = jogo.personagem.vidaMax.coerceAtLeast(1)
+                                    val corVida = if (vidaAtual < vidaMax * 0.3f) Color(0xFFFF5252) else Color(0xFF81C784)
+                                    Text(
+                                        text = "$vidaAtual / $vidaMax PV",
+                                        color = corVida,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp
+                                    )
                                 }
 
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Surface(
-                                        color = Color(0xFF7C4DFF).copy(alpha = 0.20f),
-                                        shape = Cantos.pilula,
-                                        border = BorderStroke(1.dp, Color(0xFF7C4DFF).copy(alpha = 0.45f)),
-                                        modifier = Modifier.clickable { mostrarMissoesModal = true }
-                                    ) {
-                                        Text(
-                                            text = "🏆 Missões",
-                                            color = Color(0xFFD6D0F5),
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                        )
-                                    }
+                                val pctVida = (jogo.personagem.vida.toFloat() / jogo.personagem.vidaMax.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f)
+                                LinearProgressIndicator(
+                                    progress = { pctVida },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(6.dp)
+                                        .clip(RoundedCornerShape(50)),
+                                    color = if (pctVida < 0.3f) Color(0xFFFF5252) else Color(0xFF4CAF50),
+                                    trackColor = Color.White.copy(alpha = 0.10f)
+                                )
 
-                                    Surface(
-                                        color = Ouro.copy(alpha = 0.15f),
-                                        shape = Cantos.pilula,
-                                        border = BorderStroke(1.dp, Ouro.copy(alpha = 0.45f))
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                            verticalAlignment = Alignment.CenterVertically
+                                // Modificadores de Atributos D&D
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    val atributos = listOf("FOR" to "+2", "DES" to "+3", "CON" to "+1", "INT" to "+0", "SAB" to "+2", "CAR" to "+1")
+                                    for ((atr, mod) in atributos) {
+                                        Surface(
+                                            color = Color.White.copy(alpha = 0.06f),
+                                            shape = RoundedCornerShape(8.dp),
+                                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f))
                                         ) {
-                                            Text("✨", fontSize = 11.sp)
-                                            Spacer(Modifier.width(3.dp))
-                                            Text(
-                                                text = "$totalLivens",
-                                                color = Ouro,
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
+                                            Column(
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                                                horizontalAlignment = Alignment.CenterHorizontally
+                                            ) {
+                                                Text(atr, color = TextoSuave, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                                Text(mod, color = Ouro, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                            }
                                         }
                                     }
                                 }
                             }
-
-                            Spacer(Modifier.height(10.dp))
-
-                            LinearProgressIndicator(
-                                progress = { vinculo.progresso },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(6.dp)
-                                    .clip(RoundedCornerShape(50)),
-                                color = Ouro,
-                                trackColor = Color.White.copy(alpha = 0.10f)
-                            )
-                        }
-                    }
-
-                    // Bloco Orbe dos Destinos, Memórias & Skin (V1.9.5)
-
-                    Surface(
-
-                        color = Color(0xFF181B2C),
-
-                        shape = RoundedCornerShape(16.dp),
-
-                        border = BorderStroke(1.dp, Color(0xFFF5C842).copy(alpha = 0.35f)),
-
-                        modifier = Modifier.fillMaxWidth()
-
-                    ) {
-
-                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-
-                            Text(
-
-                                text = "✨ Destinos & Customização",
-
-                                color = Ouro,
-
-                                fontSize = 11.sp,
-
-                                fontWeight = FontWeight.Bold
-
-                            )
-
-
-
-                            Row(
-
-                                modifier = Modifier.fillMaxWidth(),
-
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-
-                            ) {
-
-                                // Orbe dos Destinos (Roleta)
-
-                                Surface(
-
-                                    color = Color(0xFF221E36),
-
-                                    shape = RoundedCornerShape(12.dp),
-
-                                    border = BorderStroke(1.dp, Color(0xFFF5C842).copy(alpha = 0.45f)),
-
-                                    modifier = Modifier
-
-                                        .weight(1f)
-
-                                        .clickable { mostrarOrbeModal = true }
-
-                                ) {
-
-                                    Column(
-
-                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
-
-                                        horizontalAlignment = Alignment.CenterHorizontally
-
-                                    ) {
-
-                                        Text("🔮", fontSize = 20.sp)
-
-                                        Spacer(Modifier.height(4.dp))
-
-                                        Text("Orbe Diário", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-
-                                        Text("Girar e Ganhar", color = Ouro, fontSize = 9.sp)
-
-                                    }
-
-                                }
-
-
-
-                                // Memórias Secretas
-
-                                Surface(
-
-                                    color = Color(0xFF1E2336),
-
-                                    shape = RoundedCornerShape(12.dp),
-
-                                    border = BorderStroke(1.dp, Color(0xFF7C4DFF).copy(alpha = 0.45f)),
-
-                                    modifier = Modifier
-
-                                        .weight(1f)
-
-                                        .clickable { mostrarMemoriasModal = true }
-
-                                ) {
-
-                                    Column(
-
-                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
-
-                                        horizontalAlignment = Alignment.CenterHorizontally
-
-                                    ) {
-
-                                        Text("🗝️", fontSize = 20.sp)
-
-                                        Spacer(Modifier.height(4.dp))
-
-                                        Text("Memórias", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-
-                                        Text("Contos Secretos", color = Color(0xFFA78BFA), fontSize = 9.sp)
-
-                                    }
-
-                                }
-
-
-
-
-
-                            }
-
-
-
-                            // Seletor de Tema do Chat
-
-                            Row(
-
-                                modifier = Modifier
-
-                                    .fillMaxWidth()
-
-                                    .clip(RoundedCornerShape(10.dp))
-
-                                    .clickable {
-
-                                        val temas = TemaChat.values()
-
-                                        val proximo = temas[(temas.indexOf(temaAtual) + 1) % temas.size]
-
-                                        TemaChat.salvarTema(contexto, proximo)
-
-                                        temaAtual = proximo
-                                        vm.definirTemaChatAtivo(proximo)
-
-                                        Toast.makeText(contexto, "Tema alterado: ${proximo.nome}", Toast.LENGTH_SHORT).show()
-
-                                    }
-
-                                    .background(Color.White.copy(alpha = 0.05f))
-
-                                    .padding(horizontal = 10.dp, vertical = 7.dp),
-
-                                horizontalArrangement = Arrangement.SpaceBetween,
-
-                                verticalAlignment = Alignment.CenterVertically
-
-                            ) {
-
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-
-                                    Text(temaAtual.icone, fontSize = 16.sp)
-
-                                    Spacer(Modifier.width(8.dp))
-
-                                    Column {
-
-                                        Text("Estilo Visual do Chat", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-
-                                        Text(temaAtual.nome, color = Ouro, fontSize = 10.sp)
-
-                                    }
-
-                                }
-
-                                Text("Alternar Skin", color = Color(0xFF7C4DFF), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-
-                            }
-
                         }
 
-                    }
-
-
-
-                    // Bloco 1: Inteligência & Memória
-                    Surface(
-                        color = Color(0xFF161824),
-                        shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(
-                                text = "🧠 Motor IA & Consciência",
-                                color = Color(0xFFA78BFA),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-
-                            // Item Motor IA
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .clickable {
-                                        onFechar()
-                                        onAbrirDialogo(DialogoAberto.ModeloIA)
-                                    }
-                                    .padding(vertical = 8.dp, horizontal = 6.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("🤖", fontSize = 18.sp)
-                                    Spacer(Modifier.width(10.dp))
-                                    Column {
-                                        Text("Motor Narrativo", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                                        Text(jogo.modelo?.nome ?: "Livenn Flash", color = Ouro, fontSize = 11.sp)
-                                    }
-                                }
-                                Surface(
-                                    color = Color.White.copy(alpha = 0.08f),
-                                    shape = Cantos.pilula
-                                ) {
-                                    Text(
-                                        text = "Trocar",
-                                        color = Color.White,
-                                        fontSize = 11.sp,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                                    .height(1.dp)
-                                    .background(Color.White.copy(alpha = 0.06f))
-                            )
-
-                            // Item Memória
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .clickable {
-                                        onFechar()
-                                        onAbrirDialogo(DialogoAberto.Memoria)
-                                    }
-                                    .padding(vertical = 8.dp, horizontal = 6.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("💭", fontSize = 18.sp)
-                                    Spacer(Modifier.width(10.dp))
-                                    Column {
-                                        Text("Memória da História", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                                        Text("Fatos e recordações gravadas", color = TextoSuave, fontSize = 11.sp)
-                                    }
-                                }
-                                Surface(
-                                    color = Color.White.copy(alpha = 0.08f),
-                                    shape = Cantos.pilula
-                                ) {
-                                    Text(
-                                        text = "Ver",
-                                        color = Color.White,
-                                        fontSize = 11.sp,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Bloco 2: Identidade do Viajante & Crônica
-                    Surface(
-                        color = Color(0xFF161824),
-                        shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(
-                                text = "🎭 Identidade & Registros",
-                                color = Color(0xFFA78BFA),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-
-                            // Persona
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .clickable {
-                                        onFechar()
-                                        onAbrirPersona()
-                                    }
-                                    .padding(vertical = 8.dp, horizontal = 6.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("👤", fontSize = 18.sp)
-                                    Spacer(Modifier.width(10.dp))
-                                    Column {
-                                        Text("Persona do Viajante", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                                        Text(vm.personaAtiva?.nome ?: "Perfil Padrão", color = TextoSuave, fontSize = 11.sp)
-                                    }
-                                }
-                                Surface(
-                                    color = Color.White.copy(alpha = 0.08f),
-                                    shape = Cantos.pilula
-                                ) {
-                                    Text(
-                                        text = "Editar",
-                                        color = Color.White,
-                                        fontSize = 11.sp,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                                    .height(1.dp)
-                                    .background(Color.White.copy(alpha = 0.06f))
-                            )
-
-                            // Galeria Cenas
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .clickable {
-                                        onFechar()
-                                        onAbrirGaleria()
-                                    }
-                                    .padding(vertical = 8.dp, horizontal = 6.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("🖼️", fontSize = 18.sp)
-                                    Spacer(Modifier.width(10.dp))
-                                    Column {
-                                        Text("Galeria de Cenas", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                                        Text("Ilustrações visuais da jornada", color = TextoSuave, fontSize = 11.sp)
-                                    }
-                                }
-                                Surface(
-                                    color = Color.White.copy(alpha = 0.08f),
-                                    shape = Cantos.pilula
-                                ) {
-                                    Text(
-                                        text = "Galeria",
-                                        color = Color.White,
-                                        fontSize = 11.sp,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                                    .height(1.dp)
-                                    .background(Color.White.copy(alpha = 0.06f))
-                            )
-
-                            // Saves & Histórico
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .clickable {
-                                        onFechar()
-                                        onAbrirDialogo(DialogoAberto.Savepoints)
-                                    }
-                                    .padding(vertical = 8.dp, horizontal = 6.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("💾", fontSize = 18.sp)
-                                    Spacer(Modifier.width(10.dp))
-                                    Column {
-                                        Text("Capítulos & Saves", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                                        Text("Linha do tempo e pontos de retorno", color = TextoSuave, fontSize = 11.sp)
-                                    }
-                                }
-                                Surface(
-                                    color = Color.White.copy(alpha = 0.08f),
-                                    shape = Cantos.pilula
-                                ) {
-                                    Text(
-                                        text = "Saves",
-                                        color = Color.White,
-                                        fontSize = 11.sp,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                                    .height(1.dp)
-                                    .background(Color.White.copy(alpha = 0.06f))
-                            )
-
-                            // Diário & Cartas
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .clickable {
-                                        onFechar()
-                                        onAbrirDialogo(DialogoAberto.Diarios)
-                                    }
-                                    .padding(vertical = 8.dp, horizontal = 6.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("📔", fontSize = 18.sp)
-                                    Spacer(Modifier.width(10.dp))
-                                    Column {
-                                        Text("Diário de Bordo & Cartas", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                                        Text("Anotações e correspondências", color = TextoSuave, fontSize = 11.sp)
-                                    }
-                                }
-                                Surface(
-                                    color = Color.White.copy(alpha = 0.08f),
-                                    shape = Cantos.pilula
-                                ) {
-                                    Text(
-                                        text = "Diário",
-                                        color = Color.White,
-                                        fontSize = 11.sp,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                                    .height(1.dp)
-                                    .background(Color.White.copy(alpha = 0.06f))
-                            )
-
-                            // Árvore do Destino
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .clickable {
-                                        mostrarArvoreDestino = true
-                                    }
-                                    .padding(vertical = 8.dp, horizontal = 6.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("🌿", fontSize = 18.sp)
-                                    Spacer(Modifier.width(10.dp))
-                                    Column {
-                                        Text("Árvore do Destino", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                                        Text("Mapa visual de escolhas e bifurcações", color = TextoSuave, fontSize = 11.sp)
-                                    }
-                                }
-                                Surface(
-                                    color = Ouro.copy(alpha = 0.18f),
-                                    shape = Cantos.pilula,
-                                    border = BorderStroke(1.dp, Ouro.copy(alpha = 0.40f))
-                                ) {
-                                    Text(
-                                        text = "Árvore",
-                                        color = Ouro,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Bloco 3: Arsenal de RPG (se aplicável)
-                    if (!ehModoHistoria && onAbrirInventario != null) {
+                        // 2. Arsenal de Mesa (Dados, Mochila, Party)
                         Surface(
                             color = Color(0xFF1E1724),
                             shape = RoundedCornerShape(16.dp),
                             border = BorderStroke(1.dp, Color(0xFFE53935).copy(alpha = 0.25f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(
-                                    text = "⚔️ Arsenal de RPG",
+                                    text = "⚔️ Arsenal de Mesa & Rolagens",
                                     color = Color(0xFFFF8A80),
                                     fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(bottom = 8.dp)
+                                    fontWeight = FontWeight.Bold
                                 )
 
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Surface(
-                                        color = Color.White.copy(alpha = 0.07f),
-                                        shape = RoundedCornerShape(12.dp),
-                                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .clickable {
-                                                onFechar()
-                                                onAbrirInventario()
-                                            }
-                                    ) {
-                                        Column(
-                                            modifier = Modifier.padding(vertical = 10.dp),
-                                            horizontalAlignment = Alignment.CenterHorizontally
-                                        ) {
-                                            Text("🎒", fontSize = 18.sp)
-                                            Spacer(Modifier.height(4.dp))
-                                            Text("Mochila", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                                            Text("${jogo.personagem.inventario.size} itens", color = TextoSuave, fontSize = 9.sp)
-                                        }
-                                    }
-
+                                    // Rolar Dados d20
                                     Surface(
                                         color = Color.White.copy(alpha = 0.07f),
                                         shape = RoundedCornerShape(12.dp),
@@ -6474,11 +5957,37 @@ private fun ModalConfiguracoesChat(
                                         ) {
                                             Text("🎲", fontSize = 18.sp)
                                             Spacer(Modifier.height(4.dp))
-                                            Text("Dados", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                                            Text("Rolar d20", color = TextoSuave, fontSize = 9.sp)
+                                            Text("Rolar Dados", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                            Text("d20 / d6 / d100", color = TextoSuave, fontSize = 9.sp)
                                         }
                                     }
 
+                                    // Mochila & Inventário
+                                    if (onAbrirInventario != null) {
+                                        Surface(
+                                            color = Color.White.copy(alpha = 0.07f),
+                                            shape = RoundedCornerShape(12.dp),
+                                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clickable {
+                                                    onFechar()
+                                                    onAbrirInventario()
+                                                }
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.padding(vertical = 10.dp),
+                                                horizontalAlignment = Alignment.CenterHorizontally
+                                            ) {
+                                                Text("🎒", fontSize = 18.sp)
+                                                Spacer(Modifier.height(4.dp))
+                                                Text("Mochila", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                                Text("${jogo.personagem.inventario.size} itens", color = TextoSuave, fontSize = 9.sp)
+                                            }
+                                        }
+                                    }
+
+                                    // Companheiros de Party
                                     Surface(
                                         color = Color.White.copy(alpha = 0.07f),
                                         shape = RoundedCornerShape(12.dp),
@@ -6503,252 +6012,711 @@ private fun ModalConfiguracoesChat(
                                 }
                             }
                         }
-                    }
 
-                    // Bloco 4: Ações Rápidas & Sessão
-                    Surface(
-                        color = Color(0xFF161824),
-                        shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(
-                                text = "⚡ Ações da Sessão",
-                                color = Color(0xFFA78BFA),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                        // 3. Campanha & Memória do Mestre
+                        Surface(
+                            color = Color(0xFF161824),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    text = "📜 Campanha & Memória do Mestre",
+                                    color = Color(0xFFA78BFA),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                // Modo Cinema Toggle
-                                Surface(
-                                    color = if (modoCinema) Ouro.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.06f),
-                                    shape = RoundedCornerShape(10.dp),
-                                    border = BorderStroke(1.dp, if (modoCinema) Ouro.copy(alpha = 0.45f) else Color.White.copy(alpha = 0.08f)),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { onAlternarModoCinema() }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Row(
-                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
+                                    // Memória Canônica
+                                    Surface(
+                                        color = Color.White.copy(alpha = 0.05f),
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable {
+                                                onFechar()
+                                                onAbrirDialogo(DialogoAberto.Memoria)
+                                            }
                                     ) {
-                                        Text("🎨", fontSize = 14.sp)
-                                        Spacer(Modifier.width(6.dp))
-                                        Text(
-                                            text = if (modoCinema) "Cinema ON" else "Cinema OFF",
-                                            color = if (modoCinema) Ouro else Color.White,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                    }
-                                }
-
-                                // Presentes
-                                Surface(
-                                    color = Color.White.copy(alpha = 0.06f),
-                                    shape = RoundedCornerShape(10.dp),
-                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable {
-                                            onFechar()
-                                            onAbrirPresentes()
+                                        Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("💭", fontSize = 16.sp)
+                                            Text("Memória IA", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                                         }
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
-                                    ) {
-                                        Text("🎁", fontSize = 14.sp)
-                                        Spacer(Modifier.width(6.dp))
-                                        Text(
-                                            text = "Mimos",
-                                            color = Color.White,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
                                     }
-                                }
 
-                                // Exportar PDF
-                                Surface(
-                                    color = Color.White.copy(alpha = 0.06f),
-                                    shape = RoundedCornerShape(10.dp),
-                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable {
-                                            onFechar()
-                                            onExportarPdf()
-                                        }
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
+                                    // Cérebro Narrativo
+                                    Surface(
+                                        color = Color.White.copy(alpha = 0.05f),
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable {
+                                                onFechar()
+                                                onAbrirDialogo(DialogoAberto.ModeloIA)
+                                            }
                                     ) {
-                                        Text("📤", fontSize = 14.sp)
-                                        Spacer(Modifier.width(6.dp))
-                                        Text(
-                                            text = "PDF",
-                                            color = Color.White,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
+                                        Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("🤖", fontSize = 16.sp)
+                                            Text("Mestre IA", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                                        }
                                     }
-                                }
 
-                                // Card Story 9:16
-                                Surface(
-                                    color = Color.White.copy(alpha = 0.06f),
-                                    shape = RoundedCornerShape(10.dp),
-                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable {
-                                            mostrarCardCompartilhar = true
-                                        }
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
+                                    // Saves de Campanha
+                                    Surface(
+                                        color = Color.White.copy(alpha = 0.05f),
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable {
+                                                onFechar()
+                                                onAbrirDialogo(DialogoAberto.Savepoints)
+                                            }
                                     ) {
-                                        Text("📸", fontSize = 14.sp)
-                                        Spacer(Modifier.width(6.dp))
-                                        Text(
-                                            text = "Story",
-                                            color = Color.White,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
+                                        Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("💾", fontSize = 16.sp)
+                                            Text("Saves", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                                        }
+                                    }
+
+                                    // Orbe Diário
+                                    Surface(
+                                        color = Color.White.copy(alpha = 0.05f),
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable { mostrarOrbeModal = true }
+                                    ) {
+                                        Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("🔮", fontSize = 16.sp)
+                                            Text("Orbe Diário", color = Ouro, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                                        }
                                     }
                                 }
                             }
+                        }
 
-                            // Controle de Som Ambiente Procedural
-                            val ambienteAtual = GerenciadorAmbienteSonoro.ambienteAtivo
-                            Surface(
-                                color = if (ambienteAtual != GerenciadorAmbienteSonoro.TipoAmbiente.DESLIGADO) Color(0xFF1B2230) else Color.White.copy(alpha = 0.06f),
-                                shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.dp, if (ambienteAtual != GerenciadorAmbienteSonoro.TipoAmbiente.DESLIGADO) Color(0xFF00E5FF).copy(alpha = 0.45f) else Color.White.copy(alpha = 0.08f)),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        val proximos = GerenciadorAmbienteSonoro.TipoAmbiente.values()
-                                        val idx = (proximos.indexOf(ambienteAtual) + 1) % proximos.size
-                                        GerenciadorAmbienteSonoro.alternarAmbiente(proximos[idx])
-                                    }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(vertical = 9.dp, horizontal = 12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                        // 4. Som Ambiente de Mesa & Reiniciar
+                        Surface(
+                            color = Color(0xFF161824),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                val ambienteAtual = GerenciadorAmbienteSonoro.ambienteAtivo
+                                Surface(
+                                    color = if (ambienteAtual != GerenciadorAmbienteSonoro.TipoAmbiente.DESLIGADO) Color(0xFF1B2230) else Color.White.copy(alpha = 0.06f),
+                                    shape = RoundedCornerShape(10.dp),
+                                    border = BorderStroke(1.dp, if (ambienteAtual != GerenciadorAmbienteSonoro.TipoAmbiente.DESLIGADO) Color(0xFF00E5FF).copy(alpha = 0.45f) else Color.White.copy(alpha = 0.08f)),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            val proximos = GerenciadorAmbienteSonoro.TipoAmbiente.values()
+                                            val idx = (proximos.indexOf(ambienteAtual) + 1) % proximos.size
+                                            GerenciadorAmbienteSonoro.alternarAmbiente(proximos[idx])
+                                        }
                                 ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(ambienteAtual.icone, fontSize = 14.sp)
-                                        Spacer(Modifier.width(8.dp))
-                                        Column {
+                                    Row(
+                                        modifier = Modifier.padding(vertical = 9.dp, horizontal = 12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(ambienteAtual.icone, fontSize = 14.sp)
+                                            Spacer(Modifier.width(8.dp))
+                                            Column {
+                                                Text(
+                                                    text = "Som da Mesa: ${ambienteAtual.nomeLegivel}",
+                                                    color = Color.White,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                                Text(
+                                                    text = ambienteAtual.descricao,
+                                                    color = TextoSuave,
+                                                    fontSize = 10.sp
+                                                )
+                                            }
+                                        }
+                                        Text(
+                                            text = if (ambienteAtual != GerenciadorAmbienteSonoro.TipoAmbiente.DESLIGADO) "Trocar" else "Ativar",
+                                            color = if (ambienteAtual != GerenciadorAmbienteSonoro.TipoAmbiente.DESLIGADO) Color(0xFF00E5FF) else TextoSuave,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+
+                                if (!confirmandoReiniciar) {
+                                    Surface(
+                                        color = Color(0xFF2A1515).copy(alpha = 0.5f),
+                                        shape = RoundedCornerShape(10.dp),
+                                        border = BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.25f)),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { confirmandoReiniciar = true }
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(vertical = 9.dp, horizontal = 12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Text("🔄", fontSize = 13.sp)
+                                            Spacer(Modifier.width(8.dp))
                                             Text(
-                                                text = "Som Ambiente: ${ambienteAtual.nomeLegivel}",
-                                                color = Color.White,
+                                                text = "Reiniciar Campanha de RPG",
+                                                color = Color(0xFFFF8A80),
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.SemiBold
                                             )
-                                            Text(
-                                                text = ambienteAtual.descricao,
-                                                color = TextoSuave,
-                                                fontSize = 10.sp
-                                            )
                                         }
                                     }
+                                } else {
+                                    Surface(
+                                        color = Color(0xFF381212),
+                                        shape = RoundedCornerShape(10.dp),
+                                        border = BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.50f)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = "Reiniciar do zero?",
+                                                color = Color.White,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                Surface(
+                                                    color = Color(0xFFD32F2F),
+                                                    shape = Cantos.pilula,
+                                                    modifier = Modifier.clickable {
+                                                        onFechar()
+                                                        onReiniciarHistoria()
+                                                    }
+                                                ) {
+                                                    Text(
+                                                        text = "Sim, reiniciar",
+                                                        color = Color.White,
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                                    )
+                                                }
+                                                Surface(
+                                                    color = Color.White.copy(alpha = 0.12f),
+                                                    shape = Cantos.pilula,
+                                                    modifier = Modifier.clickable { confirmandoReiniciar = false }
+                                                ) {
+                                                    Text(
+                                                        text = "Cancelar",
+                                                        color = Color.White,
+                                                        fontSize = 11.sp,
+                                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // =========================================================================
+                        // DIÁRIO DA NARRATIVA & VISUAL NOVEL (Focado em Vínculo, Galeria, CGs e Leitura)
+                        // =========================================================================
+                        // Top Bar História
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("📖", fontSize = 20.sp)
+                                Spacer(Modifier.width(8.dp))
+                                Column {
                                     Text(
-                                        text = if (ambienteAtual != GerenciadorAmbienteSonoro.TipoAmbiente.DESLIGADO) "Trocar" else "Ativar",
-                                        color = if (ambienteAtual != GerenciadorAmbienteSonoro.TipoAmbiente.DESLIGADO) Color(0xFF00E5FF) else TextoSuave,
-                                        fontSize = 10.sp,
+                                        text = "Diário da Narrativa & Visual Novel",
+                                        color = Color.White,
+                                        style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "${jogo.personagem.nome} • Turno ${jogo.turno} • Conexão Afetiva",
+                                        color = TextoSuave,
+                                        fontSize = 11.sp
                                     )
                                 }
                             }
 
-                            // Reiniciar História com Confirmação Segura
-                            if (!confirmandoReiniciar) {
-                                Surface(
-                                    color = Color(0xFF2A1515).copy(alpha = 0.5f),
-                                    shape = RoundedCornerShape(10.dp),
-                                    border = BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.25f)),
+                            Surface(
+                                color = Color.White.copy(alpha = 0.10f),
+                                shape = CircleShape,
+                                modifier = Modifier
+                                    .size(30.dp)
+                                    .clickable { onFechar() }
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text("✕", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
+                        // 1. Vínculo Emocional, Humor & Presentes
+                        Surface(
+                            color = Color(0xFF181A28),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, Color(0xFF7C4DFF).copy(alpha = 0.45f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(vinculo.icone, fontSize = 20.sp)
+                                        Spacer(Modifier.width(8.dp))
+                                        Column {
+                                            Text(
+                                                text = "Vínculo Nível ${vinculo.nivel}",
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 13.sp
+                                            )
+                                            Text(
+                                                text = vinculo.titulo,
+                                                color = Ouro,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
+
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Surface(
+                                            color = Color(0xFF7C4DFF).copy(alpha = 0.20f),
+                                            shape = Cantos.pilula,
+                                            border = BorderStroke(1.dp, Color(0xFF7C4DFF).copy(alpha = 0.45f)),
+                                            modifier = Modifier.clickable { mostrarMissoesModal = true }
+                                        ) {
+                                            Text(
+                                                text = "🏆 Missões",
+                                                color = Color(0xFFD6D0F5),
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                            )
+                                        }
+
+                                        Surface(
+                                            color = Color(0xFFFF4081).copy(alpha = 0.20f),
+                                            shape = Cantos.pilula,
+                                            border = BorderStroke(1.dp, Color(0xFFFF4081).copy(alpha = 0.50f)),
+                                            modifier = Modifier.clickable {
+                                                onFechar()
+                                                onAbrirPresentes()
+                                            }
+                                        ) {
+                                            Text(
+                                                text = "🎁 Mimos",
+                                                color = Color(0xFFFF80AB),
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                LinearProgressIndicator(
+                                    progress = { vinculo.progresso },
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable { confirmandoReiniciar = true }
+                                        .height(6.dp)
+                                        .clip(RoundedCornerShape(50)),
+                                    color = Ouro,
+                                    trackColor = Color.White.copy(alpha = 0.10f)
+                                )
+
+                                val humorPersonagem = remember(jogo.turno) {
+                                    when (vinculo.nivel) {
+                                        1 -> "Pensativo(a) e Curioso(a) com sua presença"
+                                        2 -> "Acolhedor(a) e Aberto(a) para confidências"
+                                        3 -> "Confiante e Próximo(a), compartilhando segredos"
+                                        4 -> "Intensamente Conectado(a) e Protetor(a)"
+                                        else -> "Eternamente Apegado(a) e Apaixonado(a)"
+                                    }
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("✨", fontSize = 11.sp)
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        text = "Humor: $humorPersonagem",
+                                        color = Color.White.copy(alpha = 0.85f),
+                                        fontSize = 11.sp,
+                                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                    )
+                                }
+                            }
+                        }
+
+                        // 2. Memórias Visuais & Rotas da História
+                        Surface(
+                            color = Color(0xFF161824),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    text = "🖼️ Memórias Visuais & Segredos",
+                                    color = Color(0xFFA78BFA),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    // Galeria de CGs
+                                    Surface(
+                                        color = Color.White.copy(alpha = 0.06f),
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable {
+                                                onFechar()
+                                                onAbrirGaleria()
+                                            }
+                                    ) {
+                                        Column(modifier = Modifier.padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("📸", fontSize = 18.sp)
+                                            Spacer(Modifier.height(4.dp))
+                                            Text("Galeria CGs", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            Text("Cenas em HD", color = Ouro, fontSize = 9.sp)
+                                        }
+                                    }
+
+                                    // Memórias Secretas
+                                    Surface(
+                                        color = Color.White.copy(alpha = 0.06f),
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable { mostrarMemoriasModal = true }
+                                    ) {
+                                        Column(modifier = Modifier.padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("🗝️", fontSize = 18.sp)
+                                            Spacer(Modifier.height(4.dp))
+                                            Text("Segredos", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            Text("Contos Ocultos", color = Color(0xFFA78BFA), fontSize = 9.sp)
+                                        }
+                                    }
+
+                                    // Árvore do Destino
+                                    Surface(
+                                        color = Color.White.copy(alpha = 0.06f),
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable { mostrarArvoreDestino = true }
+                                    ) {
+                                        Column(modifier = Modifier.padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("🌿", fontSize = 18.sp)
+                                            Spacer(Modifier.height(4.dp))
+                                            Text("Rotas", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            Text("Bifurcações", color = TextoSuave, fontSize = 9.sp)
+                                        }
+                                    }
+
+                                    // Diário & Cartas
+                                    Surface(
+                                        color = Color.White.copy(alpha = 0.06f),
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable {
+                                                onFechar()
+                                                onAbrirDialogo(DialogoAberto.Diarios)
+                                            }
+                                    ) {
+                                        Column(modifier = Modifier.padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("📔", fontSize = 18.sp)
+                                            Spacer(Modifier.height(4.dp))
+                                            Text("Cartas", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            Text("Diário Íntimo", color = TextoSuave, fontSize = 9.sp)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 3. Estética de Leitura & Skins Visuais
+                        Surface(
+                            color = Color(0xFF161824),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    text = "🎨 Experiência de Leitura & Skins",
+                                    color = Color(0xFFA78BFA),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    // Modo Cinema
+                                    Surface(
+                                        color = if (modoCinema) Ouro.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.06f),
+                                        shape = RoundedCornerShape(10.dp),
+                                        border = BorderStroke(1.dp, if (modoCinema) Ouro.copy(alpha = 0.45f) else Color.White.copy(alpha = 0.08f)),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable { onAlternarModoCinema() }
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Text("🎭", fontSize = 14.sp)
+                                            Spacer(Modifier.width(6.dp))
+                                            Text(
+                                                text = if (modoCinema) "Cinema ON" else "Cinema OFF",
+                                                color = if (modoCinema) Ouro else Color.White,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        }
+                                    }
+
+                                    // Exportar Livro PDF
+                                    Surface(
+                                        color = Color.White.copy(alpha = 0.06f),
+                                        shape = RoundedCornerShape(10.dp),
+                                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable {
+                                                onFechar()
+                                                onExportarPdf()
+                                            }
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Text("📖", fontSize = 14.sp)
+                                            Spacer(Modifier.width(6.dp))
+                                            Text(
+                                                text = "Livro PDF",
+                                                color = Color.White,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        }
+                                    }
+
+                                    // Story 9:16
+                                    Surface(
+                                        color = Color.White.copy(alpha = 0.06f),
+                                        shape = RoundedCornerShape(10.dp),
+                                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable { mostrarCardCompartilhar = true }
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Text("📸", fontSize = 14.sp)
+                                            Spacer(Modifier.width(6.dp))
+                                            Text(
+                                                text = "Story",
+                                                color = Color.White,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // Seletor de Skins do Chat
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .clickable {
+                                            val temas = TemaChat.values()
+                                            val proximo = temas[(temas.indexOf(temaAtual) + 1) % temas.size]
+                                            TemaChat.salvarTema(contexto, proximo)
+                                            temaAtual = proximo
+                                            vm.definirTemaChatAtivo(proximo)
+                                            Toast.makeText(contexto, "Skin alterada: ${proximo.nome}", Toast.LENGTH_SHORT).show()
+                                        }
+                                        .background(Color.White.copy(alpha = 0.05f))
+                                        .padding(horizontal = 10.dp, vertical = 7.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(temaAtual.icone, fontSize = 16.sp)
+                                        Spacer(Modifier.width(8.dp))
+                                        Column {
+                                            Text("Skin Visual de Leitura", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                            Text(temaAtual.nome, color = Ouro, fontSize = 10.sp)
+                                        }
+                                    }
+                                    Text("Trocar Skin", color = Color(0xFF7C4DFF), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
+                        // 4. Consciência Narrativa, Trilha Sonora & Reiniciar
+                        Surface(
+                            color = Color(0xFF161824),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                val ambienteAtual = GerenciadorAmbienteSonoro.ambienteAtivo
+                                Surface(
+                                    color = if (ambienteAtual != GerenciadorAmbienteSonoro.TipoAmbiente.DESLIGADO) Color(0xFF1B2230) else Color.White.copy(alpha = 0.06f),
+                                    shape = RoundedCornerShape(10.dp),
+                                    border = BorderStroke(1.dp, if (ambienteAtual != GerenciadorAmbienteSonoro.TipoAmbiente.DESLIGADO) Color(0xFF00E5FF).copy(alpha = 0.45f) else Color.White.copy(alpha = 0.08f)),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            val proximos = GerenciadorAmbienteSonoro.TipoAmbiente.values()
+                                            val idx = (proximos.indexOf(ambienteAtual) + 1) % proximos.size
+                                            GerenciadorAmbienteSonoro.alternarAmbiente(proximos[idx])
+                                        }
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(vertical = 9.dp, horizontal = 12.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text("🔄", fontSize = 13.sp)
-                                        Spacer(Modifier.width(8.dp))
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(ambienteAtual.icone, fontSize = 14.sp)
+                                            Spacer(Modifier.width(8.dp))
+                                            Column {
+                                                Text(
+                                                    text = "Trilha Sonora: ${ambienteAtual.nomeLegivel}",
+                                                    color = Color.White,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                                Text(
+                                                    text = ambienteAtual.descricao,
+                                                    color = TextoSuave,
+                                                    fontSize = 10.sp
+                                                )
+                                            }
+                                        }
                                         Text(
-                                            text = "Reiniciar História desde o Início",
-                                            color = Color(0xFFFF8A80),
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.SemiBold
+                                            text = if (ambienteAtual != GerenciadorAmbienteSonoro.TipoAmbiente.DESLIGADO) "Trocar" else "Ativar",
+                                            color = if (ambienteAtual != GerenciadorAmbienteSonoro.TipoAmbiente.DESLIGADO) Color(0xFF00E5FF) else TextoSuave,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold
                                         )
                                     }
                                 }
-                            } else {
-                                Surface(
-                                    color = Color(0xFF381212),
-                                    shape = RoundedCornerShape(10.dp),
-                                    border = BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.50f)),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
+
+                                if (!confirmandoReiniciar) {
+                                    Surface(
+                                        color = Color(0xFF2A1515).copy(alpha = 0.5f),
+                                        shape = RoundedCornerShape(10.dp),
+                                        border = BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.25f)),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { confirmandoReiniciar = true }
                                     ) {
-                                        Text(
-                                            text = "Tem certeza?",
-                                            color = Color.White,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            Surface(
-                                                color = Color(0xFFD32F2F),
-                                                shape = Cantos.pilula,
-                                                modifier = Modifier.clickable {
-                                                    onFechar()
-                                                    onReiniciarHistoria()
+                                        Row(
+                                            modifier = Modifier.padding(vertical = 9.dp, horizontal = 12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Text("🔄", fontSize = 13.sp)
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(
+                                                text = "Recomeçar História do Início",
+                                                color = Color(0xFFFF8A80),
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    Surface(
+                                        color = Color(0xFF381212),
+                                        shape = RoundedCornerShape(10.dp),
+                                        border = BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.50f)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = "Recomeçar do zero?",
+                                                color = Color.White,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                Surface(
+                                                    color = Color(0xFFD32F2F),
+                                                    shape = Cantos.pilula,
+                                                    modifier = Modifier.clickable {
+                                                        onFechar()
+                                                        onReiniciarHistoria()
+                                                    }
+                                                ) {
+                                                    Text(
+                                                        text = "Sim, recomeçar",
+                                                        color = Color.White,
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                                    )
                                                 }
-                                            ) {
-                                                Text(
-                                                    text = "Sim, reiniciar",
-                                                    color = Color.White,
-                                                    fontSize = 11.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                                )
-                                            }
-                                            Surface(
-                                                color = Color.White.copy(alpha = 0.12f),
-                                                shape = Cantos.pilula,
-                                                modifier = Modifier.clickable { confirmandoReiniciar = false }
-                                            ) {
-                                                Text(
-                                                    text = "Cancelar",
-                                                    color = Color.White,
-                                                    fontSize = 11.sp,
-                                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                                )
+                                                Surface(
+                                                    color = Color.White.copy(alpha = 0.12f),
+                                                    shape = Cantos.pilula,
+                                                    modifier = Modifier.clickable { confirmandoReiniciar = false }
+                                                ) {
+                                                    Text(
+                                                        text = "Cancelar",
+                                                        color = Color.White,
+                                                        fontSize = 11.sp,
+                                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                                    )
+                                                }
                                             }
                                         }
                                     }

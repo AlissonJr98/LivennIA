@@ -561,16 +561,21 @@ fun RetratoPersonagem(
 ) {
     val url = remember(temRetrato, jogoId, versao) {
         if (!temRetrato) null
-        else ApiClient.baseUrlAtual()?.let { base -> "${base}jogos/$jogoId/retrato?v=$versao" }
+        else ApiClient.baseUrlAtual()?.let { baseRaw ->
+            val base = if (baseRaw.endsWith("/")) baseRaw else "$baseRaw/"
+            val t = ApiClient.token
+            val tokenParam = if (!t.isNullOrEmpty()) "&token=$t" else ""
+            "${base}jogos/$jogoId/retrato?v=$versao$tokenParam"
+        }
     }
     if (url != null) {
-        val cabecalho = remember { ApiClient.cabecalhoAutorizacao() }
+        val cabecalho = remember(ApiClient.token) { ApiClient.cabecalhoAutorizacao() }
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(url)
                 .apply { if (cabecalho != null) addHeader("Authorization", cabecalho) }
                 .crossfade(true)
-                .allowHardware(true)
+                .allowHardware(false)
                 .build(),
             contentDescription = "Retrato de $nome",
             contentScale = ContentScale.Crop,
@@ -595,9 +600,10 @@ fun RetratoPersona(
     modifier: Modifier = Modifier,
     recorte: Shape = CircleShape
 ) {
-    val url = remember(temRetrato, versao, personaId) {
+    val url = remember(temRetrato, versao, personaId, ApiClient.token) {
         if (!temRetrato) null
-        else ApiClient.baseUrlAtual()?.let { base ->
+        else ApiClient.baseUrlAtual()?.let { baseRaw ->
+            val base = if (baseRaw.endsWith("/")) baseRaw else "$baseRaw/"
             val t = ApiClient.token
             val tokenParam = if (!t.isNullOrEmpty()) "&token=$t" else ""
             if (personaId != null && personaId > 0) "${base}personas/$personaId/retrato?v=$versao$tokenParam"
@@ -611,13 +617,13 @@ fun RetratoPersona(
         modifier = modifier.size(tamanho.dp)
     ) {
         if (url != null) {
-            val cabecalho = remember { ApiClient.cabecalhoAutorizacao() }
+            val cabecalho = remember(ApiClient.token) { ApiClient.cabecalhoAutorizacao() }
             SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(url)
                     .apply { if (cabecalho != null) addHeader("Authorization", cabecalho) }
                     .crossfade(true)
-                    .allowHardware(true)
+                    .allowHardware(false)
                     .build(),
                 contentDescription = "Retrato da Persona",
                 contentScale = ContentScale.Crop,

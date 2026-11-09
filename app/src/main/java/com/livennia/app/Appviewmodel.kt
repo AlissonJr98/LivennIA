@@ -274,7 +274,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var personaAvatar by mutableStateOf(prefs.personaAvatar)
         private set
-    val personaTemRetrato: Boolean get() = prefs.personaTemRetrato
+    var personaTemRetrato by mutableStateOf(prefs.personaTemRetrato)
+        private set
 
     fun salvarMinhaPersona(
         nome: String,
@@ -529,6 +530,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         personaAvatar = emoji
         prefs.personaAvatar = emoji
         prefs.personaTemRetrato = false
+        personaTemRetrato = false
     }
 
     fun uploadFotoPerfil(
@@ -542,6 +544,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 api.uploadRetratoConta(UploadRetratoRequest(imagemBase64))
                 prefs.personaTemRetrato = true
+                personaTemRetrato = true
                 personaRetratoVersao++
                 atualizarListas(api)
                 carregarPersonas()
@@ -566,6 +569,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 api.confirmarCandidatoConta(ConfirmarCandidatoRequest(loteId, indice))
                 prefs.personaTemRetrato = true
+                personaTemRetrato = true
                 personaRetratoVersao++
                 atualizarListas(api)
                 carregarPersonas()
@@ -587,11 +591,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             personaNome = persona.nome
             personaAvatar = persona.genero
             prefs.personaTemRetrato = persona.temRetrato
+            personaTemRetrato = persona.temRetrato
             personaSelecionadaId = persona.id
         } else {
             personaNome = apelido.ifBlank { "Viajante" }
             personaAvatar = "👤"
             prefs.personaTemRetrato = false
+        personaTemRetrato = false
             personaSelecionadaId = -1
         }
         val api = obterApi() ?: return
@@ -1255,6 +1261,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         conta = c
         if (c.personaRetrato) {
             prefs.personaTemRetrato = true
+            personaTemRetrato = true
+        } else if (prefs.personaTemRetrato) {
+            personaTemRetrato = true
         }
         jogos = api.jogos()
         try {

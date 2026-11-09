@@ -44,6 +44,7 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Random
+import kotlin.math.exp
 import kotlin.math.sin
 
 // ============================================================================
@@ -53,15 +54,15 @@ import kotlin.math.sin
 object GerenciadorAmbienteSonoro {
     enum class TipoAmbiente(val nomeLegivel: String, val icone: String, val descricao: String) {
         DESLIGADO("Silêncio", "🔇", "Sem som de fundo"),
-        TAVERNA("Taverna Acolhedora", "🍻", "Lareira crepitante e murmúrios suaves"),
-        MASMORRA("Masmorra & Cripta", "🕯️", "Gotejar distante, ecos e vento soturno"),
+        TAVERNA("Taverna Acolhedora", "🍻", "Lareira crepitante e alaúde medieval"),
+        MASMORRA("Masmorra & Cripta", "🕯️", "Gotejar em pedra, ecos e vento soturno"),
         FLORESTA("Bosque Encantado", "🍃", "Brisa suave, folhagens e calma mágica"),
         CYBERPUNK("Neon & Chuva", "🌧️", "Chuva constante e sintetizador noturno")
     }
 
     var ambienteAtivo by mutableStateOf(TipoAmbiente.DESLIGADO)
         private set
-    var volume by mutableStateOf(0.40f)
+    var volume by mutableStateOf(0.75f)
         private set
 
     private var audioTrack: AudioTrack? = null
@@ -135,47 +136,105 @@ object GerenciadorAmbienteSonoro {
         jobAudio = scope.launch {
             val buffer = ShortArray(bufferSize / 2)
             val random = Random()
-            var fase1 = 0.0
-            var fase2 = 0.0
-            var filtroRosa = 0.0
+            var tGeral = 0L
+
+            // Síntese de Taverna
+            val notasAlaude = doubleArrayOf(293.66, 369.99, 440.0, 587.33, 493.88, 392.0)
+            var idxNotaAlaude = 0
+            var amostrasDesdeUltimaNota = 0
+            var freqNotaAtiva = 293.66
+            var ampNotaAtiva = 0.0
+            var filtroChama = 0.0
+            var filtroCrackle = 0.0
+
+            // Síntese de Masmorra
+            var amostrasGota = 0
+            var gotaAtiva = false
+            var tempoGota = 0
+            var intervaloProximaGota = sampleRate * 2 + random.nextInt(sampleRate * 2)
 
             while (isActive) {
                 for (i in buffer.indices) {
+                    val sec = tGeral / sampleRate.toDouble()
                     val amostra: Double = when (tipo) {
                         TipoAmbiente.TAVERNA -> {
-                            // Crepitar suave de lareira (ruído rosa com estalos ocasionais)
-                            val ruidoBranco = (random.nextDouble() * 2.0 - 1.0)
-                            filtroRosa = 0.95 * filtroRosa + 0.05 * ruidoBranco
-                            val estalo = if (random.nextDouble() < 0.002) (random.nextDouble() * 0.8) else 0.0
-                            (filtroRosa * 0.4 + estalo) * 16000.0
+                            val ruido = (random.nextDouble() * 2.0 - 1.0)
+                            filtroChama = 0.88 * filtroChama + 0.12 * ruido
+                            val ehEstalo = random.nextDouble() < 0.0022
+                            val impulso = if (ehEstalo) (random.nextDouble() * 0.9 + 0.1) else 0.0
+                            filtroCrackle = 0.75 * filtroCrackle + 0.25 * (impulso + ruido * 0.06)
+
+                            amostrasDesdeUltimaNota++
+                            if (amostrasDesdeUltimaNota > (sampleRate * 1.4).toInt()) {
+                                amostrasDesdeUltimaNota = 0
+                                idxNotaAlaude = (idxNotaAlaude + 1) % notasAlaude.size
+                                freqNotaAtiva = notasAlaude[idxNotaAlaude]
+                                ampNotaAtiva = 0.45
+                            }
+                            ampNotaAtiva *= 0.99982
+                            val faseAlaude = 2.0 * Math.PI * freqNotaAtiva * (amostrasDesdeUltimaNota / sampleRate.toDouble())
+                            val somAlaude = (sin(faseAlaude) * 0.60 + sin(faseAlaude * 2.0) * 0.28 + sin(faseAlaude * 3.0) * 0.12) * ampNotaAtiva
+
+                            (somAlaude * 0.65 + filtroCrackle * 0.45 + filtroChama * 0.20) * 24000.0
                         }
                         TipoAmbiente.MASMORRA -> {
-                            // Drone grave e profundo de reverberação
-                            fase1 += (2.0 * Math.PI * 55.0) / sampleRate
-                            fase2 += (2.0 * Math.PI * 110.0) / sampleRate
-                            val drone = (sin(fase1) * 0.6 + sin(fase2) * 0.3)
-                            val vento = (random.nextDouble() * 2.0 - 1.0) * 0.15
-                            (drone + vento) * 14000.0
+                            val tremolo = sin(2.0 * Math.PI * 0.25 * sec) * 0.15 + 0.85
+                            val drone = (sin(2.0 * Math.PI * 220.0 * sec) * 0.35 +
+                                         sin(2.0 * Math.PI * 329.63 * sec) * 0.25 +
+                                         sin(2.0 * Math.PI * 440.0 * sec) * 0.15) * tremolo
+
+                            val brisa = (random.nextDouble() * 2.0 - 1.0) * (sin(sec * 0.4) * 0.08 + 0.09)
+
+                            amostrasGota++
+                            if (amostrasGota >= intervaloProximaGota) {
+                                amostrasGota = 0
+                                gotaAtiva = true
+                                tempoGota = 0
+                                intervaloProximaGota = sampleRate * 2 + random.nextInt(sampleRate * 2)
+                            }
+
+                            var somGota = 0.0
+                            if (gotaAtiva) {
+                                tempoGota++
+                                val duracaoGota = (sampleRate * 0.12).toInt()
+                                if (tempoGota < duracaoGota) {
+                                    val progresso = tempoGota / duracaoGota.toDouble()
+                                    val freqAtual = 1650.0 - (670.0 * progresso)
+                                    val envelope = exp(-4.5 * progresso)
+                                    val faseGota = 2.0 * Math.PI * freqAtual * (tempoGota / sampleRate.toDouble())
+                                    somGota = sin(faseGota) * envelope * 0.60
+                                } else if (tempoGota < duracaoGota + 1500) {
+                                    val ecoT = tempoGota - duracaoGota
+                                    val faseEco = 2.0 * Math.PI * 1200.0 * (ecoT / sampleRate.toDouble())
+                                    somGota = sin(faseEco) * exp(-5.0 * (ecoT / 1500.0)) * 0.18
+                                } else {
+                                    gotaAtiva = false
+                                }
+                            }
+
+                            (drone * 0.50 + brisa * 0.30 + somGota * 0.75) * 25000.0
                         }
                         TipoAmbiente.FLORESTA -> {
-                            // Brisa etérea calma em harmônicos
-                            fase1 += (2.0 * Math.PI * 220.0) / sampleRate
-                            fase2 += (2.0 * Math.PI * 329.63) / sampleRate // Mi4
-                            val harmonia = (sin(fase1) * 0.4 + sin(fase2) * 0.3)
-                            val brisa = (random.nextDouble() * 2.0 - 1.0) * 0.1
-                            (harmonia + brisa) * 12000.0
+                            val f1 = sin(2.0 * Math.PI * 261.63 * sec) * 0.28
+                            val f2 = sin(2.0 * Math.PI * 329.63 * sec) * 0.22
+                            val f3 = sin(2.0 * Math.PI * 392.00 * sec) * 0.18
+                            val farfalhar = (random.nextDouble() * 2.0 - 1.0) * (sin(sec * 0.7) * 0.06 + 0.08)
+                            val passaro = if (tGeral % (sampleRate * 4) < 1800) {
+                                sin(2.0 * Math.PI * 1760.0 * sec) * 0.20
+                            } else 0.0
+                            (f1 + f2 + f3 + farfalhar + passaro) * 22000.0
                         }
                         TipoAmbiente.CYBERPUNK -> {
-                            // Chuva constante + synthwave drone em 110Hz e 164Hz
-                            fase1 += (2.0 * Math.PI * 110.0) / sampleRate
-                            fase2 += (2.0 * Math.PI * 164.81) / sampleRate
-                            val synth = sin(fase1) * 0.45 + sin(fase2) * 0.35
-                            val chuva = (random.nextDouble() * 2.0 - 1.0) * 0.25
-                            (synth + chuva) * 15000.0
+                            val synth = sin(2.0 * Math.PI * 110.0 * sec) * 0.30 +
+                                        sin(2.0 * Math.PI * 164.81 * sec) * 0.25 +
+                                        sin(2.0 * Math.PI * 220.0 * sec) * 0.15
+                            val chuva = (random.nextDouble() * 2.0 - 1.0) * 0.30
+                            (synth + chuva) * 23000.0
                         }
                         TipoAmbiente.DESLIGADO -> 0.0
                     }
                     buffer[i] = amostra.toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                    tGeral++
                 }
                 audioTrack?.write(buffer, 0, buffer.size)
             }
