@@ -297,6 +297,20 @@ def registrar_jogador(codigo, apelido, token_hash):
         return cursor.lastrowid, False
 
 
+def jogador_por_apelido(apelido):
+    if not apelido or not str(apelido).strip():
+        return None
+    with conexao() as c:
+        linha = c.execute(
+            "SELECT id, apelido, banido, premium, mochis, ultimo_resgate_mochi, dono, email "
+            "FROM jogadores WHERE LOWER(apelido) = LOWER(?)",
+            (str(apelido).strip(),),
+        ).fetchone()
+    if not linha:
+        return None
+    return dict(linha)
+
+
 def jogador_por_token_hash(token_hash):
     with conexao() as c:
         linha = c.execute(
@@ -988,10 +1002,16 @@ def obter_status_criador(criador_nome, seguidor_id=None):
             d["modoJogo"] = d.get("modo_jogo") or "historia"
             historias.append(d)
 
+    jogador_info = jogador_por_apelido(nome_alvo)
+    uid_str = f"LVN-{jogador_info['id']:06d}" if jogador_info else f"UID:@{nome_alvo}"
+    autor_id_str = str(jogador_info["id"]) if jogador_info else (str(linhas[0]["autor_id"]) if linhas and linhas[0].get("autor_id") else "")
+    for h in historias:
+        h["autorId"] = autor_id_str
+
     return {
-        "nome": nome_alvo,
+        "nome": (jogador_info["apelido"] if jogador_info else nome_alvo),
         "avatar": (historias[0]["autorAvatar"] if historias else "🎭"),
-        "uid": f"UID:@{nome_alvo}",
+        "uid": uid_str,
         "chats": max(chats, 1),
         "saves": max(saves, 0),
         "seguidores": total_seguidores,

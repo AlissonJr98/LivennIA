@@ -1532,7 +1532,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     sinopse = cenario.sinopse,
                     abertura = cenario.abertura,
                     modoJogo = cenario.modoJogo ?: "historia",
-                    autorNome = cenario.autorNome ?: "Criado por IA",
+                    autorNome = cenario.autorNome?.takeIf { it.isNotBlank() && it != "Criado por IA" } ?: apelido.ifBlank { "Viajante" },
                     autorAvatar = cenario.autorAvatar ?: "✨"
                 )
             )
@@ -1556,7 +1556,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     sinopse = cenario.sinopse,
                     abertura = cenario.abertura,
                     modoJogo = cenario.modoJogo ?: "historia",
-                    autorNome = cenario.autorNome ?: "Criado por IA",
+                    autorNome = cenario.autorNome?.takeIf { it.isNotBlank() && it != "Criado por IA" } ?: apelido.ifBlank { "Viajante" },
                     autorAvatar = cenario.autorAvatar ?: "✨"
                 )
             )

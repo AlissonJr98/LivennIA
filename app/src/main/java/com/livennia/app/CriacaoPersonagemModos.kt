@@ -92,9 +92,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
 
 // Paleta Oficial LivennIA (Obsidian Void, Deep Violet e Golden Amber)
 private val FundoOled = Color(0xFF090A0F)
@@ -108,6 +112,73 @@ private val VerdeSucesso = Color(0xFF34C759)
 private val TextoClaro = Color(0xFFF0F0F5)
 private val TextoSecundario = Color(0xFFA0A2B3)
 private val TextoMudo = Color(0xFF6E7082)
+
+@Composable
+fun AvatarCriador(
+    nome: String,
+    avatarPadrao: String = "🎭",
+    baseUrl: String = "",
+    tamanho: Dp = 44.dp,
+    modifier: Modifier = Modifier
+) {
+    val contexto = LocalContext.current
+    val urlFoto = remember(nome, baseUrl) {
+        if (nome.isNotBlank() && baseUrl.isNotBlank() && !nome.contains("IA", ignoreCase = true)) {
+            val baseFormatada = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
+            val encoded = java.net.URLEncoder.encode(nome, "UTF-8")
+            "${baseFormatada}criadores/$encoded/foto"
+        } else ""
+    }
+
+    if (urlFoto.isNotBlank()) {
+        SubcomposeAsyncImage(
+            model = ImageRequest.Builder(contexto)
+                .data(urlFoto)
+                .crossfade(true)
+                .allowHardware(false)
+                .build(),
+            contentDescription = "Foto de perfil de $nome",
+            contentScale = ContentScale.Crop,
+            modifier = modifier
+                .size(tamanho)
+                .clip(CircleShape)
+                .background(Color(0xFF242428)),
+            loading = {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = nome.take(1).uppercase().ifBlank { avatarPadrao.take(1) },
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = (tamanho.value * 0.42f).sp
+                    )
+                }
+            },
+            error = {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    if (avatarPadrao.length <= 2 && avatarPadrao != "🎭") {
+                        Text(avatarPadrao, fontSize = (tamanho.value * 0.45f).sp)
+                    } else {
+                        Text(
+                            text = nome.take(1).uppercase().ifBlank { "🎭" },
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = (tamanho.value * 0.42f).sp
+                        )
+                    }
+                }
+            }
+        )
+    } else {
+        Box(
+            modifier = modifier
+                .size(tamanho)
+                .background(Color(0xFF242428), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(if (avatarPadrao.length <= 2) avatarPadrao else "🎭", fontSize = (tamanho.value * 0.45f).sp)
+        }
+    }
+}
 
 // -------------------------------------------------------------
 // 1. REPOSITÓRIO DINÂMICO DE PERSONAGENS DA COMUNIDADE (ZERADOS)
@@ -762,7 +833,7 @@ fun WizardModoSpark(
                                 sinopse = "Criado com dinâmica '$tropaSelecionada'. Postura: $tomConversa.",
                                 abertura = "Você finalmente veio... Eu sabia que nossos caminhos se cruzariam outra vez.",
                                 criadoPorUsuario = true,
-                                autorNome = "Criado por IA",
+                                autorNome = vm.apelido.ifBlank { "Viajante" },
                                 autorAvatar = "✨",
                                 chats = 0,
                                 saves = 0,
@@ -1475,7 +1546,7 @@ fun ModalModoRapido(
                                         abertura = aberturaEditada.trim().ifBlank { "Olá! É bom ver você." },
                                         capa = true,
                                         criadoPorUsuario = true,
-                                        autorNome = vm.apelido.ifBlank { "Criado por IA" },
+                                        autorNome = vm.apelido.ifBlank { "Viajante" },
                                         autorAvatar = "✨",
                                         chats = 0,
                                         saves = 0,
@@ -1515,7 +1586,7 @@ fun ModalModoRapido(
                                         abertura = aberturaEditada.trim().ifBlank { "Olá! É bom ver você." },
                                         capa = true,
                                         criadoPorUsuario = true,
-                                        autorNome = vm.apelido.ifBlank { "Criado por IA" },
+                                        autorNome = vm.apelido.ifBlank { "Viajante" },
                                         autorAvatar = "✨",
                                         chats = 0,
                                         saves = 0,
@@ -1888,14 +1959,10 @@ fun DetalhesPersonagemModal(
                                 }
                             }
 
-                            val ehAutor = cenario.criadoPorUsuario ||
-                                cenario.autorNomeSeguro.equals(apelidoUsuario, ignoreCase = true) ||
-                                cenario.autorNomeSeguro.equals(vm?.apelido, ignoreCase = true) ||
-                                cenario.autorNomeSeguro.contains("IA", ignoreCase = true) ||
-                                cenario.autorNomeSeguro.equals("Você", ignoreCase = true) ||
-                                cenario.autorNomeSeguro.equals("Comunidade", ignoreCase = true) ||
-                                RepositorioPersonagensComunidade.criacoes.any { it.id == cenario.id } ||
-                                vm?.conta?.dono == true
+                            val meuApelido = vm?.apelido.orEmpty().trim()
+                            val ehDonoOuAdmin = vm?.conta?.dono == true
+                            val souAutor = meuApelido.isNotBlank() && cenario.autorNomeSeguro.equals(meuApelido, ignoreCase = true)
+                            val podeGerenciarHistoria = souAutor || ehDonoOuAdmin
 
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1915,7 +1982,7 @@ fun DetalhesPersonagemModal(
                                         expanded = menuMaisAberto,
                                         onDismissRequest = { menuMaisAberto = false }
                                     ) {
-                                    if (ehAutor) {
+                                    if (podeGerenciarHistoria) {
                                         DropdownMenuItem(
                                             text = { Text("✏️ Editar História") },
                                             onClick = {
@@ -2009,14 +2076,12 @@ fun DetalhesPersonagemModal(
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .background(Color(0xFF242428), CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(if (cenario.criadoPorUsuario) cenario.autorAvatarSeguro else "🎭", fontSize = 22.sp)
-                            }
+                            AvatarCriador(
+                                nome = if (cenario.criadoPorUsuario) cenario.autorNomeSeguro else "LivennIA",
+                                avatarPadrao = if (cenario.criadoPorUsuario) cenario.autorAvatarSeguro else "🎭",
+                                baseUrl = ApiClient.baseUrlAtual() ?: "",
+                                tamanho = 44.dp
+                            )
 
                             Spacer(Modifier.width(12.dp))
 
@@ -2840,14 +2905,12 @@ fun PerfilCriadorModal(
                             .padding(horizontal = 20.dp, vertical = 6.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .background(Color(0xFF1E1E22), CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(perfil.avatar.ifBlank { "🎭" }, fontSize = 32.sp)
-                            }
+                            AvatarCriador(
+                                nome = perfil.nome,
+                                avatarPadrao = perfil.avatar.ifBlank { "🎭" },
+                                baseUrl = ApiClient.baseUrlAtual() ?: "",
+                                tamanho = 64.dp
+                            )
 
                             Spacer(Modifier.width(14.dp))
 

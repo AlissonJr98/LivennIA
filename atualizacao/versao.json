@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 58,
-  "versaoNome": "1.9.8",
-  "notas": "Atualização 1.9.8: Separação total e independente entre Foto de Perfil da Conta (sua foto de usuário) e Personas (seus personagens de interpretação), Novo Modo Rápido em 2 Etapas com IA (a IA gera título, sinopse detalhada, cena de abertura imersiva e ilustração fiel com opção de revisar e editar antes de postar ou jogar direto), e correção definitiva de fidelidade de gênero e atributos visuais (homens com cabelos pretos e olhos azuis são ilustrados com 100% de precisão sem gerar gênero oposto).",
+  "versaoCodigo": 59,
+  "versaoNome": "1.9.9",
+  "notas": "Atualização 1.9.9: Correção de autoria real de histórias (exibe foto e perfil do criador em vez de emoji/anônimo), permissão restrita de edição e exclusão (apenas o criador e administradores podem editar/excluir), exibição imediata da imagem na Etapa 2 de revisão do modo rápido, e síntese de atributos visuais para geração de arte com fidelidade extrema a cortes de cabelo, faixas e detalhes físicos.",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

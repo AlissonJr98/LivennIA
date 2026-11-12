@@ -766,21 +766,50 @@ fun CapaCenario(
 ) {
     val url = remember(temCapa, cenarioId, versao) {
         if (!temCapa) null
-        else ApiClient.baseUrlAtual()?.let { base -> "${base}catalogo/$cenarioId/capa?v=$versao" }
+        else ApiClient.baseUrlAtual()?.let { base ->
+            val baseFormatada = if (base.endsWith("/")) base else "$base/"
+            "${baseFormatada}catalogo/$cenarioId/capa?v=$versao"
+        }
     }
     if (url != null) {
         val cabecalho = remember { ApiClient.cabecalhoAutorizacao() }
-        AsyncImage(
+        SubcomposeAsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(url)
                 .apply { if (cabecalho != null) addHeader("Authorization", cabecalho) }
                 .crossfade(true)
-                .allowHardware(true)
+                .allowHardware(false)
                 .build(),
             contentDescription = "Capa de $nome",
             contentScale = ContentScale.Crop,
             alignment = alignment,
-            modifier = modifier.clip(recorte)
+            modifier = modifier.clip(recorte),
+            loading = {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(SuperficieAlta),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(28.dp),
+                        color = Ouro,
+                        strokeWidth = 2.dp
+                    )
+                }
+            },
+            error = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(SuperficieAlta, Ouro.copy(alpha = 0.22f))
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = emoji.ifBlank { "📖" }, fontSize = 40.sp)
+                }
+            }
         )
     } else {
         Box(

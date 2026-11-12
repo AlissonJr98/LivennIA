@@ -1007,8 +1007,20 @@ def endpoint_gerar_historia_rapida(dados: GerarHistoriaRapidaIn, jogador=Depends
 def criar_cenario_comunidade(dados: NovoCenarioIn, jogador=Depends(jogador_atual)):
     """Salva uma nova história/personagem criada por usuário no banco permanente."""
     c_id = dados.id or f"cenario_{int(time.time()*1000)}"
-    autor_nome = dados.autor_nome or "Criado por IA"
+    apelido_jogador = (jogador.get("apelido") or "").strip() or "Viajante"
+    autor_nome = apelido_jogador
     autor_avatar = dados.autor_avatar or "✨"
+    
+    # Se já existia uma arte gerada com id temporário, preserva para c_id se forem diferentes
+    if dados.id and dados.id != c_id:
+        caminho_orig = caminho_capa(dados.id)
+        caminho_dest = caminho_capa(c_id)
+        if os.path.exists(caminho_orig) and not os.path.exists(caminho_dest):
+            try:
+                import shutil
+                shutil.copyfile(caminho_orig, caminho_dest)
+            except Exception:
+                pass
     banco.salvar_cenario_usuario(
         cenario_id=c_id,
         autor_id=jogador["id"],
@@ -1069,7 +1081,11 @@ def editar_cenario_comunidade(cenario_id: str, dados: NovoCenarioIn, jogador=Dep
     c_existente = banco.obter_cenario_usuario(cenario_id)
     if not c_existente:
         raise HTTPException(404, "História não encontrada.")
-    eh_autor = str(c_existente.get("autor_id")) == str(jogador["id"]) or c_existente.get("autorNome") == jogador.get("apelido")
+    eh_autor = (
+        str(c_existente.get("autor_id")) == str(jogador["id"])
+        or str(c_existente.get("autorNome", "")).strip().lower() == str(jogador.get("apelido", "")).strip().lower()
+        or str(c_existente.get("autor_nome", "")).strip().lower() == str(jogador.get("apelido", "")).strip().lower()
+    )
     eh_admin = bool(jogador.get("admin") or jogador.get("dono"))
     if not eh_autor and not eh_admin:
         raise HTTPException(403, "Você só pode editar histórias criadas por você.")
@@ -1117,12 +1133,8 @@ def excluir_cenario_comunidade(cenario_id: str, jogador=Depends(jogador_atual)):
     if c_existente:
         eh_autor = (
             str(c_existente.get("autor_id")) == str(jogador["id"])
-            or str(c_existente.get("autor_nome", "")).strip().lower() == str(jogador.get("apelido", "")).strip().lower()
             or str(c_existente.get("autorNome", "")).strip().lower() == str(jogador.get("apelido", "")).strip().lower()
-            or "ia" in str(c_existente.get("autor_nome", "")).lower()
-            or "ia" in str(c_existente.get("autorNome", "")).lower()
-            or not c_existente.get("autor_id")
-            or c_existente.get("autor_nome") in ["Você", "Voce", "Comunidade", None, ""]
+            or str(c_existente.get("autor_nome", "")).strip().lower() == str(jogador.get("apelido", "")).strip().lower()
         )
         if not eh_autor and not eh_admin:
             raise HTTPException(403, "Você só pode excluir histórias criadas por você.")
@@ -1854,6 +1866,9 @@ def obter_capa_tematica_personagem(item):
 @app.get("/catalogo/{cenario_id}/capa")
 def ver_capa(cenario_id: IdDoCenario):
     """Devolve a arte de capa de um cenário (se já foi gerada ou fallback temático do personagem)."""
+    caminho_direto = caminho_capa(str(cenario_id))
+    if os.path.exists(caminho_direto):
+        return FileResponse(caminho_direto, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=3600"})
     item = catalogo.cenario(cenario_id)
     if item is None:
         raise HTTPException(404, "Cenário não encontrado.")
@@ -3235,6 +3250,21 @@ def excluir_comentario(cenario_id: IdDoCenario, comentario_id: int, jogador=Depe
 @app.post("/catalogo/{cenario_id}/comentarios/{comentario_id}/like", response_model=LikeComentarioOut)
 def curtir_comentario(cenario_id: IdDoCenario, comentario_id: int, jogador=Depends(jogador_atual)):
     return banco.alternar_like_comentario(comentario_id, jogador["id"])
+
+
+@app.get("/criadores/{criador_nome}/foto")
+def ver_foto_criador(criador_nome: str):
+    """Devolve a foto de perfil do criador (jogador dono da história)."""
+    j = banco.jogador_por_apelido(criador_nome)
+    if j:
+        caminho = caminho_foto_perfil(j["id"])
+        if not os.path.exists(caminho):
+            c_ant = os.path.join(config.PASTA_RETRATOS, f"persona_{j['id']}.png")
+            if os.path.exists(c_ant):
+                caminho = c_ant
+        if os.path.exists(caminho):
+            return FileResponse(caminho, media_type="image/png", headers={"Cache-Control": "public, max-age=3600"})
+    raise HTTPException(404, "Foto do criador não encontrada.")
 
 
 @app.get("/criadores/{criador_nome}", response_model=PerfilCriadorOut)

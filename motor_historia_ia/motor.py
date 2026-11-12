@@ -1426,21 +1426,143 @@ def gerar_imagem_capa_por_prompt(prompt_en: str, estilo: str = "semi_realistic")
     raise ErroIA("Nenhum provedor gerou a imagem de capa por prompt. " + " | ".join(motivos))
 
 
+def sintetizar_prompt_visual_ingles(caracteristicas: str, genero: str, estilo: str) -> str:
+    """Traduz e mapeia termos físicos e estéticos para prompts visuais precisos em inglês."""
+    texto = (caracteristicas or "").strip().lower()
+    
+    # Dicionário de termos comuns para garantir que nenhuma palavra em português seja ignorada pelo modelo de difusão
+    mapa = [
+        ("cabelos longos e pretos", "very long straight black hair falling down past shoulders"),
+        ("cabelo longo e preto", "very long straight black hair falling down past shoulders"),
+        ("cabelos longos pretos", "very long straight black hair falling down past shoulders"),
+        ("cabelos pretos e longos", "very long straight black hair falling down past shoulders"),
+        ("cabelos compridos pretos", "very long straight black hair falling down past shoulders"),
+        ("cabelos compridos", "very long flowing hair"),
+        ("cabelo comprido", "very long flowing hair"),
+        ("cabelos longos", "very long flowing hair"),
+        ("cabelo longo", "very long flowing hair"),
+        ("cabelos pretos", "jet black hair"),
+        ("cabelo preto", "jet black hair"),
+        ("cabelos loiros", "blonde hair"),
+        ("cabelo loiro", "blonde hair"),
+        ("cabelos castanhos", "brunette brown hair"),
+        ("cabelo castanho", "brunette brown hair"),
+        ("cabelos ruivos", "vibrant red auburn hair"),
+        ("cabelo ruivo", "vibrant red auburn hair"),
+        ("cabelos brancos", "pure white silver hair"),
+        ("cabelo branco", "pure white silver hair"),
+        ("cabelos grisalhos", "distinguished gray hair"),
+        ("cabelo grisalho", "distinguished gray hair"),
+        ("cabelos curtos", "short stylish hair"),
+        ("cabelo curto", "short stylish hair"),
+        ("cabelos ondulados", "wavy flowing hair"),
+        ("cabelos cacheados", "curly hair"),
+        
+        ("faixa na testa", "white cloth headband tied snugly around forehead"),
+        ("faixa na cabeca", "cloth headband tied around forehead"),
+        ("faixa na cabeça", "cloth headband tied around forehead"),
+        ("faixa de cabelo", "cloth headband"),
+        ("tiara", "headband"),
+        ("chapeu", "hat"),
+        ("chapéu", "hat"),
+        ("bone", "cap"),
+        ("boné", "cap"),
+        ("mascara", "face mask"),
+        ("máscara", "face mask"),
+        ("oculos", "glasses"),
+        ("óculos", "glasses"),
+        
+        ("olhos azuis", "striking brilliant blue eyes"),
+        ("olho azul", "striking brilliant blue eyes"),
+        ("olhos castanhos", "warm brown eyes"),
+        ("olhos verdes", "piercing emerald green eyes"),
+        ("olhos pretos", "deep black dark eyes"),
+        ("olhos vermelhos", "crimson red eyes"),
+        
+        ("pele clara", "fair pale skin"),
+        ("pele morena", "warm tanned skin"),
+        ("pele negra", "dark skin, beautiful black skin"),
+        ("branca", "caucasian fair pale skin"),
+        ("branco", "caucasian fair pale skin"),
+        ("negra", "black skin"),
+        ("negro", "black skin"),
+        ("morena", "tanned skin"),
+        ("moreno", "tanned skin"),
+        
+        ("35 anos", "35 years old mature"),
+        ("30 anos", "30 years old"),
+        ("25 anos", "25 years old"),
+        ("20 anos", "20 years old"),
+        ("18 anos", "18 years old"),
+        ("40 anos", "40 years old"),
+        ("50 anos", "50 years old"),
+        
+        ("mafioso", "powerful mafia boss, elegant dark tailored suit and tie"),
+        ("mafiosa", "powerful mafia boss woman, elegant dark luxury dress"),
+        ("possessivo", "intense brooding commanding gaze"),
+        ("protetor", "protective strong stance"),
+        ("inteligente", "sharp intellectual gaze"),
+        ("sedutor", "alluring confident smile"),
+        ("sedutora", "alluring confident captivating gaze"),
+        ("guerreiro", "warrior in medieval fantasy armor"),
+        ("guerreira", "female warrior in sleek battle armor"),
+        ("ninja", "shinobi ninja in dark stealth outfit"),
+        ("assassino", "deadly assassin in dark leather outfit"),
+        ("assassina", "deadly female assassin in sleek dark leather outfit"),
+        ("alto", "tall athletic stature"),
+        ("alta", "tall slender elegant stature"),
+        ("musculoso", "muscular toned physique"),
+        ("forte", "strong muscular build"),
+        ("magro", "slender build"),
+        ("magra", "slender elegant build")
+    ]
+    
+    termos_ingles = []
+    resto = texto
+    for pt, en in mapa:
+        if pt in resto:
+            termos_ingles.append(en)
+            resto = resto.replace(pt, " ")
+    
+    # Se ainda restarem palavras ou frases, traduz via motor se possível
+    resto_limpo = " ".join(resto.split())
+    if resto_limpo and len(resto_limpo) > 2:
+        try:
+            trad = _traduzir_prompt_retrato(resto_limpo)
+            if trad and trad.strip() != resto_limpo:
+                termos_ingles.append(trad.strip())
+        except Exception:
+            pass
+            
+    sujeito = "1man, handsome male, athletic build" if genero.lower() in ["masculino", "homem", "male"] else "1woman, beautiful female, attractive"
+    estilo_str = {
+        "semi_realistic": "semi-realistic digital painting, highly detailed, expressive eyes, smooth shading",
+        "anime": "high-end anime art style, vibrant colors, detailed anime face and eyes",
+        "realista": "hyperrealistic photographic portrait, 8k resolution, authentic skin texture, cinematic lighting",
+        "fantasia": "epic fantasy character art, magical aura, ornate details, dramatic cinematic lighting",
+        "cyberpunk": "cyberpunk sci-fi aesthetic, neon rim lighting, futuristic attire, high-tech accents"
+    }.get(estilo, "semi-realistic portrait, cinematic lighting, 8k")
+    
+    detalhes_str = ", ".join(termos_ingles) if termos_ingles else "charismatic presence, detailed facial features"
+    
+    return f"masterpiece upper body portrait of {sujeito}, {detalhes_str}, {estilo_str}, vertical framing, generous headroom, sharp focus, 8k resolution"
+
+
 def gerar_historia_rapida(dados: dict) -> dict:
     """Gera o conceito completo de personagem e história (Modo Rápido com IA em 2 telas).
     
     A IA cria nome, subtítulo, sinopse, primeira mensagem narrativa (abertura),
     tags e um prompt em inglês perfeitamente detalhado para geração de arte com fidelidade total de gênero e traços.
     """
-    cliente = _obter_cliente()
-    modelo = config.MODELOS[0]
-    
     genero_personagem = dados.get("genero_personagem") or "Masculino"
     nome_sugerido = (dados.get("nome_sugerido") or "").strip()
     caracteristicas = (dados.get("caracteristicas_personagem") or "").strip()
     enredo_inicial = (dados.get("enredo_inicial") or "").strip()
     estilo_imagem = dados.get("estilo_imagem") or "semi_realistic"
     modo_jogo = dados.get("modo_jogo") or "historia"
+    
+    # Prompt visual 100% sintetizado em inglês para não deixar a IA de difusão ignorar características
+    prompt_visual_padrao = sintetizar_prompt_visual_ingles(caracteristicas, genero_personagem, estilo_imagem)
     
     sistema = (
         "Você é o Diretor Criativo e Mestre de Roteiro do LivennIA, especialista em criar personagens cativantes "
@@ -1468,35 +1590,49 @@ def gerar_historia_rapida(dados: dict) -> dict:
         f"- Estilo Visual: {estilo_imagem}\n"
     )
     
-    try:
-        with _vaga_ia():
-            resposta = cliente.models.generate_content(
-                model=modelo,
-                contents=prompt_usuario,
-                config=types.GenerateContentConfig(
-                    system_instruction=sistema,
-                    response_mime_type="application/json",
-                    temperature=0.85,
-                    max_output_tokens=1024,
-                ),
-            )
-        texto = getattr(resposta, "text", None) or ""
-        resultado = json.loads(texto)
-    except Exception as erro:
-        logging.warning("Falha na geração rápida com IA (%s): %s", modelo, erro)
-        nome_final = nome_sugerido if nome_sugerido else ("Liam" if genero_personagem == "Masculino" else "Elena")
+    resultado = None
+    cliente = _obter_cliente()
+    
+    # Tenta todos os modelos configurados antes de cair no fallback
+    for mod in config.MODELOS:
+        try:
+            with _vaga_ia():
+                resposta = cliente.models.generate_content(
+                    model=mod,
+                    contents=prompt_usuario,
+                    config=types.GenerateContentConfig(
+                        system_instruction=sistema,
+                        response_mime_type="application/json",
+                        temperature=0.85,
+                        max_output_tokens=1024,
+                    ),
+                )
+            texto = getattr(resposta, "text", None) or ""
+            parsed = json.loads(texto)
+            if isinstance(parsed, dict) and parsed.get("nome"):
+                resultado = parsed
+                break
+        except Exception as erro:
+            logging.info("Tentativa com modelo %s falhou para historia rapida: %s", mod, erro)
+            continue
+            
+    if not resultado:
+        nome_final = nome_sugerido if nome_sugerido else ("Liam" if genero_personagem == "Masculino" else "Morgana")
         resultado = {
             "nome": nome_final,
             "subtitulo": f"O enigmático {genero_personagem.lower()} do seu destino",
             "sinopse": f"{caracteristicas}. Uma história envolvente onde cada escolha aproxima ou afasta vocês.",
-            "abertura": f"A penumbra e a música envolvente criam uma atmosfera densa ao seu redor. {nome_final} aproxima-se com passos firmes e confiantes, seus olhos fixos em você com intensidade magnética. Ele estende uma taça reluzente em sua direção com um sorriso sutil nos lábios.\n\n— Percebi que você estava me observando... ou talvez o destino quisesse que nos encontrássemos esta noite — diz ele com voz suave e profunda. — O que me diz de um brinde antes de decidirmos onde essa noite vai parar?",
+            "abertura": (
+                f"A penumbra e a música envolvente criam uma atmosfera densa ao seu redor. {nome_final} aproxima-se com passos firmes e confiantes, seus olhos fixos em você com intensidade magnética. Com um sorriso sutil nos lábios, faz um gesto para você se aproximar.\\n\\n"
+                "— Percebi que você estava me observando... ou talvez o destino quisesse que nos encontrássemos esta noite — diz com uma voz suave e profunda. — O que me diz de um brinde antes de decidirmos onde essa noite vai parar?"
+            ),
             "tags": [genero_personagem, "Romance", "Mistério", "Intenso"],
-            "prompt_imagem_en": f"masterpiece upper body portrait of 1{('man, handsome male' if genero_personagem == 'Masculino' else 'woman, beautiful female')}, {caracteristicas}, intense expressive eyes, vertical framing, generous headroom above head, 8k resolution, cinematic lighting"
+            "prompt_imagem_en": prompt_visual_padrao
         }
     
     # Validações e garantias de segurança
     if not resultado.get("nome"):
-        resultado["nome"] = nome_sugerido or ("Liam" if genero_personagem == "Masculino" else "Elena")
+        resultado["nome"] = nome_sugerido or ("Liam" if genero_personagem == "Masculino" else "Morgana")
     if not resultado.get("subtitulo"):
         resultado["subtitulo"] = f"Personagem {genero_personagem}"
     if not resultado.get("sinopse"):
@@ -1505,9 +1641,13 @@ def gerar_historia_rapida(dados: dict) -> dict:
         resultado["abertura"] = f"— Você finalmente chegou... Estava aguardando por você. O que deseja fazer primeiro?"
     if not resultado.get("tags") or not isinstance(resultado.get("tags"), list):
         resultado["tags"] = [genero_personagem, estilo_imagem]
+        
+    # Se o prompt retornado pela IA for vazio ou não contiver o gênero correto, garante o prompt sintetizado
+    p_ia = resultado.get("prompt_imagem_en") or ""
+    if len(p_ia) < 20 or (genero_personagem == "Masculino" and "man" not in p_ia.lower() and "male" not in p_ia.lower()):
+        resultado["prompt_imagem_en"] = prompt_visual_padrao
     
     return resultado
-
 
 def gerar_capa(cenario):
     """Gera a imagem de capa de um cenário oficial (a vitrine da aba Explorar).
