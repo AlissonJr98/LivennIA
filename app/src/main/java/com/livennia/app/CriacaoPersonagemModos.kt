@@ -62,6 +62,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -102,6 +103,8 @@ private val CardObsidianBorda = Color(0xFF232538)
 private val RoxoPrimario = Color(0xFF7C4DFF)
 private val RoxoSecundario = Color(0xFF6C5CE7)
 private val DouradoLivenn = Color(0xFFF5C842)
+private val DouradoVip = Color(0xFFF5C842)
+private val VerdeSucesso = Color(0xFF34C759)
 private val TextoClaro = Color(0xFFF0F0F5)
 private val TextoSecundario = Color(0xFFA0A2B3)
 private val TextoMudo = Color(0xFF6E7082)
@@ -801,16 +804,32 @@ fun ModalModoRapido(
     onConcluido: (CenarioDto) -> Unit
 ) {
     val contexto = LocalContext.current
-    var genero by remember { mutableStateOf("Feminino") }
-    var descricaoVisual by remember { mutableStateOf("") }
-    var estiloImagem by remember { mutableStateOf("semi_realistic") }
-    var modoJogoEscolhido by remember { mutableStateOf("historia") }
-    var nome by remember { mutableStateOf("") }
 
-    val estilos = listOf("Anime", "Dark Fantasy", "Cyberpunk", "Realista")
+    // Etapa 1: Dados fornecidos pelo usuário
+    var etapaAtual by remember { mutableIntStateOf(1) } // 1 = Criação / Ideia, 2 = Revisão da IA
+    var genero by remember { mutableStateOf("Masculino") }
+    var nomeSugerido by remember { mutableStateOf("") }
+    var caracteristicas by remember { mutableStateOf("") }
+    var enredoInicial by remember { mutableStateOf("") }
+    var estiloImagem by remember { mutableStateOf("semi_realistic") }
+    var modoJogoEscolhido by remember { mutableStateOf("historia") } // "historia" ou "rpg"
+    var gerandoIa by remember { mutableStateOf(false) }
+
+    // Etapa 2: Resultado gerado pela IA (revisável e editável)
+    var historiaGerada by remember { mutableStateOf<HistoriaRapidaGeradaResponse?>(null) }
+    var nomeEditado by remember { mutableStateOf("") }
+    var subtituloEditado by remember { mutableStateOf("") }
+    var sinopseEditada by remember { mutableStateOf("") }
+    var aberturaEditada by remember { mutableStateOf("") }
+    var tagsEditadas by remember { mutableStateOf<List<String>>(emptyList()) }
+    var versaoCapa by remember { mutableIntStateOf(1) }
+    var regenerandoCapa by remember { mutableStateOf(false) }
+    var publicando by remember { mutableStateOf(false) }
 
     Dialog(
-        onDismissRequest = onFechar,
+        onDismissRequest = {
+            if (!gerandoIa && !publicando) onFechar()
+        },
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Surface(
@@ -824,256 +843,711 @@ fun ModalModoRapido(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = onFechar) {
-                        Icon(Icons.Default.Close, contentDescription = "Fechar", tint = TextoClaro)
+                    if (etapaAtual == 2) {
+                        IconButton(
+                            onClick = { if (!publicando) etapaAtual = 1 },
+                            enabled = !publicando
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar", tint = TextoClaro)
+                        }
+                    } else {
+                        IconButton(onClick = onFechar, enabled = !gerandoIa) {
+                            Icon(Icons.Default.Close, contentDescription = "Fechar", tint = TextoClaro)
+                        }
                     }
-                    Text(
-                        "Estúdio Visual de Personagem",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = TextoClaro,
-                        modifier = Modifier.weight(1f)
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (etapaAtual == 1) "Criação Rápida com IA" else "Revisão da História",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp,
+                            color = TextoClaro
+                        )
+                        Text(
+                            text = if (etapaAtual == 1) "Etapa 1 de 2: Ideia & Personagem" else "Etapa 2 de 2: Confira e personalize antes de postar",
+                            fontSize = 11.sp,
+                            color = TextoMudo
+                        )
+                    }
+                    Surface(
+                        color = RoxoPrimario.copy(alpha = 0.22f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, RoxoPrimario.copy(alpha = 0.5f))
+                    ) {
+                        Text(
+                            text = if (etapaAtual == 1) "1 / 2" else "2 / 2",
+                            color = DouradoVip,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        )
+                    }
                 }
 
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 20.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Upload / Arte de Referência
-                    Surface(
-                        color = CardObsidian,
-                        shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, CardObsidianBorda),
+                HorizontalDivider(color = CardObsidianBorda, thickness = 1.dp)
+
+                if (etapaAtual == 1) {
+                    // -------------------------------------------------------------
+                    // ETAPA 1: ENTRADA DE IDEIA, CARACTERÍSTICAS E CONTEXTO
+                    // -------------------------------------------------------------
+                    Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(130.dp)
-                            .clickable {
-                                Toast.makeText(contexto, "Selecione uma imagem de avatar da galeria", Toast.LENGTH_SHORT).show()
-                            }
+                            .weight(1f)
+                            .padding(horizontal = 20.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(Icons.Default.CloudUpload, contentDescription = null, tint = RoxoPrimario, modifier = Modifier.size(32.dp))
-                            Spacer(Modifier.height(6.dp))
-                            Text("Toque para vincular arte ou avatar", color = TextoClaro, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                            Text("PNG, JPG ou GIF", color = TextoMudo, fontSize = 11.sp)
-                        }
-                    }
+                        Spacer(Modifier.height(4.dp))
 
-                    // Nome do Personagem
-                    Column {
-                        Text("Nome do Personagem", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
-                        Spacer(Modifier.height(6.dp))
+                        // Banner explicativo Persona vs Personagem
                         Surface(
                             color = CardObsidian,
-                            shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(1.dp, CardObsidianBorda),
-                            modifier = Modifier.fillMaxWidth()
+                            shape = RoundedCornerShape(14.dp),
+                            border = BorderStroke(1.dp, CardObsidianBorda)
                         ) {
-                            BasicTextField(
-                                value = nome,
-                                onValueChange = { nome = it },
-                                textStyle = TextStyle(color = TextoClaro, fontSize = 14.sp),
-                                cursorBrush = SolidColor(RoxoPrimario),
+                            Row(
                                 modifier = Modifier.padding(14.dp),
-                                decorationBox = { inner ->
-                                    if (nome.isEmpty()) Text("Ex: Morgana, Kaelen...", color = TextoMudo, fontSize = 14.sp)
-                                    inner()
-                                }
-                            )
-                        }
-                    }
-
-                    // Formato da Narrativa (Escolha do Criador)
-                    Column {
-                        Text("Formato da História (Decidido por você)", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
-                        Spacer(Modifier.height(6.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            listOf("historia" to "📜 Só Leitura / Narrativa", "rpg" to "⚔️ RPG com Ações").forEach { (valor, rotulo) ->
-                                val sel = modoJogoEscolhido == valor
-                                Surface(
-                                    color = if (sel) RoxoPrimario.copy(alpha = 0.20f) else CardObsidian,
-                                    shape = RoundedCornerShape(10.dp),
-                                    border = BorderStroke(1.dp, if (sel) RoxoPrimario else CardObsidianBorda),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { modoJogoEscolhido = valor }
-                                ) {
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Text("🎭", fontSize = 24.sp)
+                                Column {
                                     Text(
-                                        rotulo,
-                                        color = if (sel) Color.White else TextoSecundario,
-                                        fontSize = 12.sp,
-                                        fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
-                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
-                                        textAlign = TextAlign.Center
+                                        "Personagem da História (Controlado pela IA)",
+                                        color = DouradoVip,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp
+                                    )
+                                    Text(
+                                        "Descreva a pessoa com quem você vai interagir no chat. Você (sua Persona) será quem conversa com ele!",
+                                        color = TextoSecundario,
+                                        fontSize = 11.sp,
+                                        lineHeight = 15.sp
                                     )
                                 }
                             }
                         }
-                    }
 
-                    // Gênero
-                    Column {
-                        Text("Gênero", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
-                        Spacer(Modifier.height(6.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            listOf("Feminino", "Masculino", "Não binário").forEach { g ->
-                                val sel = g == genero
-                                Surface(
-                                    color = if (sel) RoxoPrimario.copy(alpha = 0.20f) else CardObsidian,
-                                    shape = RoundedCornerShape(50),
-                                    border = BorderStroke(1.dp, if (sel) RoxoPrimario else CardObsidianBorda),
-                                    modifier = Modifier.clickable { genero = g }
-                                ) {
-                                    Text(
-                                        g,
-                                        color = if (sel) Color.White else TextoSecundario,
-                                        fontSize = 12.sp,
-                                        fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
-                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Descrição Visual
-                    Column {
-                        Text("Descrição Visual & Personalidade", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
-                        Spacer(Modifier.height(6.dp))
-                        Surface(
-                            color = CardObsidian,
-                            shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(1.dp, CardObsidianBorda),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(95.dp)
-                        ) {
-                            BasicTextField(
-                                value = descricaoVisual,
-                                onValueChange = { descricaoVisual = it },
-                                textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp),
-                                cursorBrush = SolidColor(RoxoPrimario),
-                                modifier = Modifier.padding(14.dp),
-                                decorationBox = { inner ->
-                                    if (descricaoVisual.isEmpty()) {
+                        // 1. Gênero do Personagem
+                        Column {
+                            Text("Gênero do Personagem *", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
+                            Spacer(Modifier.height(8.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                listOf("Masculino" to "👨 Homem", "Feminino" to "👩 Mulher", "Outro" to "✨ Outro").forEach { (valor, rotulo) ->
+                                    val sel = genero == valor
+                                    Surface(
+                                        color = if (sel) RoxoPrimario.copy(alpha = 0.28f) else CardObsidian,
+                                        shape = RoundedCornerShape(12.dp),
+                                        border = BorderStroke(if (sel) 1.5.dp else 1.dp, if (sel) RoxoPrimario else CardObsidianBorda),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable { genero = valor }
+                                    ) {
                                         Text(
-                                            "Cabelos prateados, olhos violeta intensos, postura nobre e temperamento afiado...",
-                                            color = TextoMudo,
-                                            fontSize = 13.sp
+                                            rotulo,
+                                            color = if (sel) Color.White else TextoSecundario,
+                                            fontSize = 13.sp,
+                                            fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
+                                            modifier = Modifier.padding(vertical = 12.dp),
+                                            textAlign = TextAlign.Center
                                         )
                                     }
-                                    inner()
                                 }
-                            )
+                            }
+                        }
+
+                        // 2. Nome sugerido (Opcional)
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Nome do Personagem", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
+                                Text("Opcional (a IA batiza se vazio)", color = TextoMudo, fontSize = 11.sp)
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            Surface(
+                                color = CardObsidian,
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, CardObsidianBorda),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                BasicTextField(
+                                    value = nomeSugerido,
+                                    onValueChange = { nomeSugerido = it.take(30) },
+                                    textStyle = TextStyle(color = TextoClaro, fontSize = 14.sp),
+                                    cursorBrush = SolidColor(RoxoPrimario),
+                                    modifier = Modifier.padding(14.dp),
+                                    decorationBox = { inner ->
+                                        if (nomeSugerido.isEmpty()) {
+                                            Text(if (genero == "Masculino") "Ex: Liam, Bryan, Dante, Kaelen..." else "Ex: Elena, Carmilla, Morgana...", color = TextoMudo, fontSize = 14.sp)
+                                        }
+                                        inner()
+                                    }
+                                )
+                            }
+                        }
+
+                        // 3. Características do Personagem (Aparência, idade, personalidade)
+                        Column {
+                            Text("Aparência & Personalidade do Personagem *", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
+                            Spacer(Modifier.height(4.dp))
+                            Text("Escreva os detalhes físicos e jeito dele para a IA pintar e interpretar com exatidão:", color = TextoMudo, fontSize = 11.sp)
+                            Spacer(Modifier.height(6.dp))
+                            Surface(
+                                color = CardObsidian,
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, if (caracteristicas.isBlank()) CardObsidianBorda else RoxoPrimario.copy(alpha = 0.5f)),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(110.dp)
+                            ) {
+                                BasicTextField(
+                                    value = caracteristicas,
+                                    onValueChange = { caracteristicas = it.take(400) },
+                                    textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp, lineHeight = 18.sp),
+                                    cursorBrush = SolidColor(RoxoPrimario),
+                                    modifier = Modifier.padding(14.dp),
+                                    decorationBox = { inner ->
+                                        if (caracteristicas.isEmpty()) {
+                                            Text(
+                                                "Ex: Homem de 30 anos, cabelos pretos, olhos azuis intensos, 1,90 de altura. Mafioso, possessivo, protetor, inteligente, terno elegante...",
+                                                color = TextoMudo,
+                                                fontSize = 13.sp,
+                                                lineHeight = 18.sp
+                                            )
+                                        }
+                                        inner()
+                                    }
+                                )
+                            }
+                        }
+
+                        // 4. Enredo Inicial / Primeiro Encontro
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Contexto & Primeiro Encontro", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
+                                Text("Mais detalhes antes de gerar", color = DouradoVip, fontSize = 11.sp)
+                            }
+                            Spacer(Modifier.height(4.dp))
+                            Text("Como vocês se encontram? O que acontece no início da história?", color = TextoMudo, fontSize = 11.sp)
+                            Spacer(Modifier.height(6.dp))
+                            Surface(
+                                color = CardObsidian,
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, CardObsidianBorda),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(105.dp)
+                            ) {
+                                BasicTextField(
+                                    value = enredoInicial,
+                                    onValueChange = { enredoInicial = it.take(400) },
+                                    textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp, lineHeight = 18.sp),
+                                    cursorBrush = SolidColor(RoxoPrimario),
+                                    modifier = Modifier.padding(14.dp),
+                                    decorationBox = { inner ->
+                                        if (enredoInicial.isEmpty()) {
+                                            Text(
+                                                "Ex: Ele me encontra em uma balada luxuosa com luzes baixas, se apaixona à primeira vista e me oferece uma bebida enquanto tenta puxar assunto...",
+                                                color = TextoMudo,
+                                                fontSize = 13.sp,
+                                                lineHeight = 18.sp
+                                            )
+                                        }
+                                        inner()
+                                    }
+                                )
+                            }
+                        }
+
+                        // 5. Formato da Narrativa
+                        Column {
+                            Text("Formato da História", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
+                            Spacer(Modifier.height(8.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf("historia" to "📜 Só Leitura / Narrativa", "rpg" to "⚔️ RPG de Mesa & Dados").forEach { (valor, rotulo) ->
+                                    val sel = modoJogoEscolhido == valor
+                                    Surface(
+                                        color = if (sel) RoxoPrimario.copy(alpha = 0.24f) else CardObsidian,
+                                        shape = RoundedCornerShape(10.dp),
+                                        border = BorderStroke(1.dp, if (sel) RoxoPrimario else CardObsidianBorda),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable { modoJogoEscolhido = valor }
+                                    ) {
+                                        Text(
+                                            rotulo,
+                                            color = if (sel) Color.White else TextoSecundario,
+                                            fontSize = 12.sp,
+                                            fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
+                                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // 6. Estilo Visual da Capa
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Estilo Visual da IA", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
+                                Text("Ilustração da Capa", color = TextoMudo, fontSize = 11.sp)
+                            }
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                for (est in ESTILOS_IMAGEM_PERSONA) {
+                                    val sel = est.id == estiloImagem
+                                    Surface(
+                                        color = if (sel) RoxoPrimario.copy(alpha = 0.22f) else CardObsidian,
+                                        shape = RoundedCornerShape(12.dp),
+                                        border = BorderStroke(if (sel) 1.5.dp else 1.dp, if (sel) RoxoPrimario else CardObsidianBorda),
+                                        modifier = Modifier
+                                            .width(130.dp)
+                                            .clickable { estiloImagem = est.id }
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(8.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            PreviaEstiloImagem(
+                                                estiloId = est.id,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(90.dp),
+                                                recorte = RoundedCornerShape(8.dp)
+                                            )
+                                            Spacer(Modifier.height(6.dp))
+                                            Text(
+                                                est.nome,
+                                                fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
+                                                fontSize = 11.sp,
+                                                color = if (sel) Color.White else TextoClaro,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(Modifier.height(16.dp))
+                    }
+
+                    // Botão Inferior de Geração
+                    Surface(
+                        color = FundoOled,
+                        border = BorderStroke(1.dp, CardObsidianBorda),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(modifier = Modifier.padding(16.dp)) {
+                            Button(
+                                onClick = {
+                                    if (caracteristicas.trim().length < 3) {
+                                        Toast.makeText(contexto, "Descreva as características do personagem para a IA!", Toast.LENGTH_SHORT).show()
+                                        return@Button
+                                    }
+                                    gerandoIa = true
+                                    val req = GerarHistoriaRapidaRequest(
+                                        generoPersonagem = genero,
+                                        nomeSugerido = nomeSugerido.trim().ifBlank { null },
+                                        caracteristicasPersonagem = caracteristicas.trim(),
+                                        enredoInicial = enredoInicial.trim().ifBlank { null },
+                                        estiloImagem = estiloImagem,
+                                        modoJogo = modoJogoEscolhido
+                                    )
+                                    vm.gerarHistoriaRapida(
+                                        req = req,
+                                        onSucesso = { res ->
+                                            gerandoIa = false
+                                            historiaGerada = res
+                                            nomeEditado = res.nome
+                                            subtituloEditado = res.subtitulo
+                                            sinopseEditada = res.sinopse
+                                            aberturaEditada = res.abertura
+                                            tagsEditadas = res.tags
+                                            versaoCapa = 1
+                                            etapaAtual = 2
+                                        },
+                                        onError = { erro ->
+                                            gerandoIa = false
+                                            Toast.makeText(contexto, erro, Toast.LENGTH_LONG).show()
+                                        }
+                                    )
+                                },
+                                enabled = !gerandoIa && !vm.ocupado,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(54.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = RoxoPrimario),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                if (gerandoIa) {
+                                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                                    Spacer(Modifier.width(10.dp))
+                                    Text("Criando história e ilustrando personagem...", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                } else {
+                                    Text("✨ Gerar História & Personagem com IA", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                }
+                            }
                         }
                     }
 
-                    // Estilo de Arte & Prévia Visual da IA
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("Estilo Visual da IA", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
-                            Text("Exemplos com IA", color = TextoMudo, fontSize = 11.sp)
-                        }
+                } else {
+                    // -------------------------------------------------------------
+                    // ETAPA 2: REVISÃO COMPLETA DA IA ANTES DE POSTAR
+                    // -------------------------------------------------------------
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 20.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Spacer(Modifier.height(8.dp))
 
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            for (est in ESTILOS_IMAGEM_PERSONA) {
-                                val sel = est.id == estiloImagem
-                                Surface(
-                                    color = if (sel) RoxoPrimario.copy(alpha = 0.22f) else CardObsidian,
-                                    shape = RoundedCornerShape(12.dp),
-                                    border = BorderStroke(if (sel) 1.5.dp else 1.dp, if (sel) RoxoPrimario else CardObsidianBorda),
-                                    modifier = Modifier
-                                        .width(130.dp)
-                                        .clickable { estiloImagem = est.id }
-                                ) {
-                                    Column(
-                                        modifier = Modifier.padding(8.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
+                        // Card da Imagem de Capa Gerada com IA
+                        val h = historiaGerada
+                        if (h != null) {
+                            Surface(
+                                color = CardObsidian,
+                                shape = RoundedCornerShape(16.dp),
+                                border = BorderStroke(1.dp, CardObsidianBorda),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(240.dp)
+                                            .clip(RoundedCornerShape(12.dp))
                                     ) {
-                                        PreviaEstiloImagem(
-                                            estiloId = est.id,
+                                        CapaCenario(
+                                            cenarioId = h.idTemporario,
+                                            temCapa = true,
+                                            emoji = if (genero == "Feminino") "🌸" else "⚔️",
+                                            nome = nomeEditado,
+                                            versao = versaoCapa,
+                                            alignment = Alignment.TopCenter,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+
+                                        // Badges sobrepostos no topo
+                                        Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .height(90.dp),
-                                            recorte = RoundedCornerShape(8.dp)
-                                        )
-                                        Spacer(Modifier.height(6.dp))
-                                        Text(
-                                            est.nome,
-                                            fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
-                                            fontSize = 11.sp,
-                                            color = if (sel) Color.White else TextoClaro,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
+                                                .padding(10.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Surface(
+                                                color = Color.Black.copy(alpha = 0.70f),
+                                                shape = RoundedCornerShape(8.dp),
+                                                border = BorderStroke(1.dp, DouradoVip.copy(alpha = 0.5f))
+                                            ) {
+                                                Text(
+                                                    text = if (genero == "Masculino") "👨 Personagem Masculino" else "👩 Personagem Feminina",
+                                                    color = DouradoVip,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                                )
+                                            }
+
+                                            Surface(
+                                                color = Color.Black.copy(alpha = 0.70f),
+                                                shape = RoundedCornerShape(8.dp)
+                                            ) {
+                                                Text(
+                                                    text = if (modoJogoEscolhido == "rpg") "⚔️ RPG" else "📜 Leitura",
+                                                    color = Color.White,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    Spacer(Modifier.height(10.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("✓ Arte gerada com fidelidade à sua descrição", color = VerdeSucesso, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                        TextButton(
+                                            onClick = {
+                                                regenerandoCapa = true
+                                                val reqCapa = GerarHistoriaRapidaRequest(
+                                                    generoPersonagem = genero,
+                                                    nomeSugerido = nomeEditado,
+                                                    caracteristicasPersonagem = caracteristicas,
+                                                    enredoInicial = enredoInicial,
+                                                    estiloImagem = estiloImagem,
+                                                    modoJogo = modoJogoEscolhido
+                                                )
+                                                vm.gerarHistoriaRapida(
+                                                    req = reqCapa,
+                                                    onSucesso = { nova ->
+                                                        regenerandoCapa = false
+                                                        versaoCapa++
+                                                        historiaGerada = nova.copy(idTemporario = h.idTemporario)
+                                                        Toast.makeText(contexto, "Nova imagem gerada com sucesso!", Toast.LENGTH_SHORT).show()
+                                                    },
+                                                    onError = {
+                                                        regenerandoCapa = false
+                                                        versaoCapa++
+                                                    }
+                                                )
+                                            },
+                                            enabled = !regenerandoCapa
+                                        ) {
+                                            if (regenerandoCapa) {
+                                                CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp, color = DouradoVip)
+                                                Spacer(Modifier.width(6.dp))
+                                                Text("Gerando...", color = DouradoVip, fontSize = 11.sp)
+                                            } else {
+                                                Text("🔄 Outro Ângulo", color = DouradoVip, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
+
+                        // 1. Nome do Personagem (Editável)
+                        Column {
+                            Text("Nome do Personagem (Você pode mudar)", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
+                            Spacer(Modifier.height(6.dp))
+                            Surface(
+                                color = CardObsidian,
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, CardObsidianBorda),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                BasicTextField(
+                                    value = nomeEditado,
+                                    onValueChange = { nomeEditado = it.take(35) },
+                                    textStyle = TextStyle(color = TextoClaro, fontSize = 15.sp, fontWeight = FontWeight.Bold),
+                                    cursorBrush = SolidColor(RoxoPrimario),
+                                    modifier = Modifier.padding(14.dp)
+                                )
+                            }
+                        }
+
+                        // 2. Subtítulo / Arquétipo (Editável)
+                        Column {
+                            Text("Frase de Impacto / Subtítulo", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
+                            Spacer(Modifier.height(6.dp))
+                            Surface(
+                                color = CardObsidian,
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, CardObsidianBorda),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                BasicTextField(
+                                    value = subtituloEditado,
+                                    onValueChange = { subtituloEditado = it.take(80) },
+                                    textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp),
+                                    cursorBrush = SolidColor(RoxoPrimario),
+                                    modifier = Modifier.padding(14.dp)
+                                )
+                            }
+                        }
+
+                        // 3. Sinopse da História (Editável)
+                        Column {
+                            Text("Sinopse da História (Gerada pela IA a partir do que você escreveu)", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
+                            Spacer(Modifier.height(6.dp))
+                            Surface(
+                                color = CardObsidian,
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, CardObsidianBorda),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                BasicTextField(
+                                    value = sinopseEditada,
+                                    onValueChange = { sinopseEditada = it.take(800) },
+                                    textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp, lineHeight = 19.sp),
+                                    cursorBrush = SolidColor(RoxoPrimario),
+                                    modifier = Modifier.padding(14.dp)
+                                )
+                            }
+                        }
+
+                        // 4. Primeira Mensagem / Cena de Abertura (Editável!)
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text("💬 Primeira Mensagem do Chat (Cena de Abertura)", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = DouradoVip)
+                            }
+                            Spacer(Modifier.height(4.dp))
+                            Text("Essa é a narrativa e a fala com que o personagem começará a história com você:", color = TextoMudo, fontSize = 11.sp)
+                            Spacer(Modifier.height(6.dp))
+                            Surface(
+                                color = CardObsidian,
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, DouradoVip.copy(alpha = 0.4f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                BasicTextField(
+                                    value = aberturaEditada,
+                                    onValueChange = { aberturaEditada = it.take(1200) },
+                                    textStyle = TextStyle(color = TextoClaro, fontSize = 13.sp, lineHeight = 20.sp),
+                                    cursorBrush = SolidColor(DouradoVip),
+                                    modifier = Modifier.padding(14.dp)
+                                )
+                            }
+                        }
+
+                        // 5. Tags
+                        if (tagsEditadas.isNotEmpty()) {
+                            Column {
+                                Text("Tags & Temas", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextoClaro)
+                                Spacer(Modifier.height(6.dp))
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    tagsEditadas.forEach { tag ->
+                                        Surface(
+                                            color = CardObsidian,
+                                            shape = RoundedCornerShape(8.dp),
+                                            border = BorderStroke(1.dp, CardObsidianBorda)
+                                        ) {
+                                            Text("#$tag", color = TextoSecundario, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(Modifier.height(16.dp))
                     }
 
-                    Spacer(Modifier.height(10.dp))
-                }
-
-                // Botão de Publicação LivennIA
-                Box(modifier = Modifier.padding(16.dp)) {
-                    Button(
-                        onClick = {
-                            val finalNome = nome.trim().ifBlank { "Personagem Visual" }
-                            val novoCenario = CenarioDto(
-                                id = "rapido_" + System.currentTimeMillis(),
-                                nome = finalNome,
-                                subtitulo = estiloImagem,
-                                emoji = if (genero == "Feminino") "🌸" else "✨",
-                                genero = estiloImagem,
-                                tags = listOf(genero, estiloImagem, if (modoJogoEscolhido == "rpg") "RPG" else "Leitura"),
-                                sinopse = descricaoVisual.ifBlank { "Personagem concebido com estética $estiloImagem e narrativa envolvente." },
-                                abertura = "Estava esperando por você. O que quer saber primeiro?",
-                                criadoPorUsuario = true,
-                                autorNome = "Criado por IA",
-                                autorAvatar = "✨",
-                                chats = 0,
-                                saves = 0,
-                                modoJogo = modoJogoEscolhido
-                            )
-                            vm.publicarCenario(novoCenario) { cenarioSalvo ->
-                                onConcluido(cenarioSalvo)
-                                Toast.makeText(contexto, "História '$finalNome' publicada com sucesso!", Toast.LENGTH_LONG).show()
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = RoxoPrimario),
-                        shape = RoundedCornerShape(14.dp)
+                    // Barra Inferior de Ação: Publicar ou Publicar & Jogar
+                    Surface(
+                        color = FundoOled,
+                        border = BorderStroke(1.dp, CardObsidianBorda),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("✦ Publicar no LivennIA", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Botão 1: Publicar
+                            Button(
+                                onClick = {
+                                    val h = historiaGerada ?: return@Button
+                                    publicando = true
+                                    val finalNome = nomeEditado.trim().ifBlank { "Personagem" }
+                                    val cenarioDto = CenarioDto(
+                                        id = h.idTemporario,
+                                        nome = finalNome,
+                                        subtitulo = subtituloEditado.trim().ifBlank { estiloImagem },
+                                        emoji = if (genero == "Feminino") "🌸" else "⚔️",
+                                        genero = if (modoJogoEscolhido == "rpg") "RPG" else "História",
+                                        tags = (tagsEditadas + listOf(genero, estiloImagem)).distinct(),
+                                        sinopse = sinopseEditada.trim().ifBlank { caracteristicas },
+                                        abertura = aberturaEditada.trim().ifBlank { "Olá! É bom ver você." },
+                                        capa = true,
+                                        criadoPorUsuario = true,
+                                        autorNome = vm.apelido.ifBlank { "Criado por IA" },
+                                        autorAvatar = "✨",
+                                        chats = 0,
+                                        saves = 0,
+                                        modoJogo = modoJogoEscolhido
+                                    )
+                                    vm.publicarCenario(cenarioDto) { salvo ->
+                                        publicando = false
+                                        Toast.makeText(contexto, "História '$finalNome' publicada!", Toast.LENGTH_SHORT).show()
+                                        onConcluido(salvo)
+                                    }
+                                },
+                                enabled = !publicando && !vm.ocupado,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(52.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = CardObsidian),
+                                shape = RoundedCornerShape(14.dp),
+                                border = BorderStroke(1.dp, RoxoPrimario)
+                            ) {
+                                Text("✦ Publicar", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            }
+
+                            // Botão 2: Publicar & Jogar Imediatamente!
+                            Button(
+                                onClick = {
+                                    val h = historiaGerada ?: return@Button
+                                    publicando = true
+                                    val finalNome = nomeEditado.trim().ifBlank { "Personagem" }
+                                    val cenarioDto = CenarioDto(
+                                        id = h.idTemporario,
+                                        nome = finalNome,
+                                        subtitulo = subtituloEditado.trim().ifBlank { estiloImagem },
+                                        emoji = if (genero == "Feminino") "🌸" else "⚔️",
+                                        genero = if (modoJogoEscolhido == "rpg") "RPG" else "História",
+                                        tags = (tagsEditadas + listOf(genero, estiloImagem)).distinct(),
+                                        sinopse = sinopseEditada.trim().ifBlank { caracteristicas },
+                                        abertura = aberturaEditada.trim().ifBlank { "Olá! É bom ver você." },
+                                        capa = true,
+                                        criadoPorUsuario = true,
+                                        autorNome = vm.apelido.ifBlank { "Criado por IA" },
+                                        autorAvatar = "✨",
+                                        chats = 0,
+                                        saves = 0,
+                                        modoJogo = modoJogoEscolhido
+                                    )
+                                    vm.publicarCenario(cenarioDto) { salvo ->
+                                        publicando = false
+                                        onFechar()
+                                        vm.iniciarHistoriaDireta(salvo, modoJogoEscolhido)
+                                    }
+                                },
+                                enabled = !publicando && !vm.ocupado,
+                                modifier = Modifier
+                                    .weight(1.3f)
+                                    .height(52.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = RoxoPrimario),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                if (publicando) {
+                                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                                } else {
+                                    Text("▶ Publicar & Jogar", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
     }
 }
+
 
 // -------------------------------------------------------------
 // 5. ARQUITETO DE MUNDOS / MODO AVANÇADO

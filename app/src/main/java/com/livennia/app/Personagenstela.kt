@@ -3341,11 +3341,11 @@ private fun AbaPerfil(vm: AppViewModel) {
 
                 ) {
 
-                    RetratoPersona(
-                        temRetrato = vm.personaTemRetrato,
-                        emojiOuPadrao = vm.personaAvatar.ifBlank { "👤" },
+                    FotoPerfilUsuario(
+                        temFoto = vm.fotoPerfilTemRetrato,
+                        emojiOuIniciais = vm.apelido.take(1).uppercase().ifBlank { "👤" },
                         tamanho = 72,
-                        versao = vm.personaRetratoVersao,
+                        versao = vm.fotoPerfilVersao,
                         recorte = CircleShape
                     )
 
@@ -4052,11 +4052,11 @@ private fun AbaPerfil(vm: AppViewModel) {
                                 mostrarDialogoFotoPerfil = true
                             }
                         ) {
-                            RetratoPersona(
-                                temRetrato = vm.personaTemRetrato,
-                                emojiOuPadrao = vm.personaAvatar.ifBlank { "👤" },
+                            FotoPerfilUsuario(
+                                temFoto = vm.fotoPerfilTemRetrato,
+                                emojiOuIniciais = vm.apelido.take(1).uppercase().ifBlank { "👤" },
                                 tamanho = 68,
-                                versao = vm.personaRetratoVersao,
+                                versao = vm.fotoPerfilVersao,
                                 recorte = CircleShape
                             )
                         }
@@ -4623,11 +4623,11 @@ fun ModalTrocarFotoPerfil(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        RetratoPersona(
-                            temRetrato = vm.personaTemRetrato,
-                            emojiOuPadrao = vm.personaAvatar.ifBlank { "👤" },
+                        FotoPerfilUsuario(
+                            temFoto = vm.fotoPerfilTemRetrato,
+                            emojiOuIniciais = vm.apelido.take(1).uppercase().ifBlank { "👤" },
                             tamanho = 54,
-                            versao = vm.personaRetratoVersao,
+                            versao = vm.fotoPerfilVersao,
                             recorte = CircleShape
                         )
                         Column {
@@ -4737,11 +4737,11 @@ fun ModalTrocarFotoPerfil(
                                     modifier = Modifier.size(110.dp)
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
-                                        RetratoPersona(
-                                            temRetrato = vm.personaTemRetrato,
-                                            emojiOuPadrao = vm.personaAvatar.ifBlank { "👤" },
+                                        FotoPerfilUsuario(
+                                            temFoto = vm.fotoPerfilTemRetrato,
+                                            emojiOuIniciais = vm.apelido.take(1).uppercase().ifBlank { "👤" },
                                             tamanho = 106,
-                                            versao = vm.personaRetratoVersao,
+                                            versao = vm.fotoPerfilVersao,
                                             recorte = CircleShape
                                         )
                                     }

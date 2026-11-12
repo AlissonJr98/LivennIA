@@ -1318,12 +1318,18 @@ def arte_do_cenario(cenario):
     """O pedido de imagem da capa. Gera com base no que a pessoa adicionou (personagem, tags, sinopse, gênero e estilo)."""
     if not isinstance(cenario, dict):
         return None
+    
+    # 1. Se já tem prompt em inglês customizado ou refinado pela IA, usa direto
+    prompt_en = cenario.get("prompt_imagem_en")
+    if isinstance(prompt_en, str) and prompt_en.strip():
+        return prompt_en.strip()
+
     arte = cenario.get("arte")
     if isinstance(arte, str) and arte.strip():
         return arte.strip()
 
     nome = str(cenario.get("nome") or "Personagem").strip()
-    genero = str(cenario.get("genero") or "Fantasia").strip()
+    genero_raw = str(cenario.get("genero") or "Fantasia").strip()
     sinopse = str(cenario.get("sinopse") or "").strip()
     tags = cenario.get("tags") or []
     if isinstance(tags, str):
@@ -1333,6 +1339,25 @@ def arte_do_cenario(cenario):
         except Exception:
             tags = [tags]
     tags_str = ", ".join(str(t) for t in tags)
+    texto_total = f"{nome} {genero_raw} {tags_str} {sinopse}".lower()
+
+    # Detecção estrita de gênero para evitar trocas indesejadas (homem virar mulher ou vice-versa)
+    eh_homem = any(w in texto_total for w in [
+        "masculin", "homem", "garoto", "rapaz", "male", "1man", "boy", "lord", "lorde", "don", "mafioso",
+        "cavaleiro", "guerreiro", "rei", "principe", "padre", "mago", "feiticeiro", "espadachim"
+    ])
+    eh_mulher = any(w in texto_total for w in [
+        "feminin", "mulher", "garota", "moca", "female", "1woman", "girl", "lady", "rainha", "princesa",
+        "feiticeira", "bruxa", "donzela", "mafiosa", "guerreira"
+    ])
+
+    modo = str(cenario.get("modo") or cenario.get("modoJogo") or "historia").lower()
+    if eh_homem and not eh_mulher:
+        tipo_arte = "masterpiece vertical upper body character portrait of 1man, handsome male, solo man, detailed masculine facial features"
+    elif eh_mulher and not eh_homem:
+        tipo_arte = "masterpiece vertical upper body character portrait of 1woman, beautiful female, solo woman, detailed feminine facial features"
+    else:
+        tipo_arte = "tabletop RPG hero character portrait" if modo == "rpg" else "story character portrait"
 
     estilo = str(cenario.get("estilo_imagem") or cenario.get("estilo") or "semi_realistic").lower()
     estilo_prompt = "cinematic semi-realistic digital art, masterpiece, 8k resolution, photorealistic lighting, highly detailed textures"
@@ -1345,21 +1370,143 @@ def arte_do_cenario(cenario):
     elif "dark" in estilo or "fantasia" in estilo or "gotic" in estilo:
         estilo_prompt = "dark fantasy art, dramatic chiaroscuro lighting, intricate gothic details, oil painting aesthetic, cinematic masterpiece, 8k"
 
-    modo = str(cenario.get("modo") or cenario.get("modoJogo") or "historia").lower()
-    tipo_arte = "tabletop RPG hero character portrait" if modo == "rpg" else "story character portrait"
+    # Traduz características físicas descritas em português para inglês
+    detalhes_visuais_en = ""
+    if any(w in texto_total for w in ["cabelo", "olho", "pele", "alto", "baixa", "preto", "azul", "loiro", "ruivo", "castanho", "mafia", "terno", "muscul", "barba"]):
+        try:
+            trecho = f"{tags_str}. {sinopse[:250]}"
+            trad = _traduzir_prompt_retrato(trecho)
+            if trad and trad != trecho and len(trad) > 10:
+                detalhes_visuais_en = trad
+        except Exception:
+            pass
 
     partes = [
-        f"{tipo_arte} of {nome}",
-        f"genre: {genero}",
+        f"{tipo_arte} named {nome}",
+        f"genre: {genero_raw}",
     ]
-    if tags_str:
-        partes.append(f"character traits and archetype: {tags_str}")
-    if sinopse:
-        partes.append(f"story setting and mood: {sinopse[:200]}")
+    if detalhes_visuais_en:
+        partes.append(f"character physical appearance and traits: {detalhes_visuais_en}")
+    elif tags_str:
+        partes.append(f"character traits: {tags_str}")
+    if sinopse and not detalhes_visuais_en:
+        partes.append(f"story setting: {sinopse[:160]}")
     partes.append(estilo_prompt)
     partes.append("well framed, entire head and hair fully visible with generous headroom at the top, perfectly centered subject, upper body portrait with clear space above head, expressive captivating eyes, charismatic pose, vertical composition, highly detailed face and eyes, beautiful character design, ultra sharp focus, 8k resolution, professional studio quality, no text, no watermark, no frame, no blur")
 
     return ", ".join(partes)
+
+
+def gerar_imagem_capa_por_prompt(prompt_en: str, estilo: str = "semi_realistic") -> bytes:
+    """Gera bytes de imagem de capa a partir de um prompt em inglês já estruturado e traduzido."""
+    motivos = []
+    for provedor in config.PROVEDORES_IMAGEM:
+        if not _provedor_disponivel(provedor):
+            motivos.append(f"{provedor}: sem cota")
+            continue
+        try:
+            if provedor == "gemini":
+                imagem = _retrato_gemini(prompt_en)
+            elif provedor == "pollinations":
+                imagem = _retrato_pollinations(
+                    prompt_en,
+                    traduzir=False,
+                    largura=config.CAPA_LARGURA,
+                    altura=config.CAPA_ALTURA,
+                )
+            else:
+                continue
+        except ErroIA as erro:
+            motivos.append(f"{provedor}: {erro}")
+            continue
+        if _parece_imagem(imagem):
+            logging.info("Imagem por prompt gerada com sucesso pelo provedor '%s'.", provedor)
+            return imagem
+        motivos.append(f"{provedor}: resposta não é imagem")
+    raise ErroIA("Nenhum provedor gerou a imagem de capa por prompt. " + " | ".join(motivos))
+
+
+def gerar_historia_rapida(dados: dict) -> dict:
+    """Gera o conceito completo de personagem e história (Modo Rápido com IA em 2 telas).
+    
+    A IA cria nome, subtítulo, sinopse, primeira mensagem narrativa (abertura),
+    tags e um prompt em inglês perfeitamente detalhado para geração de arte com fidelidade total de gênero e traços.
+    """
+    cliente = _obter_cliente()
+    modelo = config.MODELOS[0]
+    
+    genero_personagem = dados.get("genero_personagem") or "Masculino"
+    nome_sugerido = (dados.get("nome_sugerido") or "").strip()
+    caracteristicas = (dados.get("caracteristicas_personagem") or "").strip()
+    enredo_inicial = (dados.get("enredo_inicial") or "").strip()
+    estilo_imagem = dados.get("estilo_imagem") or "semi_realistic"
+    modo_jogo = dados.get("modo_jogo") or "historia"
+    
+    sistema = (
+        "Você é o Diretor Criativo e Mestre de Roteiro do LivennIA, especialista em criar personagens cativantes "
+        "para histórias interativas, visual novels e RPGs de mesa.\n"
+        "O usuário descreverá como deseja o PERSONAGEM com quem ele vai interagir na história (o personagem é o NPC/par romântico/antagonista que a IA vai interpretar).\n"
+        "Sua missão é desenvolver a história em formato JSON estruturado com máxima fidelidade aos traços solicitados.\n\n"
+        "REGRAS CRÍTICAS:\n"
+        "1. FIDELIDADE ABSOLUTA DE GÊNERO E APARÊNCIA: Se o usuário pediu personagem Masculino/Homem, NUNCA gere uma mulher ou traços femininos. "
+        "Se pediu cabelos pretos e olhos azuis, fixe rigorosamente cabelos pretos e olhos azuis.\n"
+        "2. O campo 'abertura' é a PRIMEIRA MENSAGEM do personagem/narrador que inicia o jogo. Deve ser imersiva, empolgante, "
+        "com 2 a 3 parágrafos descrevendo a atmosfera do local (ex: balada, taverna, escritório), o olhar/gesto do personagem, "
+        "e terminando com uma fala marcante dele direcionada ao jogador para convidá-lo a responder.\n"
+        "3. O campo 'prompt_imagem_en' deve ser escrito em INGLÊS impecável com termos chave para geradores de imagem (Flux/SDXL). "
+        "Para homem: 'masterpiece upper body portrait of 1man, handsome male, [idade e físico], [cor e corte de cabelo], [cor dos olhos], [roupa/estilo], charismatic intense look, vertical framing, generous headroom, 8k resolution, photorealistic'. "
+        "Para mulher: 'masterpiece upper body portrait of 1woman, beautiful female...'.\n\n"
+        "Responda SOMENTE o objeto JSON com os campos: 'nome', 'subtitulo', 'sinopse', 'abertura', 'tags', 'prompt_imagem_en'."
+    )
+    
+    prompt_usuario = (
+        f"- Gênero do Personagem: {genero_personagem}\n"
+        f"- Nome sugerido (opcional): {nome_sugerido}\n"
+        f"- Características do Personagem (físicas e psicológicas): {caracteristicas}\n"
+        f"- Contexto / Como a história começa: {enredo_inicial}\n"
+        f"- Formato da Narrativa: {'RPG com Ações e Combates' if modo_jogo == 'rpg' else 'História Interativa / Visual Novel'}\n"
+        f"- Estilo Visual: {estilo_imagem}\n"
+    )
+    
+    try:
+        with _vaga_ia():
+            resposta = cliente.models.generate_content(
+                model=modelo,
+                contents=prompt_usuario,
+                config=types.GenerateContentConfig(
+                    system_instruction=sistema,
+                    response_mime_type="application/json",
+                    temperature=0.85,
+                    max_output_tokens=1024,
+                ),
+            )
+        texto = getattr(resposta, "text", None) or ""
+        resultado = json.loads(texto)
+    except Exception as erro:
+        logging.warning("Falha na geração rápida com IA (%s): %s", modelo, erro)
+        nome_final = nome_sugerido if nome_sugerido else ("Liam" if genero_personagem == "Masculino" else "Elena")
+        resultado = {
+            "nome": nome_final,
+            "subtitulo": f"O enigmático {genero_personagem.lower()} do seu destino",
+            "sinopse": f"{caracteristicas}. Uma história envolvente onde cada escolha aproxima ou afasta vocês.",
+            "abertura": f"A penumbra e a música envolvente criam uma atmosfera densa ao seu redor. {nome_final} aproxima-se com passos firmes e confiantes, seus olhos fixos em você com intensidade magnética. Ele estende uma taça reluzente em sua direção com um sorriso sutil nos lábios.\n\n— Percebi que você estava me observando... ou talvez o destino quisesse que nos encontrássemos esta noite — diz ele com voz suave e profunda. — O que me diz de um brinde antes de decidirmos onde essa noite vai parar?",
+            "tags": [genero_personagem, "Romance", "Mistério", "Intenso"],
+            "prompt_imagem_en": f"masterpiece upper body portrait of 1{('man, handsome male' if genero_personagem == 'Masculino' else 'woman, beautiful female')}, {caracteristicas}, intense expressive eyes, vertical framing, generous headroom above head, 8k resolution, cinematic lighting"
+        }
+    
+    # Validações e garantias de segurança
+    if not resultado.get("nome"):
+        resultado["nome"] = nome_sugerido or ("Liam" if genero_personagem == "Masculino" else "Elena")
+    if not resultado.get("subtitulo"):
+        resultado["subtitulo"] = f"Personagem {genero_personagem}"
+    if not resultado.get("sinopse"):
+        resultado["sinopse"] = caracteristicas or "Uma jornada inesquecível pelo destino."
+    if not resultado.get("abertura"):
+        resultado["abertura"] = f"— Você finalmente chegou... Estava aguardando por você. O que deseja fazer primeiro?"
+    if not resultado.get("tags") or not isinstance(resultado.get("tags"), list):
+        resultado["tags"] = [genero_personagem, estilo_imagem]
+    
+    return resultado
 
 
 def gerar_capa(cenario):

@@ -47,6 +47,9 @@ interface LivennIAApi {
     @GET("catalogo")
     suspend fun catalogo(): List<CenarioDto>
 
+    @POST("catalogo/gerar-historia-rapida")
+    suspend fun gerarHistoriaRapida(@Body req: GerarHistoriaRapidaRequest): HistoriaRapidaGeradaResponse
+
     @POST("catalogo/cenarios")
     suspend fun criarCenario(@Body cenario: NovoCenarioRequest): CenarioDto
 
@@ -169,6 +172,9 @@ interface LivennIAApi {
 
     @POST("jogos/{id}/persona")
     suspend fun trocarPersonaJogo(@Path("id") id: String, @Body req: TrocarPersonaJogoRequest): JogoResponse
+
+    @POST("conta/foto-perfil")
+    suspend fun uploadFotoPerfilUsuario(@Body req: UploadRetratoRequest): RetratoResponse
 
     @POST("conta/persona/retrato")
     suspend fun gerarRetratoPersona(@Body dados: PersonaRetratoRequest): RetratoResponse

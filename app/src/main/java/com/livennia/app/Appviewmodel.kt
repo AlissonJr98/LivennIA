@@ -4,6 +4,7 @@ import android.app.Application
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -276,6 +277,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var personaTemRetrato by mutableStateOf(prefs.personaTemRetrato)
         private set
+    var fotoPerfilTemRetrato by mutableStateOf(prefs.fotoPerfilTemRetrato)
+    var fotoPerfilVersao by mutableIntStateOf(prefs.fotoPerfilVersao)
 
     fun salvarMinhaPersona(
         nome: String,
@@ -542,12 +545,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             ocupado = true
             try {
-                api.uploadRetratoConta(UploadRetratoRequest(imagemBase64))
-                prefs.personaTemRetrato = true
-                personaTemRetrato = true
-                personaRetratoVersao++
+                api.uploadFotoPerfilUsuario(UploadRetratoRequest(imagemBase64))
+                prefs.fotoPerfilTemRetrato = true
+                fotoPerfilTemRetrato = true
+                fotoPerfilVersao++
+                prefs.fotoPerfilVersao = fotoPerfilVersao
                 atualizarListas(api)
-                carregarPersonas()
                 onSucesso()
             } catch (e: Exception) {
                 onError(e.message ?: "Falha ao enviar foto de perfil")
@@ -568,11 +571,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             ocupado = true
             try {
                 api.confirmarCandidatoConta(ConfirmarCandidatoRequest(loteId, indice))
-                prefs.personaTemRetrato = true
-                personaTemRetrato = true
-                personaRetratoVersao++
+                prefs.fotoPerfilTemRetrato = true
+                fotoPerfilTemRetrato = true
+                fotoPerfilVersao++
+                prefs.fotoPerfilVersao = fotoPerfilVersao
                 atualizarListas(api)
-                carregarPersonas()
                 onSucesso()
             } catch (e: Exception) {
                 onError(e.message ?: "Falha ao confirmar foto de perfil")
@@ -1259,6 +1262,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun atualizarListas(api: LivennIAApi) {
         val c = api.conta()
         conta = c
+        if (c.fotoPerfil) {
+            prefs.fotoPerfilTemRetrato = true
+            fotoPerfilTemRetrato = true
+        } else if (prefs.fotoPerfilTemRetrato) {
+            fotoPerfilTemRetrato = true
+        }
         if (c.personaRetrato) {
             prefs.personaTemRetrato = true
             personaTemRetrato = true
@@ -1486,6 +1495,28 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
         // A vitrine vem em paralelo, sem travar a lista de aventuras.
         carregarCatalogo()
+    }
+
+    fun gerarHistoriaRapida(
+        req: GerarHistoriaRapidaRequest,
+        onSucesso: (HistoriaRapidaGeradaResponse) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        val api = obterApi() ?: run {
+            onError("Servidor não configurado.")
+            return
+        }
+        viewModelScope.launch {
+            ocupado = true
+            try {
+                val res = api.gerarHistoriaRapida(req)
+                onSucesso(res)
+            } catch (e: Exception) {
+                onError(e.message ?: "Falha ao gerar história com IA.")
+            } finally {
+                ocupado = false
+            }
+        }
     }
 
     fun publicarCenario(cenario: CenarioDto, onSucesso: (CenarioDto) -> Unit = {}) {

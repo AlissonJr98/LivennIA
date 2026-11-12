@@ -589,6 +589,63 @@ fun RetratoPersonagem(
     }
 }
 
+// Foto oficial de perfil do usuário (independente das Personas do jogo)
+@Composable
+fun FotoPerfilUsuario(
+    temFoto: Boolean,
+    emojiOuIniciais: String = "👤",
+    tamanho: Int = 72,
+    versao: Int = 0,
+    modifier: Modifier = Modifier,
+    recorte: Shape = CircleShape
+) {
+    val url = remember(temFoto, versao, ApiClient.token) {
+        if (!temFoto) null
+        else ApiClient.baseUrlAtual()?.let { baseRaw ->
+            val base = if (baseRaw.endsWith("/")) baseRaw else "$baseRaw/"
+            val t = ApiClient.token
+            val tokenParam = if (!t.isNullOrEmpty()) "&token=$t" else ""
+            "${base}conta/foto-perfil?v=$versao$tokenParam"
+        }
+    }
+    Surface(
+        color = Color(0xFF161824),
+        shape = recorte,
+        border = BorderStroke(1.dp, Color(0xFF282B3D)),
+        modifier = modifier.size(tamanho.dp)
+    ) {
+        if (url != null) {
+            val cabecalho = remember(ApiClient.token) { ApiClient.cabecalhoAutorizacao() }
+            SubcomposeAsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(url)
+                    .apply { if (cabecalho != null) addHeader("Authorization", cabecalho) }
+                    .crossfade(true)
+                    .allowHardware(false)
+                    .build(),
+                contentDescription = "Foto de Perfil",
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.TopCenter,
+                modifier = Modifier.fillMaxSize(),
+                loading = {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().background(Color(0xFF161824))) {
+                        CircularProgressIndicator(modifier = Modifier.size((tamanho * 0.35).dp), strokeWidth = 2.dp, color = Color(0xFFF5C842))
+                    }
+                },
+                error = {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().background(Color(0xFF1E2235))) {
+                        Text(emojiOuIniciais.ifBlank { "👤" }, fontSize = (tamanho * 0.42).sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                }
+            )
+        } else {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().background(Color(0xFF161824))) {
+                Text(emojiOuIniciais.ifBlank { "👤" }, fontSize = (tamanho * 0.42).sp, fontWeight = FontWeight.Bold, color = Color.White)
+            }
+        }
+    }
+}
+
 // Retrato da Persona do usuário: gerado por IA conforme suas características
 @Composable
 fun RetratoPersona(

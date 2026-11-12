@@ -117,7 +117,21 @@ def caminho_retrato(jogo_id):
     return os.path.join(config.PASTA_RETRATOS, f"{jogo_id}.png")
 
 
+def caminho_foto_perfil(jogador_id):
+    """Caminho exclusivo para a foto de perfil oficial da conta do usuário (separada das personas)."""
+    return os.path.join(config.PASTA_RETRATOS, f"perfil_{jogador_id}.png")
+
+
+def tem_foto_perfil(jogador_id):
+    c = caminho_foto_perfil(jogador_id)
+    if os.path.exists(c):
+        return True
+    c_ant = os.path.join(config.PASTA_RETRATOS, f"persona_{jogador_id}.png")
+    return os.path.exists(c_ant)
+
+
 def caminho_persona_retrato(jogador_id, persona_id=None):
+    """Caminho do retrato de uma persona (personagem/alter-ego para jogos)."""
     if persona_id:
         return os.path.join(config.PASTA_RETRATOS, f"persona_{jogador_id}_{persona_id}.png")
     return os.path.join(config.PASTA_RETRATOS, f"persona_{jogador_id}.png")
@@ -125,10 +139,15 @@ def caminho_persona_retrato(jogador_id, persona_id=None):
 
 def tem_persona_retrato(jogador_id, persona_id=None):
     if persona_id:
-        c1 = caminho_persona_retrato(jogador_id, persona_id)
-        if os.path.exists(c1):
-            return True
-    return os.path.exists(caminho_persona_retrato(jogador_id))
+        return os.path.exists(caminho_persona_retrato(jogador_id, persona_id))
+    try:
+        personas = banco.listar_personas(jogador_id)
+        for p in personas:
+            if os.path.exists(caminho_persona_retrato(jogador_id, p["id"])):
+                return True
+    except Exception:
+        pass
+    return False
 
 
 # Lotes de candidatos a retrato de persona em memória
@@ -578,6 +597,29 @@ class CenarioOut(BaseModel):
     modoJogo: str = "historia"
 
 
+class GerarHistoriaRapidaIn(BaseModel):
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
+    genero_personagem: str = Field(default="Masculino")
+    nome_sugerido: Optional[str] = Field(default="")
+    caracteristicas_personagem: str = Field(min_length=3)
+    enredo_inicial: Optional[str] = Field(default="")
+    estilo_imagem: str = Field(default="semi_realistic")
+    modo_jogo: str = Field(default="historia")
+
+
+class HistoriaRapidaGeradaOut(BaseModel):
+    id_temporario: str
+    nome: str
+    subtitulo: str
+    sinopse: str
+    abertura: str
+    tags: list[str]
+    estilo_imagem: str
+    modo_jogo: str
+    prompt_imagem_en: str
+    capa_url: str
+
+
 class NovoCenarioIn(BaseModel):
     model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
     id: Optional[str] = None
@@ -644,6 +686,7 @@ class ContaOut(BaseModel):
     livens: int = 100
     mochis: int = 100
     resgate_diario_disponivel: bool = True
+    foto_perfil: bool = False
     persona_retrato: bool = False
     dono: bool = False
 
@@ -917,6 +960,47 @@ def listar_catalogo(jogador=Depends(jogador_atual)):
         publico = catalogo.cenario_publico(item)
         itens.append(CenarioOut(**publico, capa=tem_capa(item["id"])))
     return itens
+
+
+@app.post("/catalogo/gerar-historia-rapida", response_model=HistoriaRapidaGeradaOut)
+def endpoint_gerar_historia_rapida(dados: GerarHistoriaRapidaIn, jogador=Depends(jogador_atual)):
+    """Gera a história e personagem completos com IA no Modo Rápido (em 2 etapas com revisão)."""
+    res = motor.gerar_historia_rapida(dados.model_dump())
+    
+    temp_id = f"rapido_{int(time.time()*1000)}"
+    prompt_en = res.get("prompt_imagem_en") or ""
+    
+    os.makedirs(config.PASTA_CAPAS, exist_ok=True)
+    caminho_img = caminho_capa(temp_id)
+    
+    try:
+        img_bytes = motor.gerar_imagem_capa_por_prompt(prompt_en, dados.estilo_imagem)
+        with open(caminho_img, "wb") as f:
+            f.write(img_bytes)
+    except Exception as e:
+        logging.warning("Erro ao gerar imagem inicial da história rápida: %s", e)
+        fallback = obter_capa_tematica_personagem({
+            "genero": dados.genero_personagem,
+            "nome": res.get("nome", ""),
+            "sinopse": res.get("sinopse", ""),
+            "tags": res.get("tags", [dados.genero_personagem])
+        })
+        if fallback and os.path.exists(fallback):
+            import shutil
+            shutil.copyfile(fallback, caminho_img)
+            
+    return HistoriaRapidaGeradaOut(
+        id_temporario=temp_id,
+        nome=res.get("nome", dados.nome_sugerido or "Personagem"),
+        subtitulo=res.get("subtitulo", ""),
+        sinopse=res.get("sinopse", dados.caracteristicas_personagem),
+        abertura=res.get("abertura", ""),
+        tags=res.get("tags", [dados.genero_personagem]),
+        estilo_imagem=dados.estilo_imagem,
+        modo_jogo=dados.modo_jogo,
+        prompt_imagem_en=prompt_en,
+        capa_url=f"/catalogo/{temp_id}/capa?v=1"
+    )
 
 
 @app.post("/catalogo/cenarios", response_model=CenarioOut, status_code=201)
@@ -1277,6 +1361,7 @@ def ver_conta(jogador=Depends(jogador_atual)):
         livens=999999 if eh_dono else int(jogador.get("mochis") or 0),
         mochis=999999 if eh_dono else int(jogador.get("mochis") or 0),
         resgate_diario_disponivel=True,
+        foto_perfil=tem_foto_perfil(jogador["id"]),
         persona_retrato=tem_persona_retrato(jogador["id"]),
         dono=eh_dono,
     )
@@ -1702,56 +1787,58 @@ def obter_capa_tematica_personagem(item):
         cand = os.path.join(pasta_capas, "rpg-cripta-lich.png")
         if os.path.exists(cand): return cand
 
-    # 2. Histórias baseadas nas características e tags do personagem
-    if any(w in texto_geral for w in ["vampir", "sangue", "gotic", "sombri", "imortal"]):
-        cand = os.path.join(pasta_capas, "carmilla-noctis.png")
+    # Separação estrita de gênero para fallbacks de personagem
+    eh_homem = any(w in texto_geral for w in [
+        "masculin", "homem", "garoto", "rapaz", "male", "boy", "lord", "lorde", "don", "mafioso",
+        "cavaleiro", "guerreiro", "espadachim", "bryan", "liam"
+    ])
+    eh_mulher = any(w in texto_geral for w in [
+        "feminin", "mulher", "garota", "moca", "female", "girl", "lady", "rainha", "princesa",
+        "feiticeira", "bruxa", "donzela", "mafiosa"
+    ])
+
+    if eh_homem and not eh_mulher:
+        if any(w in texto_geral for w in ["mafi", "rival", "possessiv", "bad boy", "perigo", "chefe"]):
+            cand = os.path.join(pasta_capas, "dante-moretti.png")
+            if os.path.exists(cand): return cand
+        if any(w in texto_geral for w in ["elf", "floresta", "natureza"]):
+            cand = os.path.join(pasta_capas, "kaelen-veyr.png")
+            if os.path.exists(cand): return cand
+        if any(w in texto_geral for w in ["lorde", "cavaleiro", "duque", "rei", "espadachim"]):
+            cand = os.path.join(pasta_capas, "lorde-aldric.png")
+            if os.path.exists(cand): return cand
+        if any(w in texto_geral for w in ["guarda", "protetor", "forte", "soldado"]):
+            cand = os.path.join(pasta_capas, "riven-guarda-costas.png")
+            if os.path.exists(cand): return cand
+        if any(w in texto_geral for w in ["rock", "musica", "rebelde", "cantor"]):
+            cand = os.path.join(pasta_capas, "aiden-rockstar.png")
+            if os.path.exists(cand): return cand
+        
+        masculinos = ["dante-moretti.png", "lorde-aldric.png", "kaelen-veyr.png", "aiden-rockstar.png", "julian-cross.png", "elian-vance.png"]
+        idx = abs(hash(str(item.get("id")))) % len(masculinos)
+        cand = os.path.join(pasta_capas, masculinos[idx])
         if os.path.exists(cand): return cand
 
-    if any(w in texto_geral for w in ["mafi", "rival", "possessiv", "controlador", "bad boy", "perigo", "chefe"]):
-        cand = os.path.join(pasta_capas, "dante-moretti.png")
+    elif eh_mulher and not eh_homem:
+        if any(w in texto_geral for w in ["vampir", "sangue", "gotic", "sombri"]):
+            cand = os.path.join(pasta_capas, "carmilla-noctis.png")
+            if os.path.exists(cand): return cand
+        if any(w in texto_geral for w in ["princesa", "rainha", "nobre", "realeza"]):
+            cand = os.path.join(pasta_capas, "lady-lyra.png")
+            if os.path.exists(cand): return cand
+        if any(w in texto_geral for w in ["brux", "feiticeir", "sobrenatural"]):
+            cand = os.path.join(pasta_capas, "nyx-feiticeira.png")
+            if os.path.exists(cand): return cand
+        if any(w in texto_geral for w in ["sedutor", "atraente", "romantico"]):
+            cand = os.path.join(pasta_capas, "valeria-rossi.png")
+            if os.path.exists(cand): return cand
+            
+        femininos = ["carmilla-noctis.png", "lady-lyra.png", "nyx-feiticeira.png", "valeria-rossi.png", "seraphina-vale.png", "aoi-takahashi.png"]
+        idx = abs(hash(str(item.get("id")))) % len(femininos)
+        cand = os.path.join(pasta_capas, femininos[idx])
         if os.path.exists(cand): return cand
 
-    if any(w in texto_geral for w in ["elf", "floresta", "natureza", "arqueir"]):
-        cand = os.path.join(pasta_capas, "kaelen-veyr.png")
-        if os.path.exists(cand): return cand
-
-    if any(w in texto_geral for w in ["brux", "feiticeir", "sobrenatural", "maldicao"]):
-        cand = os.path.join(pasta_capas, "nyx-feiticeira.png")
-        if os.path.exists(cand): return cand
-
-    if any(w in texto_geral for w in ["princesa", "rainha", "nobre", "realeza", "imperatriz"]):
-        cand = os.path.join(pasta_capas, "lady-lyra.png")
-        if os.path.exists(cand): return cand
-
-    if any(w in texto_geral for w in ["lorde", "cavaleiro", "duque", "rei", "espadachim"]):
-        cand = os.path.join(pasta_capas, "lorde-aldric.png")
-        if os.path.exists(cand): return cand
-
-    if any(w in texto_geral for w in ["guarda", "protetor", "forte", "soldado"]):
-        cand = os.path.join(pasta_capas, "riven-guarda-costas.png")
-        if os.path.exists(cand): return cand
-
-    if any(w in texto_geral for w in ["rock", "musica", "astro", "rebelde", "cantor"]):
-        cand = os.path.join(pasta_capas, "aiden-rockstar.png")
-        if os.path.exists(cand): return cand
-
-    if any(w in texto_geral for w in ["cacador", "rank", "dungeon", "level", "anime"]):
-        cand = os.path.join(pasta_capas, "kira-rank-s.png")
-        if os.path.exists(cand): return cand
-
-    if any(w in texto_geral for w in ["cyber", "futur", "androide", "ia"]):
-        cand = os.path.join(pasta_capas, "seul-2099.png")
-        if os.path.exists(cand): return cand
-
-    if any(w in texto_geral for w in ["gentil", "amigo", "carinhos", "doce"]):
-        cand = os.path.join(pasta_capas, "elian-vance.png")
-        if os.path.exists(cand): return cand
-
-    if any(w in texto_geral for w in ["sedutor", "atraente", "luxuria", "romantico"]):
-        cand = os.path.join(pasta_capas, "valeria-rossi.png")
-        if os.path.exists(cand): return cand
-
-    # Fallbacks variados de personagens para nunca repetir a mesma foto
+    # Fallback genérico caso gênero não esteja definido
     variados = [
         "seraphina-vale.png", "dante-moretti.png", "aoi-takahashi.png",
         "kaelen-veyr.png", "lady-lyra.png", "julian-cross.png", "elian-vance.png"
@@ -2602,11 +2689,6 @@ def marcar_como_padrao(persona_id: int, jogador=Depends(jogador_atual)):
     if not existente:
         raise HTTPException(404, "Persona não encontrada.")
     banco.definir_persona_padrao(jogador["id"], persona_id)
-    caminho_p = caminho_persona_retrato(jogador["id"], persona_id)
-    if os.path.exists(caminho_p):
-        import shutil
-        caminho_geral = caminho_persona_retrato(jogador["id"])
-        shutil.copyfile(caminho_p, caminho_geral)
     p = banco.obter_persona(jogador["id"], persona_id)
     pers = p["personalidade"] or ""
     med = p["medos"] or ""
@@ -2965,8 +3047,9 @@ def upload_retrato_persona(persona_id: int, dados: UploadRetratoIn, jogador=Depe
     return RetratoOut(retrato=True)
 
 
+@app.post("/conta/foto-perfil", response_model=RetratoOut)
 @app.post("/conta/persona/upload-retrato", response_model=RetratoOut)
-def upload_retrato_conta(dados: UploadRetratoIn, jogador=Depends(jogador_atual)):
+def upload_foto_perfil_conta(dados: UploadRetratoIn, jogador=Depends(jogador_atual)):
     """Salva uma imagem enviada pelo usuário da galeria como foto de perfil da conta."""
     import base64
     b64 = dados.imagem_base64
@@ -2976,18 +3059,35 @@ def upload_retrato_conta(dados: UploadRetratoIn, jogador=Depends(jogador_atual))
     if not dados_img or len(dados_img) < 100:
         raise HTTPException(400, "Arquivo de imagem inválido.")
     os.makedirs(config.PASTA_RETRATOS, exist_ok=True)
-    caminho_geral = caminho_persona_retrato(jogador["id"])
-    with open(caminho_geral, "wb") as f:
+    caminho_perfil = caminho_foto_perfil(jogador["id"])
+    with open(caminho_perfil, "wb") as f:
         f.write(dados_img)
-
-    personas = banco.listar_personas(jogador["id"])
-    padrao = next((p for p in personas if p["padrao"]), None) or (personas[0] if personas else None)
-    if padrao:
-        caminho_p = caminho_persona_retrato(jogador["id"], padrao["id"])
-        with open(caminho_p, "wb") as f:
-            f.write(dados_img)
-        banco.incrementar_retrato_persona(jogador["id"], padrao["id"])
+    # Foto de perfil é estritamente da conta do usuário. NÃO altera persona.
     return RetratoOut(retrato=True)
+
+
+@app.get("/conta/foto-perfil")
+def ver_foto_perfil_conta(token: Optional[str] = None, credenciais: Optional[HTTPAuthorizationCredentials] = Depends(esquema_bearer)):
+    """Devolve a foto de perfil oficial da conta do usuário."""
+    jogador = None
+    if credenciais and credenciais.credentials:
+        jogador = banco.jogador_por_token_hash(hash_token(credenciais.credentials))
+    elif token:
+        jogador = banco.jogador_por_token_hash(hash_token(token))
+    
+    if jogador is None:
+        raise HTTPException(401, "Não autenticado.")
+
+    caminho = caminho_foto_perfil(jogador["id"])
+    if not os.path.exists(caminho):
+        c_ant = os.path.join(config.PASTA_RETRATOS, f"persona_{jogador['id']}.png")
+        if os.path.exists(c_ant):
+            caminho = c_ant
+        else:
+            raise HTTPException(404, "Esta conta ainda não possui foto de perfil.")
+    return FileResponse(
+        caminho, media_type=tipo_de_imagem(caminho), headers={"Cache-Control": "no-cache"}
+    )
 
 
 @app.post("/conta/persona/confirmar-candidato", response_model=RetratoOut)
@@ -3045,17 +3145,9 @@ def confirmar_candidato_conta(dados: ConfirmarCandidatoIn, jogador=Depends(jogad
         raise HTTPException(400, "Imagem do candidato não encontrada. Tente gerar novamente.")
 
     os.makedirs(config.PASTA_RETRATOS, exist_ok=True)
-    caminho_geral = caminho_persona_retrato(jogador["id"])
-    with open(caminho_geral, "wb") as f:
+    caminho_perfil = caminho_foto_perfil(jogador["id"])
+    with open(caminho_perfil, "wb") as f:
         f.write(dados_img)
-
-    personas = banco.listar_personas(jogador["id"])
-    padrao = next((p for p in personas if p["padrao"]), None) or (personas[0] if personas else None)
-    if padrao:
-        caminho_p = caminho_persona_retrato(jogador["id"], padrao["id"])
-        with open(caminho_p, "wb") as f:
-            f.write(dados_img)
-        banco.incrementar_retrato_persona(jogador["id"], padrao["id"])
     return RetratoOut(retrato=True)
 
 

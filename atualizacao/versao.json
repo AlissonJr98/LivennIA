@@ -1,6 +1,6 @@
 {
-  "versaoCodigo": 57,
-  "versaoNome": "1.9.7",
-  "notas": "Atualização 1.9.7: Sons ambientes de Taverna e Masmorra audíveis e aprimorados para alto-falante de celular (lareira com alaúde e caverna com gotas nítidas), Galeria de Cenas com zoom em alta resolução e botão de salvar foto na galeria, Skins do Chat (Cósmico, Pergaminho, Cyberpunk, Minimalista) ativas em toda a conversa, foto de perfil persistente nos balões de fala, e separação completa entre o Console de Mesa & RPG (PV, dados d20, atributos D&D, inventário) e o Diário da Narrativa (vínculo afetivo, presentes, memórias secretas, modo cinema e livro PDF).",
+  "versaoCodigo": 58,
+  "versaoNome": "1.9.8",
+  "notas": "Atualização 1.9.8: Separação total e independente entre Foto de Perfil da Conta (sua foto de usuário) e Personas (seus personagens de interpretação), Novo Modo Rápido em 2 Etapas com IA (a IA gera título, sinopse detalhada, cena de abertura imersiva e ilustração fiel com opção de revisar e editar antes de postar ou jogar direto), e correção definitiva de fidelidade de gênero e atributos visuais (homens com cabelos pretos e olhos azuis são ilustrados com 100% de precisão sem gerar gênero oposto).",
   "apkUrl": "https://raw.githubusercontent.com/AlissonJr98/LivennIA/main/atualizacao/livennia.apk"
 }

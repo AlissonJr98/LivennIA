@@ -164,4 +164,12 @@ class Preferencias(context: Context) {
     var personaTemRetrato: Boolean
         get() = pConfig.getBoolean("persona_tem_retrato", false)
         set(valor) { pConfig.edit().putBoolean("persona_tem_retrato", valor).commit() }
+
+    var fotoPerfilTemRetrato: Boolean
+        get() = pConfig.getBoolean("foto_perfil_tem_retrato", false)
+        set(valor) { pConfig.edit().putBoolean("foto_perfil_tem_retrato", valor).commit() }
+
+    var fotoPerfilVersao: Int
+        get() = pConfig.getInt("foto_perfil_versao", 0)
+        set(valor) { pConfig.edit().putInt("foto_perfil_versao", valor).commit() }
 }

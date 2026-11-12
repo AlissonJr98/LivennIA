@@ -657,6 +657,7 @@ data class ContaResponse(
 
     @SerializedName("resgate_diario_disponivel") val resgateDiarioDisponivel: Boolean = true,
 
+    @SerializedName("foto_perfil") val fotoPerfil: Boolean = false,
     @SerializedName("persona_retrato") val personaRetrato: Boolean = false,
     @SerializedName("dono") val dono: Boolean = false
 ) {
@@ -765,4 +766,26 @@ data class DadoResponse(
     val critico: Boolean,
     val desastre: Boolean,
     @SerializedName("texto_formatado") val textoFormatado: String
+)
+
+data class GerarHistoriaRapidaRequest(
+    @SerializedName("genero_personagem") val generoPersonagem: String = "Masculino",
+    @SerializedName("nome_sugerido") val nomeSugerido: String? = null,
+    @SerializedName("caracteristicas_personagem") val caracteristicasPersonagem: String,
+    @SerializedName("enredo_inicial") val enredoInicial: String? = null,
+    @SerializedName("estilo_imagem") val estiloImagem: String = "semi_realistic",
+    @SerializedName("modo_jogo") val modoJogo: String = "historia"
+)
+
+data class HistoriaRapidaGeradaResponse(
+    @SerializedName("id_temporario") val idTemporario: String,
+    val nome: String,
+    val subtitulo: String,
+    val sinopse: String,
+    val abertura: String,
+    val tags: List<String> = emptyList(),
+    @SerializedName("estilo_imagem") val estiloImagem: String = "semi_realistic",
+    @SerializedName("modo_jogo") val modoJogo: String = "historia",
+    @SerializedName("prompt_imagem_en") val promptImagemEn: String = "",
+    @SerializedName("capa_url") val capaUrl: String
 )
