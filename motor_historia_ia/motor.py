@@ -1525,11 +1525,11 @@ def sintetizar_prompt_visual_ingles(caracteristicas: str, genero: str, estilo: s
             resto = resto.replace(pt, " ")
     
     # Se ainda restarem palavras ou frases, traduz via motor se possível
-    resto_limpo = " ".join(resto.split())
-    if resto_limpo and len(resto_limpo) > 2:
+    resto_limpo = " ".join([w for w in resto.split() if len(w) > 2 and w not in [".", ",", ";", "-", "/"]])
+    if resto_limpo and len(resto_limpo) > 4:
         try:
             trad = _traduzir_prompt_retrato(resto_limpo)
-            if trad and trad.strip() != resto_limpo:
+            if trad and trad.strip() != resto_limpo and not trad.startswith("Translate"):
                 termos_ingles.append(trad.strip())
         except Exception:
             pass
@@ -2003,7 +2003,7 @@ def _traduzir_prompt_retrato(prompt):
                     ),
                 )
             texto = (getattr(resposta, "text", None) or "").strip().strip('"')
-            if len(texto) > 40:
+            if len(texto) >= 3:
                 return texto
             logging.warning("Tradução do retrato veio vazia (%s).", modelo)
         except Exception as erro:  # noqa: BLE001 - traduzir é opcional, nunca derruba
